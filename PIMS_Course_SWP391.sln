@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36717.8 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "PIMS_FE.client", "PIMS_FE\pims_fe.client\PIMS_FE.client.esproj", "{E2C7F280-C239-27CB-1BDB-77151025EA14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PIMS_BE.Server", "PIMS_FE\PIMS_FE.Server\PIMS_BE.Server.csproj", "{78C3A05D-A973-4581-8091-4DA675163E6E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2C7F280-C239-27CB-1BDB-77151025EA14}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{78C3A05D-A973-4581-8091-4DA675163E6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78C3A05D-A973-4581-8091-4DA675163E6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78C3A05D-A973-4581-8091-4DA675163E6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78C3A05D-A973-4581-8091-4DA675163E6E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {25166896-C25F-464B-9FF4-B6F0E628C33A}
+	EndGlobalSection
+EndGlobal
