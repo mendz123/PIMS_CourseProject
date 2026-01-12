@@ -1,87 +1,139 @@
+-- 1. Tạo các bảng danh mục (Lookup Tables)
+CREATE TABLE Roles (
+    RoleId INT PRIMARY KEY IDENTITY(1,1),
+    RoleName NVARCHAR(50) NOT NULL -- TEACHER, STUDENT
+);
 
-Users (
-    UserId          INT PK,
-    Email           VARCHAR UNIQUE NOT NULL,
-    FullName        NVARCHAR,
-    Role            ENUM('TEACHER', 'STUDENT'),
-    Status          ENUM('ACTIVE', 'INACTIVE'),
-    CreatedAt       DATETIME
-)
+CREATE TABLE UserStatus (
+    StatusId INT PRIMARY KEY IDENTITY(1,1),
+    StatusName NVARCHAR(50) NOT NULL -- ACTIVE, INACTIVE
+);
+CREATE TABLE Semesters (
+    SemesterId INT PRIMARY KEY IDENTITY(1,1),
+    SemesterName NVARCHAR(50) NOT NULL, -- Ví dụ: Summer 2024, Fall 2024
+    StartDate DATE,
+    EndDate DATE,
+    IsActive BIT DEFAULT 1
+);
+CREATE TABLE ClassStatus (
+    StatusId INT PRIMARY KEY IDENTITY(1,1),
+    StatusName NVARCHAR(50) NOT NULL -- SETUP, ONGOING, CLOSED
+);
 
-Classes (
-    ClassId         INT PK,
-    ClassCode       VARCHAR UNIQUE,
-    ClassName       NVARCHAR,
-    TeacherId       INT FK -> Users(UserId),
-    MinGroupSize    INT,
-    MaxGroupSize    INT,
-    GroupDeadline   DATETIME,
-    Status          ENUM('SETUP', 'ONGOING', 'CLOSED'),
-    CreatedAt       DATETIME
-)
+CREATE TABLE ClassStudentStatus (
+    StatusId INT PRIMARY KEY IDENTITY(1,1),
+    StatusName NVARCHAR(50) NOT NULL -- INVITED, JOINED
+);
 
-ClassStudents (
-    ClassStudentId  INT PK,
-    ClassId         INT FK -> Classes(ClassId),
-    StudentEmail    VARCHAR,
-    StudentId       INT FK -> Users(UserId) NULL,
-    Status          ENUM('INVITED', 'JOINED')
-)
+CREATE TABLE GroupStatus (
+    StatusId INT PRIMARY KEY IDENTITY(1,1),
+    StatusName NVARCHAR(50) NOT NULL -- ACTIVE, INVALID, DELETED
+);
 
-Groups (
-    GroupId         INT PK,
-    ClassId         INT FK -> Classes(ClassId),
-    GroupName       NVARCHAR,
-    Status          ENUM('ACTIVE', 'INVALID', 'DELETED'),
-    CreatedAt       DATETIME,
-    leaderId        INT FK -> Users(UserId)
-)
+CREATE TABLE ProjectStatus (
+    StatusId INT PRIMARY KEY IDENTITY(1,1),
+    StatusName NVARCHAR(50) NOT NULL -- DENIED, PENDING, APPROVED
+);
 
-GroupMembers (
-    GroupMemberId   INT PK,
-    GroupId         INT FK -> Groups(GroupId),
-    StudentId       INT FK -> Users(UserId),
-    JoinedAt        DATETIME
-)
-Projects (
-    ProjectId       INT PK,
-    GroupId         INT FK -> Groups(GroupId),
-    Title           NVARCHAR,
-    Description     NVARCHAR,
-    Status          ENUM('DRAFT', 'PENDING', 'APPROVED'),
-    TeacherNote     NVARCHAR,
-    CreatedAt       DATETIME,
-    UpdatedAt       DATETIME
-)
+-- 2. Tạo các bảng chính
+CREATE TABLE Users (
+    UserId INT PRIMARY KEY IDENTITY(1,1),
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL, -- Lưu mật khẩu đã mã hóa
+    FullName NVARCHAR(255),
+    RoleId INT FOREIGN KEY REFERENCES Roles(RoleId),
+    StatusId INT FOREIGN KEY REFERENCES UserStatus(StatusId),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 
-Assessments (
-    AssessmentId    INT PK,
-    ClassId         INT FK -> Classes(ClassId),
-    Title           NVARCHAR,
-    Description     NVARCHAR,
-    MaxScore        FLOAT,
-    DueDate         DATETIME,
-    CreatedAt       DATETIME
-)
+CREATE TABLE Classes (
+    ClassId INT PRIMARY KEY IDENTITY(1,1),
+    ClassCode VARCHAR(50) UNIQUE NOT NULL,
+    ClassName NVARCHAR(255),
+    SemesterId INT FOREIGN KEY REFERENCES Semesters(SemesterId), -- Link to Semester
+    TeacherId INT FOREIGN KEY REFERENCES Users(UserId),
+    MinGroupSize INT DEFAULT 1,
+    MaxGroupSize INT DEFAULT 1,
+    GroupDeadline DATETIME,
+    StatusId INT FOREIGN KEY REFERENCES ClassStatus(StatusId),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 
-AssessmentScores (
-    ScoreId         INT PK,
-    AssessmentId    INT FK -> Assessments(AssessmentId),
-    StudentId       INT FK -> Users(UserId),
-    GroupId         INT FK -> Groups(GroupId),
-    Score           FLOAT,
-    TeacherNote     NVARCHAR,
-    GradedAt        DATETIME,
+CREATE TABLE ClassStudents (
+    ClassStudentId INT PRIMARY KEY IDENTITY(1,1),
+    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
+    StudentEmail VARCHAR(100),
+    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
+    StatusId INT FOREIGN KEY REFERENCES ClassStudentStatus(StatusId)
+);
 
-    UNIQUE (AssessmentId, StudentId)
-)
-AssessmentSubmissions (
-    SubmissionId    INT PK,
-    AssessmentId    INT FK -> Assessments(AssessmentId),
-    GroupId         INT FK -> Groups(GroupId),
-    UploadedBy      INT FK -> Users(UserId),
-    FileUrl         VARCHAR,
-    Description     NVARCHAR,
-    UploadedAt      DATETIME
-)
+CREATE TABLE Groups (
+    GroupId INT PRIMARY KEY IDENTITY(1,1),
+    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
+    GroupName NVARCHAR(255),
+    LeaderId INT FOREIGN KEY REFERENCES Users(UserId), -- Đã thêm LeaderId
+    StatusId INT FOREIGN KEY REFERENCES GroupStatus(StatusId),
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 
+CREATE TABLE GroupMembers (
+    GroupMemberId INT PRIMARY KEY IDENTITY(1,1),
+    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
+    JoinedAt DATETIME DEFAULT GETDATE()
+);
+
+CREATE TABLE Projects (
+    ProjectId INT PRIMARY KEY IDENTITY(1,1),
+    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    Title NVARCHAR(255),
+    Description NVARCHAR(MAX),
+    StatusId INT FOREIGN KEY REFERENCES ProjectStatus(StatusId),
+    TeacherNote NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME
+);
+
+-- 1. Bảng quản lý lần nộp bài (Chỉ chứa thông tin chung)
+CREATE TABLE AssessmentSubmissions (
+    SubmissionId INT PRIMARY KEY IDENTITY(1,1),
+    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
+    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    UploadedBy INT FOREIGN KEY REFERENCES Users(UserId),
+    Description NVARCHAR(MAX),
+    UploadedAt DATETIME DEFAULT GETDATE()
+);
+
+-- 2. Bảng quản lý danh sách các File đính kèm cho lần nộp đó
+CREATE TABLE SubmissionFiles (
+    FileId INT PRIMARY KEY IDENTITY(1,1),
+    SubmissionId INT FOREIGN KEY REFERENCES AssessmentSubmissions(SubmissionId),
+    FileName NVARCHAR(255), -- Tên file gốc (ví dụ: Bao_cao_nhom_1.pdf)
+    FileUrl VARCHAR(1000),   -- Đường dẫn lưu trữ trên server/cloud
+    FileType VARCHAR(50),   -- Loại file (.pdf, .zip, .docx)
+    FileSize FLOAT,         -- Dung lượng file (KB/MB) để quản lý
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- 5. Cập nhật bảng AssessmentScores: Thêm GradedBy (Audit Log - Point 5)
+CREATE TABLE AssessmentScores (
+    ScoreId INT PRIMARY KEY IDENTITY(1,1),
+    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
+    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
+    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    Score FLOAT,
+    TeacherNote NVARCHAR(MAX),
+    GradedBy INT FOREIGN KEY REFERENCES Users(UserId), -- Ai là người chấm điểm?
+    GradedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_Assessment_Student UNIQUE (AssessmentId, StudentId)
+);
+
+-- 3. Bảng thông báo (Notifications)
+CREATE TABLE Notifications (
+    NotificationId INT PRIMARY KEY IDENTITY(1,1),
+    UserId INT FOREIGN KEY REFERENCES Users(UserId), -- Người nhận
+    Title NVARCHAR(255),
+    Content NVARCHAR(MAX),
+    IsRead BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
