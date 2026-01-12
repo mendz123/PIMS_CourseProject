@@ -1,3 +1,6 @@
+Create database PIMS_Project
+use PIMS_Project
+
 -- 1. Tạo các bảng danh mục (Lookup Tables)
 CREATE TABLE Roles (
     RoleId INT PRIMARY KEY IDENTITY(1,1),
@@ -93,7 +96,15 @@ CREATE TABLE Projects (
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME
 );
-
+CREATE TABLE Assessments (
+    AssessmentId INT PRIMARY KEY IDENTITY(1,1),
+    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
+    Title NVARCHAR(255),
+    Description NVARCHAR(MAX),
+    MaxScore FLOAT DEFAULT 10,
+    DueDate DATETIME,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
 -- 1. Bảng quản lý lần nộp bài (Chỉ chứa thông tin chung)
 CREATE TABLE AssessmentSubmissions (
     SubmissionId INT PRIMARY KEY IDENTITY(1,1),
