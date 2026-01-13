@@ -64,6 +64,7 @@ out/
 .env.production.local
 
 # --- Editor / IDE rác ---
+.vs/
 .vscode/
 .idea/
 *.suo
