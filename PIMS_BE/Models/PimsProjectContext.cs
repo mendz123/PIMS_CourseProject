@@ -52,8 +52,10 @@ public partial class PimsProjectContext : DbContext
     public virtual DbSet<UserStatus> UserStatuses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=PIMS_Project;User Id=sa;Password=123456789;Encrypt=True;TrustServerCertificate=True;");
+    {
+        // Connection string is configured in Program.cs via Dependency Injection
+        // This method is only called if not using DI
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

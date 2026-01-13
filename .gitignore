@@ -63,6 +63,11 @@ out/
 .env.test.local
 .env.production.local
 
+# --- ASP.NET Core secrets ---
+appsettings.Development.json
+appsettings.Local.json
+**/appsettings.*.local.json
+
 # --- Editor / IDE rác ---
 .vs/
 .vscode/
