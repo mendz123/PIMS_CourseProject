@@ -67,6 +67,8 @@ out/
 appsettings.Development.json
 appsettings.Local.json
 **/appsettings.*.local.json
+appsettings.json
+**/appsettings.json
 
 # --- Editor / IDE rác ---
 .vs/
