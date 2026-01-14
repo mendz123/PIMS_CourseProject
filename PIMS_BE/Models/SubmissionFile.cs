@@ -24,8 +24,6 @@ public partial class SubmissionFile
     [Unicode(false)]
     public string? FileType { get; set; }
 
-    public double? FileSize { get; set; }
-
     [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 

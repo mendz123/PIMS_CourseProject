@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace PIMS_BE.Models;
 
-[Index("AssessmentId", "StudentId", Name = "UC_Assessment_Student", IsUnique = true)]
+[Index("StudentId", "AssessmentId", "CouncilId", Name = "UC_Student_Assessment", IsUnique = true)]
 public partial class AssessmentScore
 {
     [Key]
@@ -20,9 +20,9 @@ public partial class AssessmentScore
 
     public double? Score { get; set; }
 
-    public string? TeacherNote { get; set; }
+    public bool? IsPassed { get; set; }
 
-    public int? GradedBy { get; set; }
+    public int? CouncilId { get; set; }
 
     [Column(TypeName = "datetime")]
     public DateTime? GradedAt { get; set; }
@@ -31,15 +31,15 @@ public partial class AssessmentScore
     [InverseProperty("AssessmentScores")]
     public virtual Assessment? Assessment { get; set; }
 
-    [ForeignKey("GradedBy")]
-    [InverseProperty("AssessmentScoreGradedByNavigations")]
-    public virtual User? GradedByNavigation { get; set; }
+    [ForeignKey("CouncilId")]
+    [InverseProperty("AssessmentScores")]
+    public virtual Council? Council { get; set; }
 
     [ForeignKey("GroupId")]
     [InverseProperty("AssessmentScores")]
     public virtual Group? Group { get; set; }
 
     [ForeignKey("StudentId")]
-    [InverseProperty("AssessmentScoreStudents")]
+    [InverseProperty("AssessmentScores")]
     public virtual User? Student { get; set; }
 }
