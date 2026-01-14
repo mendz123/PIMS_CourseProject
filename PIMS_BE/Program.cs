@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PIMS_BE.Models;
+using PIMS_BE.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add DbContext with connection string from appsettings
 builder.Services.AddDbContext<PimsProjectContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register Repositories
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();
+builder.Services.AddScoped<IAssessmentSubmissionRepository, AssessmentSubmissionRepository>();
+builder.Services.AddScoped<IClassRepository, ClassRepository>();
+builder.Services.AddScoped<ICouncilRepository, CouncilRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
