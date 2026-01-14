@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using PIMS_BE.Models;
 using PIMS_BE.Services;
 using PIMS_BE.Services.Interfaces;
+using PIMS_BE.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -120,6 +121,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Global exception handling - should be early in pipeline
+app.UseExceptionHandling();
 
 app.UseCors("AllowFrontend");
 

@@ -176,4 +176,4 @@ public class AuthController : ControllerBase
         Response.Cookies.Delete(ACCESS_TOKEN_COOKIE, new CookieOptions { Path = "/" });
         Response.Cookies.Delete(REFRESH_TOKEN_COOKIE, new CookieOptions { Path = "/api/auth" });
     }
-
+}
