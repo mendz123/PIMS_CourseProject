@@ -1,0 +1,24 @@
+namespace PIMS_BE.DTOs.Auth;
+
+/// <summary>
+/// Response trả về sau khi đăng nhập/đăng ký thành công
+/// </summary>
+public class AuthResponse
+{
+    public string AccessToken { get; set; } = null!;
+    public string RefreshToken { get; set; } = null!;
+    public DateTime AccessTokenExpiresAt { get; set; }
+    public DateTime RefreshTokenExpiresAt { get; set; }
+    public UserInfo User { get; set; } = null!;
+}
+
+/// <summary>
+/// Thông tin user trả về trong AuthResponse
+/// </summary>
+public class UserInfo
+{
+    public int UserId { get; set; }
+    public string Email { get; set; } = null!;
+    public string? FullName { get; set; }
+    public string? Role { get; set; }
+}
