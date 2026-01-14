@@ -57,5 +57,13 @@ namespace PIMS_BE.Controllers
             // ✅ ĐÚNG - Dùng OkPaginated cho list có phân trang
             return OkPaginated(pagedItems, allItems.Count, page, pageSize);
         }
+
+        // GET api/example/error-test
+        [HttpGet("error-test")]
+        public ActionResult<ApiResponse<string>> ThrowError()
+        {
+            // Middleware sẽ tự động bắt lỗi này và trả về ApiResponse format chuẩn
+            throw new Exception("Đây là một lỗi thử nghiệm để kiểm tra Middleware!");
+        }
     }
 }
