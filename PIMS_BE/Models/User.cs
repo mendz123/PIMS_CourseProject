@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace PIMS_BE.Models;
 
-[Index("Email", Name = "UQ__Users__A9D1053472E89ACE", IsUnique = true)]
+[Index("Email", Name = "UQ__Users__A9D10534F7334DFE", IsUnique = true)]
 public partial class User
 {
     [Key]
@@ -30,11 +30,8 @@ public partial class User
     [Column(TypeName = "datetime")]
     public DateTime? CreatedAt { get; set; }
 
-    [InverseProperty("GradedByNavigation")]
-    public virtual ICollection<AssessmentScore> AssessmentScoreGradedByNavigations { get; set; } = new List<AssessmentScore>();
-
     [InverseProperty("Student")]
-    public virtual ICollection<AssessmentScore> AssessmentScoreStudents { get; set; } = new List<AssessmentScore>();
+    public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();
 
     [InverseProperty("UploadedByNavigation")]
     public virtual ICollection<AssessmentSubmission> AssessmentSubmissions { get; set; } = new List<AssessmentSubmission>();
@@ -44,6 +41,12 @@ public partial class User
 
     [InverseProperty("Teacher")]
     public virtual ICollection<Class> Classes { get; set; } = new List<Class>();
+
+    [InverseProperty("Student")]
+    public virtual ICollection<CriteriaGrade> CriteriaGrades { get; set; } = new List<CriteriaGrade>();
+
+    [InverseProperty("Teacher")]
+    public virtual ICollection<Grader> Graders { get; set; } = new List<Grader>();
 
     [InverseProperty("Student")]
     public virtual ICollection<GroupMember> GroupMembers { get; set; } = new List<GroupMember>();
@@ -61,4 +64,10 @@ public partial class User
     [ForeignKey("StatusId")]
     [InverseProperty("Users")]
     public virtual UserStatus? Status { get; set; }
+
+    [InverseProperty("Student")]
+    public virtual ICollection<StudentCourseResult> StudentCourseResults { get; set; } = new List<StudentCourseResult>();
+
+    [InverseProperty("Student")]
+    public virtual ICollection<TeacherAssessment> TeacherAssessments { get; set; } = new List<TeacherAssessment>();
 }

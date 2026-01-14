@@ -15,7 +15,7 @@ public partial class ClassStudent
 
     [StringLength(100)]
     [Unicode(false)]
-    public string? StudentEmail { get; set; }
+    public string StudentEmail { get; set; } = null!;
 
     public int? StudentId { get; set; }
 

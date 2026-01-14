@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace PIMS_BE.Models;
 
-[Index("ClassCode", Name = "UQ__Classes__2ECD4A55B7BAF363", IsUnique = true)]
+[Index("ClassCode", Name = "UQ__Classes__2ECD4A55A8E7D5AF", IsUnique = true)]
 public partial class Class
 {
     [Key]
@@ -51,6 +51,9 @@ public partial class Class
     [ForeignKey("StatusId")]
     [InverseProperty("Classes")]
     public virtual ClassStatus? Status { get; set; }
+
+    [InverseProperty("Class")]
+    public virtual ICollection<StudentCourseResult> StudentCourseResults { get; set; } = new List<StudentCourseResult>();
 
     [ForeignKey("TeacherId")]
     [InverseProperty("Classes")]
