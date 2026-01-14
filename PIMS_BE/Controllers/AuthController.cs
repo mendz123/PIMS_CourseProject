@@ -31,52 +31,56 @@ public class AuthController : ControllerBase
     /// Register a new account
     /// </summary>
     [HttpPost("register")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> Register([FromBody] RegisterRequest request)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
 
         if (result == null)
         {
-            return BadRequest(ApiResponse<AuthResponse>.BadRequest("Email already exists or registration failed"));
+            return BadRequest(ApiResponse<LoginResponse>.BadRequest("Email already exists or registration failed"));
         }
 
         // Set cookies
         SetTokenCookies(result);
 
-        return StatusCode(201, ApiResponse<AuthResponse>.Created(result, "Registration successful"));
+        // Return only user info (tokens are stored in HttpOnly cookies)
+        var response = new LoginResponse { User = result.User };
+        return StatusCode(201, ApiResponse<LoginResponse>.Created(response, "Registration successful"));
     }
 
     /// <summary>
     /// Login
     /// </summary>
     [HttpPost("login")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
 
         if (result == null)
         {
-            return Unauthorized(ApiResponse<AuthResponse>.Unauthorized("Invalid email or password"));
+            return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Invalid email or password"));
         }
 
         // Set cookies
         SetTokenCookies(result);
 
-        return Ok(ApiResponse<AuthResponse>.Ok(result, "Login successful"));
+        // Return only user info (tokens are stored in HttpOnly cookies)
+        var response = new LoginResponse { User = result.User };
+        return Ok(ApiResponse<LoginResponse>.Ok(response, "Login successful"));
     }
 
     /// <summary>
     /// Refresh access token using refresh token
     /// </summary>
     [HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
         // Get refresh token from cookie if not in body
         var refreshToken = request?.RefreshToken ?? Request.Cookies[REFRESH_TOKEN_COOKIE];
 
         if (string.IsNullOrEmpty(refreshToken))
         {
-            return BadRequest(ApiResponse<AuthResponse>.BadRequest("Refresh token is required"));
+            return BadRequest(ApiResponse<LoginResponse>.BadRequest("Refresh token is required"));
         }
 
         var result = await _authService.RefreshTokenAsync(refreshToken);
@@ -85,13 +89,15 @@ public class AuthController : ControllerBase
         {
             // Clear cookies if refresh token is invalid
             ClearTokenCookies();
-            return Unauthorized(ApiResponse<AuthResponse>.Unauthorized("Invalid or expired refresh token"));
+            return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Invalid or expired refresh token"));
         }
 
         // Set new cookies
         SetTokenCookies(result);
 
-        return Ok(ApiResponse<AuthResponse>.Ok(result, "Token refreshed successfully"));
+        // Return only user info (tokens are stored in HttpOnly cookies)
+        var response = new LoginResponse { User = result.User };
+        return Ok(ApiResponse<LoginResponse>.Ok(response, "Token refreshed successfully"));
     }
 
     /// <summary>

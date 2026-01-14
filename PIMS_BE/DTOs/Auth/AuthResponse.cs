@@ -22,3 +22,11 @@ public class UserInfo
     public string? FullName { get; set; }
     public string? Role { get; set; }
 }
+
+/// <summary>
+/// Response trả về cho client (không bao gồm token vì đã lưu trong HttpOnly cookies)
+/// </summary>
+public class LoginResponse
+{
+    public UserInfo User { get; set; } = null!;
+}
