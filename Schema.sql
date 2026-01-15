@@ -49,7 +49,7 @@ CREATE TABLE CouncilStatus (
     StatusName NVARCHAR(50) NOT NULL -- OPEN, CLOSED, RE-ASSIGNED
 );
 -- 1. Chèn Roles (Vai trò)
-INSERT INTO Roles (RoleName) VALUES (N'ADMIN'), (N'TEACHER'), (N'STUDENT');
+INSERT INTO Roles (RoleName) VALUES (N'ADMIN'), (N'TEACHER'), (N'STUDENT'), (N'SUBJECT HEAD');
 
 -- 2. Chèn UserStatus (Trạng thái người dùng)
 INSERT INTO UserStatus (StatusName) VALUES (N'ACTIVE'), (N'INACTIVE'), (N'BANNED');
@@ -123,7 +123,10 @@ CREATE TABLE GroupMembers (
     GroupMemberId INT PRIMARY KEY IDENTITY(1,1),
     GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
     StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    JoinedAt DATETIME DEFAULT GETDATE()
+    JoinedAt DATETIME DEFAULT GETDATE(),
+    -- Thêm các cột dưới đây:
+    Status NVARCHAR(20) DEFAULT 'ACTIVE', -- 'ACTIVE', 'LEFT', 'KICKED'
+    LeftAt DATETIME NULL                   -- Để biết học sinh rời nhóm lúc nào
 );
 CREATE TABLE Projects (
     ProjectId INT PRIMARY KEY IDENTITY(1,1),

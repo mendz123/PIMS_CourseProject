@@ -18,6 +18,16 @@ public partial class GroupMember
     [Column(TypeName = "datetime")]
     public DateTime? JoinedAt { get; set; }
 
+    // --- Cập nhật thêm 2 cột mới dưới đây ---
+    
+    [StringLength(20)]
+    public string Status { get; set; } = "ACTIVE"; // Mặc định là ACTIVE
+
+    [Column(TypeName = "datetime")]
+    public DateTime? LeftAt { get; set; } // Lưu thời gian khi sinh viên rời nhóm
+
+    // ---------------------------------------
+
     [ForeignKey("GroupId")]
     [InverseProperty("GroupMembers")]
     public virtual Group? Group { get; set; }

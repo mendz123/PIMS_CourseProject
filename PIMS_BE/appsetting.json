@@ -1,0 +1,17 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=pims-db.cb26g0068dod.ap-southeast-1.rds.amazonaws.com,1433;Database=PIMS_Project;User Id=admin;Password=khaidz12345;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "SecretKey": "PIMS_SuperSecretKey_2026_SWP391_Project!",
+    "Issuer": "PIMS",
+    "Audience": "PIMS-Users"
+  },
+  "AllowedHosts": "*"
+}
