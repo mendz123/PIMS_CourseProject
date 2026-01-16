@@ -118,7 +118,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://localhost:49684", "http://localhost:5173")
+        policy.WithOrigins("https://localhost:49684", "http://localhost:49684", "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Cho phép gửi cookies
