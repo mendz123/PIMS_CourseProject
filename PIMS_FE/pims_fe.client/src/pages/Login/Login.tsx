@@ -1,5 +1,7 @@
-import { useEffect, useState, FormEvent } from 'react';
-import { authService } from '../../services/authService';
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+
+import { authService } from '../../services';
 import './Login.css';
 
 declare global {

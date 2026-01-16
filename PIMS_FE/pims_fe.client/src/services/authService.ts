@@ -1,35 +1,11 @@
 import api from './api';
-
-// Types
-export interface LoginRequest {
-    email: string;
-    password: string;
-}
-
-export interface RegisterRequest {
-    email: string;
-    password: string;
-    fullName: string;
-}
-
-export interface UserInfo {
-    userId: number;
-    email: string;
-    fullName?: string;
-    role?: string;
-}
-
-export interface LoginResponse {
-    user: UserInfo;
-}
-
-export interface ApiResponse<T> {
-    success: boolean;
-    statusCode: number;
-    message: string;
-    data: T;
-    timestamp: string;
-}
+import type {
+    LoginRequest,
+    RegisterRequest,
+    LoginResponse,
+    ApiResponse,
+    UserInfo
+} from '../types';
 
 // Auth Service Functions
 export const authService = {
