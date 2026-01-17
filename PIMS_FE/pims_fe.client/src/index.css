@@ -1,21 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Poiret+One&display=swap');
+@import "tailwindcss";
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+@theme {
+  --color-primary: #0e7377;
+  --color-background-light: #ffffff;
+  --color-background-dark: #112021;
+
+  --font-display: "Manrope", sans-serif;
+  --font-sans: "Manrope", sans-serif;
+
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 }
 
-html,
-body,
-#root {
+@layer base {
+  html,
+  body,
+  #root {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #111718;
+    font-family: "Manrope", sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #111718;
+    font-weight: 800;
+  }
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+@layer utilities {
+  .hero-pattern {
+    background-color: #ffffff;
+    /* Removed pattern for pure white look */
+  }
+
+  section {
+    scroll-margin-top: 64px;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
