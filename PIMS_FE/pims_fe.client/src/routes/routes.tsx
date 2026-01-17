@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
-import { Login, Home } from "../pages";
+import { Login, Home } from "../pages/Home";
 
 // Placeholder components - sẽ tạo sau
 const Dashboard = () => <div>Dashboard Page</div>;
