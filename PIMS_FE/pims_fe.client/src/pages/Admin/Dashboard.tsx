@@ -113,7 +113,7 @@ const AdminDashboard: React.FC = () => {
         <div className="p-4 border-t border-white/5 space-y-2">
           <button
             onClick={() => navigate("/")}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+            className="cursor-pointer hover:text-white hover:bg-white/5 transition-all w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
           >
             <span className="material-symbols-outlined">arrow_back</span>
             <span className="font-medium">Back to Home</span>
@@ -123,7 +123,7 @@ const AdminDashboard: React.FC = () => {
               logout();
               navigate("/login");
             }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="cursor-pointer  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
             <span className="material-symbols-outlined">logout</span>
             <span className="font-medium">Logout</span>
