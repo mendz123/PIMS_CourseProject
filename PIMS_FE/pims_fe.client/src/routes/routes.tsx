@@ -1,11 +1,10 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
+import AdminDashboard from "../pages/Admin/Dashboard";
 
 // Placeholder components - sẽ tạo sau
 const Dashboard = () => <div>Dashboard Page</div>;
-const AdminDashboard = () => (
-  <div>Admin Dashboard - Manage Users, Classes, etc.</div>
-);
+// AdminDashboard is now imported
 const TeacherDashboard = () => (
   <div>Teacher Dashboard - Manage Courses, Grades, etc.</div>
 );
