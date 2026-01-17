@@ -10,7 +10,7 @@ const FAQ: React.FC = () => {
   };
 
   return (
-    <section className="py-24 bg-white border-t border-slate-100" id="faq">
+    <section className="py-24 bg-slate-50 border-t border-slate-100" id="faq">
       <div className="max-w-[800px] mx-auto px-6">
         <motion.h2
           initial={{ opacity: 0, scale: 0.9 }}

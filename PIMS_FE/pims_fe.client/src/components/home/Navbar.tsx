@@ -13,7 +13,7 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-100/50 bg-white/70 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-slate-900/90 backdrop-blur-xl">
       <div className="max-w-[1200px] mx-auto px-6 h-20 flex items-center justify-between">
         <div
           className="flex items-center gap-3 cursor-pointer group"
@@ -24,7 +24,7 @@ const Navbar: React.FC = () => {
               sync_alt
             </span>
           </div>
-          <h2 className="text-2xl font-black tracking-tighter text-slate-900">
+          <h2 className="text-2xl font-black tracking-tighter text-white">
             PIMS
           </h2>
         </div>
@@ -34,7 +34,7 @@ const Navbar: React.FC = () => {
           {navLinks.map((link) => (
             <a
               key={link.name}
-              className="px-5 py-2 text-sm font-semibold text-slate-500 hover:text-primary hover:bg-white rounded-full transition-all"
+              className="px-5 py-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-all"
               href={link.href}
             >
               {link.name}
@@ -43,7 +43,7 @@ const Navbar: React.FC = () => {
           <div className="ml-8">
             <button
               onClick={() => navigate("/login")}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-2.5 rounded-2xl text-sm font-bold shadow-xl shadow-slate-200 transition-all hover:-translate-y-0.5"
+              className="bg-white hover:bg-slate-100 text-slate-900 px-8 py-2.5 rounded-2xl text-sm font-bold shadow-xl shadow-white/10 transition-all hover:-translate-y-0.5"
             >
               Login
             </button>
@@ -52,7 +52,7 @@ const Navbar: React.FC = () => {
 
         {/* Mobile menu button */}
         <button
-          className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-white text-slate-900 border border-slate-100"
+          className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 text-white border border-white/10"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           <span className="material-symbols-outlined">
