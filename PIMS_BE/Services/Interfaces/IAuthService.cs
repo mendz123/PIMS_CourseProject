@@ -31,4 +31,5 @@ public interface IAuthService
     /// Lấy thông tin user từ userId
     /// </summary>
     Task<UserInfo?> GetUserInfoAsync(int userId);
+    Task<AuthResponse?> LoginWithGoogleAsync(string token);
 }

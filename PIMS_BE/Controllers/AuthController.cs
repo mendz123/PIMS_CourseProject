@@ -69,6 +69,19 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<LoginResponse>.Ok(response, "Login successful"));
     }
 
+    //Login with gg
+    [HttpPost("login-with-google")]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> LoginWithGoogle([FromBody] GoogleLoginRequest request) {
+        var result = await _authService.LoginWithGoogleAsync(request.Token);
+        if (result == null) {
+            return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Invalid token"));
+        } else {
+            SetTokenCookies(result);
+            var response = new LoginResponse {User = result.User};
+            return Ok(ApiResponse<LoginResponse>.Ok(response, "Login successful"));
+        }
+    }
+
     /// <summary>
     /// Refresh access token using refresh token
     /// </summary>
@@ -182,4 +195,6 @@ public class AuthController : ControllerBase
         Response.Cookies.Delete(ACCESS_TOKEN_COOKIE, new CookieOptions { Path = "/" });
         Response.Cookies.Delete(REFRESH_TOKEN_COOKIE, new CookieOptions { Path = "/api/auth" });
     }
+
+
 }

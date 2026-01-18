@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PIMS_BE.DTOs.Auth;
 using PIMS_BE.Models;
+using PIMS_BE.Repositories;
 using PIMS_BE.Services.Interfaces;
 
 namespace PIMS_BE.Services;
@@ -17,15 +18,19 @@ public class AuthService : IAuthService
 {
     private readonly PimsProjectContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IUserRepository _userRepository;
+    private readonly IGoogleAuthService _googleAuthService;
 
     // Token expiration times
     private const int ACCESS_TOKEN_EXPIRATION_MINUTES = 15;
     private const int REFRESH_TOKEN_EXPIRATION_DAYS = 7;
 
-    public AuthService(PimsProjectContext context, IConfiguration configuration)
+    public AuthService(PimsProjectContext context, IConfiguration configuration, IUserRepository userRepository, IGoogleAuthService googleAuthService)
     {
         _context = context;
+        _userRepository = userRepository;
         _configuration = configuration;
+        _googleAuthService = googleAuthService;
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -49,6 +54,32 @@ public class AuthService : IAuthService
 
         // Generate tokens
         return await GenerateAuthResponseAsync(user);
+        
+    }
+    public async Task<AuthResponse?> LoginWithGoogleAsync(string token)
+    {
+        var googleUser = await _googleAuthService.VerifyGoogleTokenAsync(token);
+        if (googleUser == null)
+        {
+            return null;
+        }
+
+        var email = googleUser.Email;
+        var name = googleUser.Name;
+        var user = await _userRepository.GetByEmailAsync(email);
+        if(user != null)
+        {
+            return await GenerateAuthResponseAsync(user);
+        } else
+        {
+            var registerRequest = new RegisterRequest
+            {
+                Email = email,
+                FullName = name,
+                Password = "nopassword"
+            };
+            return RegisterAsync(registerRequest).Result;
+        }
     }
 
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)

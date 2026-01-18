@@ -16,7 +16,7 @@ declare global {
 type AuthMode = "login" | "register";
 
 const Login = () => {
-  const { login, register } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -279,8 +279,10 @@ const Login = () => {
     setAgreeTerms(false);
   };
 
-  const handleGoogleLogin = (credentialResponse: CredentialResponse) => {
-    console.log(credentialResponse);
+  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
+    const response = await loginWithGoogle(credentialResponse.credential);
+    setSuccess("Login successful! Welcome " + response.data.user.fullName);
+    navigate("/");
   };
 
   const handleGoogleError = () => {
@@ -323,8 +325,11 @@ const Login = () => {
         {success && <div className="alert alert-success">{success}</div>}
 
         {/* Form */}
-        <form className="controls" onSubmit={handleSubmit}>       
-          <GoogleLogin onSuccess={handleGoogleLogin} onError={handleGoogleError} />
+        <form className="controls" onSubmit={handleSubmit}>
+          <GoogleLogin
+            onSuccess={handleGoogleLogin}
+            onError={handleGoogleError}
+          />
           {/* Social Login Divider */}
           <div className="divider">
             <span>OR</span>
