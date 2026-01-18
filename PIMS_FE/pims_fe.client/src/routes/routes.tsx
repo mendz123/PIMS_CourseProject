@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import RouterWrapper from "../components/RouterWrapper";
-
+import AssignTeacherPage from "../pages/AssignTeacherPage";
 // Placeholder components - sẽ tạo sau
 const Dashboard = () => <div>Dashboard Page</div>;
 // AdminDashboard is now imported
@@ -44,11 +44,13 @@ export const router = createBrowserRouter([
         element: <StudentDashboard />,
       },
       {
+        path: "/assign-teacher",
+        element: <AssignTeacherPage />,
+      },
+      {
         path: "*",
         element: <NotFound />,
       },
     ],
   },
 ]);
-
-export default router;
