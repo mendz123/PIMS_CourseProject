@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 const Timeline: React.FC = () => {
   return (
-    <div className="py-24 bg-white" id="timeline">
+    <div className="py-24 bg-slate-50 border-t border-slate-100" id="timeline">
       <div className="max-w-[1200px] mx-auto px-6 text-center mb-16">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
-import { authService } from "../../services";
+import { useAuth } from "../../context/AuthContext";
 import "./Login.css";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+import type { CredentialResponse } from "@react-oauth/google";
 
 declare global {
   interface Window {
@@ -14,6 +16,7 @@ declare global {
 type AuthMode = "login" | "register";
 
 const Login = () => {
+  const { login, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -198,7 +201,7 @@ const Login = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await authService.login({ email, password });
+      const response = await login({ email, password });
       setSuccess("Login successful! Welcome " + response.data.user.fullName);
       console.log("Login successful:", response.data);
       // TODO: Redirect to dashboard or home page
@@ -220,7 +223,7 @@ const Login = () => {
 
   const handleRegister = async () => {
     try {
-      const response = await authService.register({
+      const response = await register({
         email,
         password,
         fullName,
@@ -276,6 +279,15 @@ const Login = () => {
     setAgreeTerms(false);
   };
 
+  const handleGoogleLogin = (credentialResponse: CredentialResponse) => {
+    console.log(credentialResponse);
+  };
+
+  const handleGoogleError = () => {
+    console.log("Google login error");
+    setError("Google login failed. Please try again.");
+  };
+
   return (
     <div className="login-page">
       <div id="particles-js"></div>
@@ -311,7 +323,13 @@ const Login = () => {
         {success && <div className="alert alert-success">{success}</div>}
 
         {/* Form */}
-        <form className="controls" onSubmit={handleSubmit}>
+        <form className="controls" onSubmit={handleSubmit}>       
+          <GoogleLogin onSuccess={handleGoogleLogin} onError={handleGoogleError} />
+          {/* Social Login Divider */}
+          <div className="divider">
+            <span>OR</span>
+          </div>
+
           {mode === "register" && (
             <div className="input-group">
               <span className="input-icon">
