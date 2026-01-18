@@ -65,6 +65,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
   };
 
+  const loginWithGoogle = async (data: LoginRequest) => {
+    const response = await authService.loginWithGoogle(data);
+    await refreshProfile();
+    return response;
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -73,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     register,
     logout,
     refreshProfile,
+    loginWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
