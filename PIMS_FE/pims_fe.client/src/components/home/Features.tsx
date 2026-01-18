@@ -52,7 +52,7 @@ const Features: React.FC = () => {
                 borderColor: "rgba(14, 115, 119, 0.3)", // primary color at 30%
               }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="p-10 rounded-[2.5rem] border border-slate-100 bg-white group cursor-default"
+              className="p-10 rounded-[2.5rem] border border-slate-200/60 bg-white shadow-sm group cursor-default"
             >
               <div className="w-16 h-16 rounded-2xl bg-white shadow-lg shadow-slate-200/50 text-primary flex items-center justify-center mb-8 group-hover:bg-primary group-hover:text-white transition-all transform group-hover:rotate-6">
                 <span className="material-symbols-outlined text-3xl">

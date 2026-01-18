@@ -41,7 +41,7 @@ const News: React.FC = () => {
                 borderColor: "rgba(14, 115, 119, 0.2)",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.05)",
               }}
-              className="group flex flex-col md:flex-row gap-8 p-8 rounded-[2rem] border border-slate-50 bg-white transition-colors cursor-pointer"
+              className="group flex flex-col md:flex-row gap-8 p-8 rounded-[2rem] border border-slate-200/60 bg-white shadow-sm transition-all cursor-pointer"
             >
               <div className="md:w-56 shrink-0">
                 <span className="inline-block bg-primary/10 text-primary px-4 py-2 rounded-xl text-sm font-bold tracking-tight">

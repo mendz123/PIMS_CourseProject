@@ -6,7 +6,10 @@ const Hero: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <section id="home">
+    <section
+      id="home"
+      className="bg-gradient-to-b from-primary/5 via-white to-white"
+    >
       <div className="relative pt-32 pb-24 overflow-hidden">
         <div className="absolute inset-0 hero-pattern -z-10"></div>
         <div className="max-w-[1200px] mx-auto px-6">
@@ -18,7 +21,7 @@ const Hero: React.FC = () => {
               transition={{ duration: 0.8 }}
               className="space-y-10"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/5 text-primary border border-primary/10 text-xs font-bold uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white text-primary border border-primary/20 text-xs font-bold uppercase tracking-widest shadow-sm">
                 <span className="material-symbols-outlined text-[16px]">
                   school
                 </span>
@@ -60,7 +63,7 @@ const Hero: React.FC = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <div className="absolute -inset-4 bg-primary/10 rounded-[3rem] blur-3xl -z-10 opacity-30"></div>
+              <div className="absolute -inset-4 bg-primary/20 rounded-[3rem] blur-3xl -z-10 opacity-40"></div>
               <div
                 className="w-full aspect-[4/3] bg-gradient-to-br from-primary/10 to-transparent rounded-[2.5rem] overflow-hidden border border-white/40 shadow-2xl relative bg-cover bg-center group"
                 style={{
