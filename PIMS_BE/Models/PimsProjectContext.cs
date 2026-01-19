@@ -142,6 +142,7 @@ public partial class PimsProjectContext : DbContext
         modelBuilder.Entity<ClassStatus>(entity =>
         {
             entity.HasKey(e => e.StatusId).HasName("PK__ClassSta__C8EE20632F4A82AE");
+            entity.ToTable("ClassStatus");
         });
 
         modelBuilder.Entity<ClassStudent>(entity =>
@@ -158,6 +159,7 @@ public partial class PimsProjectContext : DbContext
         modelBuilder.Entity<ClassStudentStatus>(entity =>
         {
             entity.HasKey(e => e.StatusId).HasName("PK__ClassStu__C8EE2063330A2146");
+            entity.ToTable("ClassStudentStatus");
         });
 
         modelBuilder.Entity<Council>(entity =>
@@ -175,6 +177,7 @@ public partial class PimsProjectContext : DbContext
         modelBuilder.Entity<CouncilStatus>(entity =>
         {
             entity.HasKey(e => e.StatusId).HasName("PK__CouncilS__C8EE206374BAD9B5");
+            entity.ToTable("CouncilStatus");
         });
 
         modelBuilder.Entity<CriteriaGrade>(entity =>
@@ -227,6 +230,7 @@ public partial class PimsProjectContext : DbContext
 
         modelBuilder.Entity<GroupStatus>(entity =>
         {
+            entity.ToTable("GroupStatus");
             entity.HasKey(e => e.StatusId).HasName("PK__GroupSta__C8EE2063B130FE64");
         });
 
@@ -252,8 +256,7 @@ public partial class PimsProjectContext : DbContext
         });
 
         modelBuilder.Entity<ProjectStatus>(entity =>
-        {
-            entity.HasKey(e => e.StatusId).HasName("PK__ProjectS__C8EE20635FBCF8C4");
+        {            entity.ToTable("ProjectStatus");            entity.HasKey(e => e.StatusId).HasName("PK__ProjectS__C8EE20635FBCF8C4");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -313,6 +316,7 @@ public partial class PimsProjectContext : DbContext
         modelBuilder.Entity<UserStatus>(entity =>
         {
             entity.HasKey(e => e.StatusId).HasName("PK__UserStat__C8EE2063AD1095E3");
+            entity.ToTable("UserStatus"); // Map to the correct table name
         });
 
         OnModelCreatingPartial(modelBuilder);
