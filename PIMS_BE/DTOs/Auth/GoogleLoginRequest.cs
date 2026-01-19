@@ -1,4 +1,4 @@
 public class GoogleLoginRequest
 {
-    public string Token { get; set; }
+    public required string Token { get; set; }
 }

@@ -164,14 +164,14 @@ public class AuthController : ControllerBase
     /// </summary>
     private void SetTokenCookies(AuthResponse authResponse)
     {
-        var isProduction = !_configuration.GetValue<bool>("ASPNETCORE_ENVIRONMENT:Development", false);
+        var isDevelopment = _configuration.GetValue<bool>("ASPNETCORE_ENVIRONMENT:Development", true);
 
         // Access token cookie - short lived
         Response.Cookies.Append(ACCESS_TOKEN_COOKIE, authResponse.AccessToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // Only send over HTTPS
-            SameSite = SameSiteMode.Strict,
+            Secure = !isDevelopment, // Only HTTPS in production
+            SameSite = SameSiteMode.Lax,
             Expires = authResponse.AccessTokenExpiresAt,
             Path = "/"
         });
@@ -180,10 +180,10 @@ public class AuthController : ControllerBase
         Response.Cookies.Append(REFRESH_TOKEN_COOKIE, authResponse.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = !isDevelopment, // Only HTTPS in production
+            SameSite = SameSiteMode.Lax,
             Expires = authResponse.RefreshTokenExpiresAt,
-            Path = "/api/auth" // Only send for auth endpoints
+            Path = "/" // Send for all endpoints
         });
     }
 
@@ -193,7 +193,7 @@ public class AuthController : ControllerBase
     private void ClearTokenCookies()
     {
         Response.Cookies.Delete(ACCESS_TOKEN_COOKIE, new CookieOptions { Path = "/" });
-        Response.Cookies.Delete(REFRESH_TOKEN_COOKIE, new CookieOptions { Path = "/api/auth" });
+        Response.Cookies.Delete(REFRESH_TOKEN_COOKIE, new CookieOptions { Path = "/" });
     }
 
 

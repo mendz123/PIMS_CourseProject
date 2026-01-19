@@ -4,7 +4,7 @@ public class GoogleAuthService : IGoogleAuthService
 {
     private readonly string _clientId;
     public GoogleAuthService(IConfiguration configuration) {
-        _clientId = configuration["GoogleAuth:ClientId"];
+        _clientId = configuration["GoogleAuth:ClientId"] ?? throw new InvalidOperationException("GoogleAuth:ClientId configuration is missing");
     }
     public async Task<GoogleJsonWebSignature.Payload> VerifyGoogleTokenAsync(string token)
     {
@@ -17,9 +17,8 @@ public class GoogleAuthService : IGoogleAuthService
             };
             var payload = await GoogleJsonWebSignature.ValidateAsync(token, setting);
             return payload;
-        } catch (Exception ) {
-            
-            return null;
+        } catch (Exception) {
+            return null!;
         }
     }
 }

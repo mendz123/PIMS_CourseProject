@@ -255,3 +255,19 @@ CREATE TABLE Notifications (
     IsRead BIT DEFAULT 0,
     CreatedAt DATETIME DEFAULT GETDATE()
 );
+
+ALTER TABLE Councils ADD 
+    DefenseDate DATE,        -- Ngày bảo vệ
+    StartTime TIME,          -- Giờ bắt đầu
+    EndTime TIME,            -- Giờ kết thúc
+    Location NVARCHAR(255);  -- Phòng họp (Phòng 202 hoặc link Google Meet)
+CREATE TABLE DefenseSchedules (
+    ScheduleId INT PRIMARY KEY IDENTITY(1,1),
+    CouncilId INT FOREIGN KEY REFERENCES Councils(CouncilId),
+    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    DefenseDate DATE,
+    StartTime TIME,
+    EndTime TIME,
+    Location NVARCHAR(255),
+    Status NVARCHAR(50) -- PENDING, ONGOING, FINISHED
+); 
