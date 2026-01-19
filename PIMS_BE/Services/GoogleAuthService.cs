@@ -11,11 +11,14 @@ public class GoogleAuthService : IGoogleAuthService
         try {
             var setting = new GoogleJsonWebSignature.ValidationSettings
             {
-                Audience = new List<string> { _clientId }
+                Audience = new List<string> { _clientId },
+                IssuedAtClockTolerance = TimeSpan.FromMinutes(5),
+                ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5)
             };
             var payload = await GoogleJsonWebSignature.ValidateAsync(token, setting);
             return payload;
-        } catch (Exception) {
+        } catch (Exception ) {
+            
             return null;
         }
     }
