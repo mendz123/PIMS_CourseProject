@@ -30,7 +30,8 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/refresh")
+      !originalRequest.url?.includes("/auth/refresh") &&
+      !originalRequest.url?.includes("/auth/me") // Don't retry /auth/me on first load
     ) {
       originalRequest._retry = true;
 
@@ -39,11 +40,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
-        // Don't redirect if we are already on login page or if it's the check-auth request
-        if (
-          window.location.pathname !== "/login" &&
-          !originalRequest.url?.includes("/auth/me")
-        ) {
+        // Don't redirect if we are already on login page
+        if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
         return Promise.reject(refreshError);

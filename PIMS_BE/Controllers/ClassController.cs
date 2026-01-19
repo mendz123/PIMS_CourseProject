@@ -40,7 +40,7 @@ namespace PIMS_BE.Controllers
                 var result = await _classService.AssignTeacherToClassAsync(dto.ClassId, dto.TeacherId);
                 if (result)
                 {
-                    return Ok(ApiResponse<object>.Ok(null, "Teacher assigned successfully"));
+                    return Ok(ApiResponse<object>.Ok(new object(), "Teacher assigned successfully"));
                 }
                 return BadRequest(ApiResponse<object>.BadRequest("Failed to assign teacher"));
             }

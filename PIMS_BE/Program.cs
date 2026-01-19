@@ -119,7 +119,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://localhost:49684", "http://localhost:49684", "http://localhost:5173")
+        policy.WithOrigins(
+              "https://localhost:49684", 
+              "http://localhost:49684", 
+              "http://localhost:5173",
+              "http://localhost:5172",
+              "https://localhost:5172")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Cho phép gửi cookies
@@ -127,6 +132,16 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Add security headers for Google OAuth (must be early in pipeline)
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    context.Response.Headers.Append("Cross-Origin-Embedder-Policy", "require-corp");
+    context.Response.Headers.Append("Access-Control-Allow-Origin", context.Request.Headers["Origin"]);
+    context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+    await next();
+});
 
 // Configure the HTTP request pipeline.
 // Use Exception Middleware FIRST

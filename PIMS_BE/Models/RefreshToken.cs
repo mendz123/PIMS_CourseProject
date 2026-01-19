@@ -1,39 +1,20 @@
-using System.ComponentModel.DataAnnotations;
+﻿using PIMS_BE.Models;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace PIMS_BE.Models;
-
-/// <summary>
-/// Lưu refresh token để cho phép làm mới access token
-/// </summary>
-public class RefreshToken
+public partial class RefreshToken
 {
-    [Key]
     public int Id { get; set; }
-
-    [Required]
-    [StringLength(500)]
     public string Token { get; set; } = null!;
-
-    [Required]
     public int UserId { get; set; }
 
-    [ForeignKey("UserId")]
+    public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime? RevokedAt { get; set; }
+    public bool IsRevoked { get; set; }
+
     public virtual User User { get; set; } = null!;
 
-    [Column(TypeName = "datetime")]
-    public DateTime ExpiresAt { get; set; }
-
-    [Column(TypeName = "datetime")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [Column(TypeName = "datetime")]
-    public DateTime? RevokedAt { get; set; }
-
-    public bool IsRevoked { get; set; } = false;
-
-    /// <summary>
-    /// Check xem token còn hợp lệ không
-    /// </summary>
-    public bool IsActive => !IsRevoked && DateTime.UtcNow < ExpiresAt;
+    [NotMapped] // ⭐ QUAN TRỌNG
+    public bool IsActive => !IsRevoked && ExpiresAt > DateTime.UtcNow;
 }

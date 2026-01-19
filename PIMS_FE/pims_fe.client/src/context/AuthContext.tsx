@@ -34,8 +34,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       } else {
         setUser(null);
       }
-    } catch (error) {
-      console.error("Failed to fetch user profile:", error);
+    } catch (error: any) {
+      // 401 is expected when user is not logged in - don't log as error
+      if (error?.response?.status !== 401) {
+        console.error("Failed to fetch user profile:", error);
+      }
       setUser(null);
     }
   };
