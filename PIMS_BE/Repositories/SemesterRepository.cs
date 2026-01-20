@@ -8,7 +8,7 @@ public interface ISemesterRepository : IGenericRepository<Semester>
 
 public class SemesterRepository : GenericRepository<Semester>, ISemesterRepository
 {
-    public SemesterRepository(PimsProjectContext context) : base(context)
+    public SemesterRepository(PimsDbContext context) : base(context)
     {
     }
 }

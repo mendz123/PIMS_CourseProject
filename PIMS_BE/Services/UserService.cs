@@ -7,9 +7,9 @@ namespace PIMS_BE.Services;
 
 public class UserService : IUserService
 {
-    private readonly PimsProjectContext _context;
+    private readonly PimsDbContext _context;
 
-    public UserService(PimsProjectContext context)
+    public UserService(PimsDbContext context)
     {
         _context = context;
     }

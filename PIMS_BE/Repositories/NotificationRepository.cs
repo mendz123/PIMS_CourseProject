@@ -8,7 +8,7 @@ public interface INotificationRepository : IGenericRepository<Notification>
 
 public class NotificationRepository : GenericRepository<Notification>, INotificationRepository
 {
-    public NotificationRepository(PimsProjectContext context) : base(context)
+    public NotificationRepository(PimsDbContext context) : base(context)
     {
     }
 }

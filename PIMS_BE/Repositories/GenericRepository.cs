@@ -6,10 +6,10 @@ namespace PIMS_BE.Repositories;
 
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {
-    protected readonly PimsProjectContext _context;
+    protected readonly PimsDbContext _context;
     protected readonly DbSet<T> _dbSet;
 
-    public GenericRepository(PimsProjectContext context)
+    public GenericRepository(PimsDbContext context)
     {
         _context = context;
         _dbSet = context.Set<T>();

@@ -18,16 +18,6 @@ public interface IAuthService
     Task<AuthResponse?> RegisterAsync(RegisterRequest request);
 
     /// <summary>
-    /// Làm mới access token bằng refresh token
-    /// </summary>
-    Task<AuthResponse?> RefreshTokenAsync(string refreshToken);
-
-    /// <summary>
-    /// Hủy refresh token (logout)
-    /// </summary>
-    Task<bool> RevokeTokenAsync(string refreshToken);
-
-    /// <summary>
     /// Lấy thông tin user từ userId
     /// </summary>
     Task<UserInfo?> GetUserInfoAsync(int userId);

@@ -7,15 +7,15 @@ public partial class AssessmentCriterion
 {
     public int CriteriaId { get; set; }
 
-    public int? AssessmentId { get; set; }
+    public int AssessmentId { get; set; }
 
     public string? CriteriaName { get; set; }
 
-    public double? Weight { get; set; }
+    public decimal? Weight { get; set; }
 
-    public double? MaxScore { get; set; }
+    public virtual Assessment Assessment { get; set; } = null!;
 
-    public virtual Assessment? Assessment { get; set; }
+    public virtual ICollection<CouncilCriteriaGrade> CouncilCriteriaGrades { get; set; } = new List<CouncilCriteriaGrade>();
 
     public virtual ICollection<CriteriaGrade> CriteriaGrades { get; set; } = new List<CriteriaGrade>();
 }

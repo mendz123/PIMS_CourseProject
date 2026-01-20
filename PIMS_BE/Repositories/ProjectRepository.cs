@@ -8,7 +8,7 @@ public interface IProjectRepository : IGenericRepository<Project>
 
 public class ProjectRepository : GenericRepository<Project>, IProjectRepository
 {
-    public ProjectRepository(PimsProjectContext context) : base(context)
+    public ProjectRepository(PimsDbContext context) : base(context)
     {
     }
 }

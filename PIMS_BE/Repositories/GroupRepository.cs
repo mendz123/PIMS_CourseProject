@@ -8,7 +8,7 @@ public interface IGroupRepository : IGenericRepository<Group>
 
 public class GroupRepository : GenericRepository<Group>, IGroupRepository
 {
-    public GroupRepository(PimsProjectContext context) : base(context)
+    public GroupRepository(PimsDbContext context) : base(context)
     {
     }
 }

@@ -9,29 +9,13 @@ public partial class Council
 
     public string? CouncilName { get; set; }
 
-    public int? AssessmentId { get; set; }
+    public int SemesterId { get; set; }
 
-    public int? Round { get; set; }
+    public virtual ICollection<CouncilCriteriaGrade> CouncilCriteriaGrades { get; set; } = new List<CouncilCriteriaGrade>();
 
-    public int? StatusId { get; set; }
-
-    public DateTime? CreatedAt { get; set; }
-
-    public DateOnly? DefenseDate { get; set; }
-
-    public TimeOnly? StartTime { get; set; }
-
-    public TimeOnly? EndTime { get; set; }
-
-    public string? Location { get; set; }
-
-    public virtual Assessment? Assessment { get; set; }
-
-    public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();
+    public virtual ICollection<CouncilMember> CouncilMembers { get; set; } = new List<CouncilMember>();
 
     public virtual ICollection<DefenseSchedule> DefenseSchedules { get; set; } = new List<DefenseSchedule>();
 
-    public virtual ICollection<Grader> Graders { get; set; } = new List<Grader>();
-
-    public virtual CouncilStatus? Status { get; set; }
+    public virtual Semester Semester { get; set; } = null!;
 }

@@ -10,7 +10,7 @@ public interface IUserRepository : IGenericRepository<User>
 
 public class UserRepository : GenericRepository<User>, IUserRepository
 {
-    public UserRepository(PimsProjectContext context) : base(context)
+    public UserRepository(PimsDbContext context) : base(context)
     {
     }
     public async Task<User?> GetByEmailAsync(string email)

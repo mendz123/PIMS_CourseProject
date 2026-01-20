@@ -7,17 +7,17 @@ public partial class Assessment
 {
     public int AssessmentId { get; set; }
 
-    public int? ClassId { get; set; }
+    public int SemesterId { get; set; }
 
     public string? Title { get; set; }
 
-    public double Weight { get; set; }
-
-    public double? MinScoreToPass { get; set; }
+    public decimal? Weight { get; set; }
 
     public bool? IsFinal { get; set; }
 
-    public DateTime? DueDate { get; set; }
+    public bool? IsLocked { get; set; }
+
+    public int CreatedBy { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
@@ -25,11 +25,7 @@ public partial class Assessment
 
     public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();
 
-    public virtual ICollection<AssessmentSubmission> AssessmentSubmissions { get; set; } = new List<AssessmentSubmission>();
+    public virtual User CreatedByNavigation { get; set; } = null!;
 
-    public virtual Class? Class { get; set; }
-
-    public virtual ICollection<Council> Councils { get; set; } = new List<Council>();
-
-    public virtual ICollection<Grader> Graders { get; set; } = new List<Grader>();
+    public virtual Semester Semester { get; set; } = null!;
 }

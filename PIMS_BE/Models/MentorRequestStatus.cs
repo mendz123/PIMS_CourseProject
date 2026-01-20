@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace PIMS_BE.Models;
 
-public partial class GroupStatus
+public partial class MentorRequestStatus
 {
     public int StatusId { get; set; }
 
     public string? StatusName { get; set; }
 
-    public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+    public virtual ICollection<MentorRequest> MentorRequests { get; set; } = new List<MentorRequest>();
 }

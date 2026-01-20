@@ -8,7 +8,7 @@ public interface IAssessmentRepository : IGenericRepository<Assessment>
 
 public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRepository
 {
-    public AssessmentRepository(PimsProjectContext context) : base(context)
+    public AssessmentRepository(PimsDbContext context) : base(context)
     {
     }
 }

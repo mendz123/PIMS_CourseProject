@@ -8,7 +8,7 @@ public interface ICouncilRepository : IGenericRepository<Council>
 
 public class CouncilRepository : GenericRepository<Council>, ICouncilRepository
 {
-    public CouncilRepository(PimsProjectContext context) : base(context)
+    public CouncilRepository(PimsDbContext context) : base(context)
     {
     }
 }

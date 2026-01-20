@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+
 namespace PIMS_BE.Models;
 
 public partial class DefenseSchedule
 {
-    [Key]
     public int ScheduleId { get; set; }
 
-    public int? CouncilId { get; set; }
+    public int CouncilId { get; set; }
 
-    public int? GroupId { get; set; }
+    public int GroupId { get; set; }
 
     public DateOnly? DefenseDate { get; set; }
 
@@ -22,7 +21,7 @@ public partial class DefenseSchedule
 
     public string? Status { get; set; }
 
-    public virtual Council? Council { get; set; }
+    public virtual Council Council { get; set; } = null!;
 
-    public virtual Group? Group { get; set; }
+    public virtual Group Group { get; set; } = null!;
 }

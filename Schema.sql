@@ -2,272 +2,295 @@ CREATE DATABASE PIMS_Project;
 GO
 USE PIMS_Project;
 GO
-
--- =============================================
--- 1. TẠO CÁC BẢNG DANH MỤC (LOOKUP TABLES)
--- =============================================
 CREATE TABLE Roles (
-    RoleId INT PRIMARY KEY IDENTITY(1,1),
-    RoleName NVARCHAR(50) NOT NULL -- TEACHER, STUDENT, ADMIN
+    RoleId INT IDENTITY PRIMARY KEY,
+    RoleName NVARCHAR(50) NOT NULL
 );
 
 CREATE TABLE UserStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- ACTIVE, INACTIVE
+    StatusId INT IDENTITY PRIMARY KEY,
+    StatusName NVARCHAR(50) NOT NULL
 );
 
 CREATE TABLE Semesters (
-    SemesterId INT PRIMARY KEY IDENTITY(1,1),
-    SemesterName NVARCHAR(50) NOT NULL,
+    SemesterId INT IDENTITY PRIMARY KEY,
+    SemesterName NVARCHAR(50),
     StartDate DATE,
     EndDate DATE,
+    MinGroupSize INT DEFAULT 1,
+    MaxGroupSize INT DEFAULT 5,
     IsActive BIT DEFAULT 1
 );
 
-CREATE TABLE ClassStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- SETUP, ONGOING, CLOSED
-);
-
-CREATE TABLE ClassStudentStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- INVITED, JOINED
-);
-
 CREATE TABLE GroupStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- ACTIVE, INVALID, DELETED
+    StatusId INT IDENTITY PRIMARY KEY,
+    StatusName NVARCHAR(50)
+);
+
+CREATE TABLE MentorRequestStatus (
+    StatusId INT IDENTITY PRIMARY KEY,
+    StatusName NVARCHAR(50)
 );
 
 CREATE TABLE ProjectStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- DENIED, PENDING, APPROVED
+    StatusId INT IDENTITY PRIMARY KEY,
+    StatusName NVARCHAR(50)
 );
 
-CREATE TABLE CouncilStatus (
-    StatusId INT PRIMARY KEY IDENTITY(1,1),
-    StatusName NVARCHAR(50) NOT NULL -- OPEN, CLOSED, RE-ASSIGNED
+CREATE TABLE GroupMemberStatus (
+    StatusId INT IDENTITY PRIMARY KEY,
+    StatusName NVARCHAR(50)
 );
--- 1. Chèn Roles (Vai trò)
-INSERT INTO Roles (RoleName) VALUES (N'ADMIN'), (N'TEACHER'), (N'STUDENT'), (N'SUBJECT HEAD');
-
--- 2. Chèn UserStatus (Trạng thái người dùng)
-INSERT INTO UserStatus (StatusName) VALUES (N'ACTIVE'), (N'INACTIVE'), (N'BANNED');
-
--- 3. Chèn Semesters (Học kỳ)
-INSERT INTO Semesters (SemesterName, StartDate, EndDate, IsActive) 
-VALUES 
-(N'Spring 2026', '2026-01-01', '2026-04-30', 1),
-(N'Summer 2026', '2026-05-01', '2026-08-31', 0),
-(N'Fall 2026', '2026-09-01', '2026-12-31', 0);
-
--- 4. Chèn ClassStatus (Trạng thái lớp học)
-INSERT INTO ClassStatus (StatusName) VALUES (N'SETUP'), (N'ONGOING'), (N'CLOSED');
-
--- 5. Chèn ClassStudentStatus (Trạng thái sinh viên trong lớp)
-INSERT INTO ClassStudentStatus (StatusName) VALUES (N'INVITED'), (N'JOINED'), (N'DROPPED');
-
--- 6. Chèn GroupStatus (Trạng thái nhóm)
-INSERT INTO GroupStatus (StatusName) VALUES (N'ACTIVE'), (N'INVALID'), (N'DELETED');
-
--- 7. Chèn ProjectStatus (Trạng thái đề tài/đồ án)
-INSERT INTO ProjectStatus (StatusName) VALUES (N'PENDING'), (N'APPROVED'), (N'DENIED');
-
--- 8. Chèn CouncilStatus (Trạng thái hội đồng chấm thi)
-INSERT INTO CouncilStatus (StatusName) VALUES (N'OPEN'), (N'CLOSED'), (N'RE-ASSIGNED');
-
--- =============================================
--- 2. TẠO CÁC BẢNG CHÍNH (USERS, CLASSES, GROUPS)
--- =============================================
 CREATE TABLE Users (
-    UserId INT PRIMARY KEY IDENTITY(1,1),
+    UserId INT IDENTITY PRIMARY KEY,
     Email VARCHAR(100) UNIQUE NOT NULL,
-    PasswordHash VARCHAR(255) NOT NULL,
+    PasswordHash VARCHAR(255),
     FullName NVARCHAR(255),
-    RoleId INT FOREIGN KEY REFERENCES Roles(RoleId),
-    StatusId INT FOREIGN KEY REFERENCES UserStatus(StatusId),
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
 
-CREATE TABLE Classes (
-    ClassId INT PRIMARY KEY IDENTITY(1,1),
-    ClassCode VARCHAR(50) UNIQUE NOT NULL,
-    ClassName NVARCHAR(255),
-    SemesterId INT FOREIGN KEY REFERENCES Semesters(SemesterId),
-    TeacherId INT FOREIGN KEY REFERENCES Users(UserId), -- Giáo viên đứng lớp chính
-    MinGroupSize INT DEFAULT 1,
-    MaxGroupSize INT DEFAULT 1,
-    GroupDeadline DATETIME,
-    StatusId INT FOREIGN KEY REFERENCES ClassStatus(StatusId),
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
+    RoleId INT NOT NULL,      -- STUDENT / TEACHER / SUBJECT_HEAD / ADMIN
+    StatusId INT NOT NULL,
 
-CREATE TABLE ClassStudents (
-    ClassStudentId INT PRIMARY KEY IDENTITY(1,1),
-    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
-    StudentEmail VARCHAR(100) NOT NULL,
-    StudentId INT NULL FOREIGN KEY REFERENCES Users(UserId),
-    StatusId INT FOREIGN KEY REFERENCES ClassStudentStatus(StatusId)
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL,
+
+    CONSTRAINT FK_Users_Role 
+        FOREIGN KEY (RoleId) REFERENCES Roles(RoleId),
+
+    CONSTRAINT FK_Users_Status 
+        FOREIGN KEY (StatusId) REFERENCES UserStatus(StatusId)
 );
 
 CREATE TABLE Groups (
-    GroupId INT PRIMARY KEY IDENTITY(1,1),
-    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
+    GroupId INT IDENTITY PRIMARY KEY,
     GroupName NVARCHAR(255),
-    LeaderId INT FOREIGN KEY REFERENCES Users(UserId),
-    StatusId INT FOREIGN KEY REFERENCES GroupStatus(StatusId),
-    CreatedAt DATETIME DEFAULT GETDATE()
+    SemesterId INT NOT NULL,
+    LeaderId INT NOT NULL,
+    MentorId INT NULL,
+    StatusId INT NOT NULL,
+    CONSTRAINT FK_Groups_Semester FOREIGN KEY (SemesterId) REFERENCES Semesters(SemesterId),
+    CONSTRAINT FK_Groups_Leader FOREIGN KEY (LeaderId) REFERENCES Users(UserId),
+    CONSTRAINT FK_Groups_Mentor FOREIGN KEY (MentorId) REFERENCES Users(UserId),
+    CONSTRAINT FK_Groups_Status FOREIGN KEY (StatusId) REFERENCES GroupStatus(StatusId)
 );
 
 CREATE TABLE GroupMembers (
-    GroupMemberId INT PRIMARY KEY IDENTITY(1,1),
-    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
-    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    JoinedAt DATETIME DEFAULT GETDATE(),
-    -- Thêm các cột dưới đây:
-    Status NVARCHAR(20) DEFAULT 'ACTIVE', -- 'ACTIVE', 'LEFT', 'KICKED'
-    LeftAt DATETIME NULL                   -- Để biết học sinh rời nhóm lúc nào
+    GroupMemberId INT IDENTITY PRIMARY KEY,
+    GroupId INT NOT NULL,
+    UserId INT NOT NULL,
+    StatusId INT NOT NULL,
+    CONSTRAINT FK_GM_Group FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+    CONSTRAINT FK_GM_User FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT FK_GM_Status FOREIGN KEY (StatusId) REFERENCES GroupMemberStatus(StatusId),
+    CONSTRAINT UQ_User_OneGroup UNIQUE (UserId, GroupId)
+);
+CREATE TABLE MentorRequests (
+    RequestId INT IDENTITY PRIMARY KEY,
+    GroupId INT NOT NULL,
+    UserId INT NOT NULL,
+    Message NVARCHAR(MAX),
+    StatusId INT DEFAULT 1,
+    TeacherComment NVARCHAR(MAX),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_MR_Group FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+    CONSTRAINT FK_MR_User FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT FK_MR_Status FOREIGN KEY (StatusId) REFERENCES MentorRequestStatus(StatusId)
 );
 CREATE TABLE Projects (
-    ProjectId INT PRIMARY KEY IDENTITY(1,1),
-    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    ProjectId INT IDENTITY PRIMARY KEY,
+    GroupId INT NOT NULL,
     Title NVARCHAR(255),
     Description NVARCHAR(MAX),
-    StatusId INT FOREIGN KEY REFERENCES ProjectStatus(StatusId),
-    TeacherNote NVARCHAR(MAX),
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    UpdatedAt DATETIME
+    StatusId INT NOT NULL,
+    CONSTRAINT FK_Projects_Group FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+    CONSTRAINT FK_Projects_Status FOREIGN KEY (StatusId) REFERENCES ProjectStatus(StatusId)
 );
--- =============================================
--- 3. QUẢN LÝ BÀI TẬP & TIÊU CHÍ (ASSESSMENTS & RUBRICS)
--- =============================================
+
 CREATE TABLE Assessments (
-    AssessmentId INT PRIMARY KEY IDENTITY(1,1),
-    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
-    Title NVARCHAR(255), 
-    Weight FLOAT NOT NULL,           -- Ví dụ: 0.2 (20%)
-    MinScoreToPass FLOAT DEFAULT 0,  -- Điểm liệt (nếu điểm < mức này thì trượt môn)
-    IsFinal BIT DEFAULT 0,           -- 1: Chấm Hội đồng, 0: Bài thường
-    DueDate DATETIME,
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
-
--- Bảng Tiêu chí chấm (Mở rộng cho tất cả bài tập)
-CREATE TABLE AssessmentCriteria (
-    CriteriaId INT PRIMARY KEY IDENTITY(1,1),
-    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
-    CriteriaName NVARCHAR(255),      -- Ví dụ: Logic, Presentation, UI/UX...
-    Weight FLOAT DEFAULT 1.0,        -- Trọng số trong bài đó (ví dụ: 0.4)
-    MaxScore FLOAT DEFAULT 10
-);
-
--- =============================================
--- 4. QUẢN LÝ HỘI ĐỒNG & NGƯỜI CHẤM (COUNCILS & GRADERS)
--- =============================================
-CREATE TABLE Councils (
-    CouncilId INT PRIMARY KEY IDENTITY(1,1),
-    CouncilName NVARCHAR(100),
-    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
-    Round INT DEFAULT 1,             -- 1: Lần đầu, 2: Chấm lại
-    StatusId INT FOREIGN KEY REFERENCES CouncilStatus(StatusId),
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
-
--- Bảng trung gian gán Giáo viên vào bài chấm (Logic trọng tâm bạn cần)
-CREATE TABLE Graders (
-    GraderId INT PRIMARY KEY IDENTITY(1,1),
-    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
-    TeacherId INT FOREIGN KEY REFERENCES Users(UserId), -- Ai chấm?
-    CouncilId INT NULL FOREIGN KEY REFERENCES Councils(CouncilId) -- NULL nếu là bài thường
-);
-
--- =============================================
--- 5. NỘP BÀI & CHẤM ĐIỂM (SUBMISSIONS & GRADING)
--- =============================================
-CREATE TABLE AssessmentSubmissions (
-    SubmissionId INT PRIMARY KEY IDENTITY(1,1),
-    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
-    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
-    UploadedBy INT FOREIGN KEY REFERENCES Users(UserId),
-    Description NVARCHAR(MAX),
-    UploadedAt DATETIME DEFAULT GETDATE()
-);
-
-CREATE TABLE SubmissionFiles (
-    FileId INT PRIMARY KEY IDENTITY(1,1),
-    SubmissionId INT FOREIGN KEY REFERENCES AssessmentSubmissions(SubmissionId),
-    FileName NVARCHAR(255),
-    FileUrl VARCHAR(1000),
-    FileType VARCHAR(50),
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
--- 1. Bảng lưu kết quả chấm của RIÊNG TỪNG GIÁO VIÊN (Dành cho mọi bài tập)
-CREATE TABLE TeacherAssessments (
-    TeacherAssessmentId INT PRIMARY KEY IDENTITY(1,1),
-    GraderId INT FOREIGN KEY REFERENCES Graders(GraderId), -- Xác định ai chấm, bài nào
-    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    TeacherNote NVARCHAR(MAX), -- Nhận xét của giáo viên cho bài này
-    RawScore FLOAT,            -- Điểm tổng mà GV này cho (tổng các tiêu chí)
-    GradedAt DATETIME DEFAULT GETDATE(),
-    CONSTRAINT UC_Grader_Student UNIQUE (GraderId, StudentId)
-);
--- Bảng lưu điểm chi tiết theo tiêu chí cho từng Sinh viên
-CREATE TABLE CriteriaGrades (
-    GradeId INT PRIMARY KEY IDENTITY(1,1),
-    GraderId INT FOREIGN KEY REFERENCES Graders(GraderId), -- Tham chiếu tới Người chấm
-    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    CriteriaId INT FOREIGN KEY REFERENCES AssessmentCriteria(CriteriaId),
-    Score FLOAT CHECK (Score >= 0 AND Score <= 10),
-    GradedAt DATETIME DEFAULT GETDATE(),
-    -- Đảm bảo 1 giáo viên chỉ chấm 1 tiêu chí cho 1 SV 1 lần
-    CONSTRAINT UC_Grader_Student_Criteria UNIQUE (GraderId, StudentId, CriteriaId)
-);
-CREATE TABLE AssessmentScores (
-    ScoreId INT PRIMARY KEY IDENTITY(1,1),
-    AssessmentId INT FOREIGN KEY REFERENCES Assessments(AssessmentId),
-    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
-    Score FLOAT, -- Điểm tổng kết cuối cùng của bài (ví dụ: trung bình hội đồng)
-    IsPassed BIT, -- Tự động tính dựa trên MinScoreToPass của Assessment
-    CouncilId INT NULL FOREIGN KEY REFERENCES Councils(CouncilId), -- NULL nếu bài thường
-    GradedAt DATETIME DEFAULT GETDATE(),
-    CONSTRAINT UC_Student_Assessment UNIQUE (StudentId, AssessmentId, CouncilId)
-);
-
--- =============================================
--- 6. TỔNG KẾT & THÔNG BÁO
--- =============================================
-CREATE TABLE StudentCourseResults (
-    ResultId INT PRIMARY KEY IDENTITY(1,1),
-    StudentId INT FOREIGN KEY REFERENCES Users(UserId),
-    ClassId INT FOREIGN KEY REFERENCES Classes(ClassId),
-    FinalAverageScore FLOAT,         -- Tổng điểm trung bình trọng số
-    CourseStatus NVARCHAR(20),       -- PASS, FAIL, RE-ASSESS
-    Note NVARCHAR(MAX),              -- Lý do trượt (điểm liệt/điểm thấp)
-    UpdatedAt DATETIME DEFAULT GETDATE()
-);
-
-CREATE TABLE Notifications (
-    NotificationId INT PRIMARY KEY IDENTITY(1,1),
-    UserId INT FOREIGN KEY REFERENCES Users(UserId),
+    AssessmentId INT IDENTITY PRIMARY KEY,
+    SemesterId INT NOT NULL,
     Title NVARCHAR(255),
-    Content NVARCHAR(MAX),
-    IsRead BIT DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
+    Weight DECIMAL(5,2),
+    IsFinal BIT DEFAULT 0,
+    IsLocked BIT DEFAULT 0, -- 🔒 khóa khi bắt đầu kỳ
+    CreatedBy INT NOT NULL, -- Subject Head
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Assessment_Semester FOREIGN KEY (SemesterId) REFERENCES Semesters(SemesterId),
+    CONSTRAINT FK_Assessment_Creator FOREIGN KEY (CreatedBy) REFERENCES Users(UserId),
+    CONSTRAINT UQ_Assessment_Semester UNIQUE (SemesterId, Title)
 );
 
-ALTER TABLE Councils ADD 
-    DefenseDate DATE,        -- Ngày bảo vệ
-    StartTime TIME,          -- Giờ bắt đầu
-    EndTime TIME,            -- Giờ kết thúc
-    Location NVARCHAR(255);  -- Phòng họp (Phòng 202 hoặc link Google Meet)
+
+CREATE TABLE AssessmentCriteria (
+    CriteriaId INT IDENTITY PRIMARY KEY,
+    AssessmentId INT NOT NULL,
+    CriteriaName NVARCHAR(255),
+    Weight DECIMAL(5,2),
+    CONSTRAINT FK_AC_Assessment FOREIGN KEY (AssessmentId) REFERENCES Assessments(AssessmentId),
+    CONSTRAINT UQ_Assessment_Criteria UNIQUE (AssessmentId, CriteriaName)
+);
+
+CREATE TABLE Councils (
+    CouncilId INT IDENTITY PRIMARY KEY,
+    CouncilName NVARCHAR(100),
+    SemesterId INT NOT NULL,
+    CONSTRAINT FK_Council_Semester FOREIGN KEY (SemesterId) REFERENCES Semesters(SemesterId)
+);
+
+CREATE TABLE CouncilMembers (
+    CouncilMemberId INT IDENTITY PRIMARY KEY,
+    CouncilId INT NOT NULL,
+    UserId INT NOT NULL,
+    CONSTRAINT FK_CM_Council FOREIGN KEY (CouncilId) REFERENCES Councils(CouncilId),
+    CONSTRAINT FK_CM_User FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT UQ_Council_Teacher UNIQUE (CouncilId, UserId)
+);
+
 CREATE TABLE DefenseSchedules (
-    ScheduleId INT PRIMARY KEY IDENTITY(1,1),
-    CouncilId INT FOREIGN KEY REFERENCES Councils(CouncilId),
-    GroupId INT FOREIGN KEY REFERENCES Groups(GroupId),
+    ScheduleId INT IDENTITY PRIMARY KEY,
+    CouncilId INT NOT NULL,
+    GroupId INT NOT NULL,
     DefenseDate DATE,
     StartTime TIME,
     EndTime TIME,
     Location NVARCHAR(255),
-    Status NVARCHAR(50) -- PENDING, ONGOING, FINISHED
-); 
+    Status NVARCHAR(50) DEFAULT 'PENDING',
+    CONSTRAINT FK_DS_Council FOREIGN KEY (CouncilId) REFERENCES Councils(CouncilId),
+    CONSTRAINT FK_DS_Group FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+    CONSTRAINT UQ_Council_Group UNIQUE (CouncilId, GroupId)
+);
+-- Mentor grading
+CREATE TABLE CriteriaGrades (
+    GradeId INT IDENTITY PRIMARY KEY,
+    UserId INT NOT NULL,
+    CriteriaId INT NOT NULL,
+    TeacherId INT NOT NULL,
+    Score DECIMAL(5,2),
+    CONSTRAINT FK_CG_User FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT FK_CG_Criteria FOREIGN KEY (CriteriaId) REFERENCES AssessmentCriteria(CriteriaId),
+    CONSTRAINT FK_CG_Teacher FOREIGN KEY (TeacherId) REFERENCES Users(UserId),
+    CONSTRAINT UQ_Mentor_Grade UNIQUE (UserId, CriteriaId)
+);
+
+-- Council grading (each member)
+CREATE TABLE CouncilCriteriaGrades (
+    GradeId INT IDENTITY PRIMARY KEY,
+
+    CouncilId INT NOT NULL,
+    GroupId INT NOT NULL,
+    UserId INT NOT NULL,        -- sinh viên được chấm
+    TeacherId INT NOT NULL,     -- giảng viên hội đồng
+    CriteriaId INT NOT NULL,
+
+    Score DECIMAL(5,2),
+
+    CONSTRAINT FK_CCG_Council 
+        FOREIGN KEY (CouncilId) REFERENCES Councils(CouncilId),
+
+    CONSTRAINT FK_CCG_Group 
+        FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+
+    CONSTRAINT FK_CCG_User 
+        FOREIGN KEY (UserId) REFERENCES Users(UserId),
+
+    CONSTRAINT FK_CCG_Teacher 
+        FOREIGN KEY (TeacherId) REFERENCES Users(UserId),
+
+    CONSTRAINT FK_CCG_Criteria 
+        FOREIGN KEY (CriteriaId) REFERENCES AssessmentCriteria(CriteriaId),
+
+    CONSTRAINT UQ_Council_Grade 
+        UNIQUE (CouncilId, GroupId, UserId, TeacherId, CriteriaId)
+);
+
+
+CREATE TABLE AssessmentScores (
+    ScoreId INT IDENTITY PRIMARY KEY,
+    AssessmentId INT NOT NULL,
+    UserId INT NOT NULL,
+    Score DECIMAL(5,2),
+    IsPassed BIT,
+    CONSTRAINT FK_AS_Assessment FOREIGN KEY (AssessmentId) REFERENCES Assessments(AssessmentId),
+    CONSTRAINT FK_AS_User FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    CONSTRAINT UQ_Assessment_User UNIQUE (AssessmentId, UserId)
+);
+CREATE TABLE Notifications (
+    NotificationId INT IDENTITY PRIMARY KEY,
+    UserId INT NOT NULL,
+    Title NVARCHAR(255),
+    Content NVARCHAR(MAX),
+    IsRead BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Noti_User FOREIGN KEY (UserId) REFERENCES Users(UserId)
+);
+CREATE TABLE StudentFinalResults (
+    ResultId INT IDENTITY PRIMARY KEY,
+
+    UserId INT NOT NULL,
+    SemesterId INT NOT NULL,
+
+    TotalScore DECIMAL(5,2),
+    Grade NVARCHAR(5),        -- A, B+, C...
+    IsPassed BIT,
+
+    IsFinalized BIT DEFAULT 0, -- khóa điểm
+    FinalizedAt DATETIME NULL,
+
+    CONSTRAINT FK_SFR_User 
+        FOREIGN KEY (UserId) REFERENCES Users(UserId),
+
+    CONSTRAINT FK_SFR_Semester 
+        FOREIGN KEY (SemesterId) REFERENCES Semesters(SemesterId),
+
+    CONSTRAINT UQ_User_Semester 
+        UNIQUE (UserId, SemesterId)
+);
+
+CREATE INDEX IX_Users_Status ON Users(StatusId);
+
+CREATE INDEX IX_Groups_Semester ON Groups(SemesterId);
+CREATE INDEX IX_Groups_Mentor ON Groups(MentorId);
+
+CREATE INDEX IX_GroupMembers_Group ON GroupMembers(GroupId);
+CREATE INDEX IX_GroupMembers_User ON GroupMembers(UserId);
+
+CREATE INDEX IX_Defense_Group ON DefenseSchedules(GroupId);
+CREATE INDEX IX_Defense_Council ON DefenseSchedules(CouncilId);
+
+CREATE INDEX IX_CriteriaGrades_Criteria ON CriteriaGrades(CriteriaId);
+CREATE INDEX IX_CouncilGrades_Group ON CouncilCriteriaGrades(GroupId);
+INSERT INTO Roles (RoleName) VALUES
+(N'STUDENT'),
+(N'TEACHER'),
+(N'SUBJECT_HEAD'),
+(N'ADMIN');
+INSERT INTO UserStatus (StatusName) VALUES
+(N'ACTIVE'),
+(N'INACTIVE'),
+(N'BLOCKED');
+INSERT INTO GroupStatus (StatusName) VALUES
+(N'CREATED'),        -- vừa tạo
+(N'FORMING'),        -- đang đủ người
+(N'SUBMITTED'),      -- đã nộp đề tài
+(N'APPROVED'),       -- mentor duyệt
+(N'IN_PROGRESS'),   -- đang làm
+(N'COMPLETED'),     -- hoàn thành
+(N'CANCELLED');     -- huỷ
+INSERT INTO GroupMemberStatus (StatusName) VALUES
+(N'ACTIVE'),
+(N'LEFT'),
+(N'REMOVED');
+INSERT INTO MentorRequestStatus (StatusName) VALUES
+(N'PENDING'),
+(N'APPROVED'),
+(N'REJECTED'),
+(N'CANCELLED');
+INSERT INTO ProjectStatus (StatusName) VALUES
+(N'DRAFT'),
+(N'SUBMITTED'),
+(N'APPROVED'),
+(N'IN_PROGRESS'),
+(N'COMPLETED'),
+(N'REJECTED');
+INSERT INTO Semesters (SemesterName, StartDate, EndDate, MinGroupSize, MaxGroupSize, IsActive)
+VALUES
+(N'Spring 2026', '2026-01-01', '2026-05-31', 4, 6, 1);

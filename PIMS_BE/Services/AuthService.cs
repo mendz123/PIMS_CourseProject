@@ -16,7 +16,7 @@ namespace PIMS_BE.Services;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private readonly PimsProjectContext _context;
+    private readonly PimsDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IUserRepository _userRepository;
     private readonly IGoogleAuthService _googleAuthService;
@@ -25,7 +25,7 @@ public class AuthService : IAuthService
     private const int ACCESS_TOKEN_EXPIRATION_MINUTES = 15;
     private const int REFRESH_TOKEN_EXPIRATION_DAYS = 7;
 
-    public AuthService(PimsProjectContext context, IConfiguration configuration, IUserRepository userRepository, IGoogleAuthService googleAuthService)
+    public AuthService(PimsDbContext context, IConfiguration configuration, IUserRepository userRepository, IGoogleAuthService googleAuthService)
     {
         _context = context;
         _userRepository = userRepository;
@@ -102,8 +102,8 @@ public class AuthService : IAuthService
             Email = request.Email,
             PasswordHash = passwordHash,
             FullName = request.FullName,
-            RoleId = studentRole?.RoleId,
-            StatusId = activeStatus?.StatusId,
+            RoleId = studentRole?.RoleId ?? 1,
+            StatusId = activeStatus?.StatusId ?? 1,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -118,43 +118,16 @@ public class AuthService : IAuthService
         return await GenerateAuthResponseAsync(user!);
     }
 
-    public async Task<AuthResponse?> RefreshTokenAsync(string refreshToken)
+    public Task<AuthResponse?> RefreshTokenAsync(string refreshToken)
     {
-        // Tìm refresh token trong database
-        var storedToken = await _context.RefreshTokens
-            .Include(t => t.User)
-                .ThenInclude(u => u.Role)
-            .FirstOrDefaultAsync(t => t.Token == refreshToken);
-
-        // Validate token
-        if (storedToken == null || !storedToken.IsActive)
-            return null;
-
-        // Revoke old token
-        storedToken.IsRevoked = true;
-        storedToken.RevokedAt = DateTime.UtcNow;
-
-        // Generate new tokens
-        var response = await GenerateAuthResponseAsync(storedToken.User);
-
-        await _context.SaveChangesAsync();
-
-        return response;
+        // Not supported in this version
+        return Task.FromResult<AuthResponse?>(null);
     }
 
-    public async Task<bool> RevokeTokenAsync(string refreshToken)
+    public Task<bool> RevokeTokenAsync(string refreshToken)
     {
-        var storedToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == refreshToken);
-
-        if (storedToken == null || storedToken.IsRevoked)
-            return false;
-
-        storedToken.IsRevoked = true;
-        storedToken.RevokedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return true;
+        // Not supported in this version
+        return Task.FromResult(false);
     }
 
     public async Task<UserInfo?> GetUserInfoAsync(int userId)
@@ -177,17 +150,16 @@ public class AuthService : IAuthService
 
     // === PRIVATE METHODS ===
 
-    private async Task<AuthResponse> GenerateAuthResponseAsync(User user)
+    private Task<AuthResponse> GenerateAuthResponseAsync(User user)
     {
         var accessToken = GenerateAccessToken(user);
-        var refreshToken = await GenerateRefreshTokenAsync(user.UserId);
 
-        return new AuthResponse
+        return Task.FromResult(new AuthResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = string.Empty,
             AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(ACCESS_TOKEN_EXPIRATION_MINUTES),
-            RefreshTokenExpiresAt = refreshToken.ExpiresAt,
+            RefreshTokenExpiresAt = DateTime.UtcNow.AddMinutes(ACCESS_TOKEN_EXPIRATION_MINUTES),
             User = new UserInfo
             {
                 UserId = user.UserId,
@@ -195,7 +167,7 @@ public class AuthService : IAuthService
                 FullName = user.FullName,
                 Role = user.Role?.RoleName
             }
-        };
+        });
     }
 
     private string GenerateAccessToken(User user)
@@ -226,28 +198,5 @@ public class AuthService : IAuthService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private async Task<RefreshToken> GenerateRefreshTokenAsync(int userId)
-    {
-        // Generate random token
-        var randomBytes = new byte[64];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomBytes);
-        var tokenString = Convert.ToBase64String(randomBytes);
-
-        var refreshToken = new RefreshToken
-        {
-            Token = tokenString,
-            UserId = userId,
-            ExpiresAt = DateTime.UtcNow.AddDays(REFRESH_TOKEN_EXPIRATION_DAYS),
-            CreatedAt = DateTime.UtcNow,
-            IsRevoked = false
-        };
-
-        _context.RefreshTokens.Add(refreshToken);
-        await _context.SaveChangesAsync();
-
-        return refreshToken;
     }
 }

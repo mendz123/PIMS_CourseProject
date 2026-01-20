@@ -7,17 +7,15 @@ public partial class GroupMember
 {
     public int GroupMemberId { get; set; }
 
-    public int? GroupId { get; set; }
+    public int GroupId { get; set; }
 
-    public int? StudentId { get; set; }
+    public int UserId { get; set; }
 
-    public DateTime? JoinedAt { get; set; }
+    public int StatusId { get; set; }
 
-    public string? Status { get; set; }
+    public virtual Group Group { get; set; } = null!;
 
-    public DateTime? LeftAt { get; set; }
+    public virtual GroupMemberStatus Status { get; set; } = null!;
 
-    public virtual Group? Group { get; set; }
-
-    public virtual User? Student { get; set; }
+    public virtual User User { get; set; } = null!;
 }

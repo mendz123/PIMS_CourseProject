@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 // Add DbContext with connection string from appsettings
-builder.Services.AddDbContext<PimsProjectContext>(options =>
+builder.Services.AddDbContext<PimsDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register AuthService
@@ -22,10 +22,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Register Repositories
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();
-builder.Services.AddScoped<IAssessmentSubmissionRepository, AssessmentSubmissionRepository>();
-builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<ICouncilRepository, CouncilRepository>();
-builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();

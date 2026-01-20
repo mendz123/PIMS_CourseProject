@@ -7,7 +7,7 @@ public partial class ProjectStatus
 {
     public int StatusId { get; set; }
 
-    public string StatusName { get; set; } = null!;
+    public string? StatusName { get; set; }
 
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 }

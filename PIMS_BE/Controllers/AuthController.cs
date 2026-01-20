@@ -83,51 +83,12 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Refresh access token using refresh token
-    /// </summary>
-    [HttpPost("refresh")]
-    public async Task<ActionResult<ApiResponse<LoginResponse>>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
-    {
-        // Get refresh token from cookie if not in body
-        var refreshToken = request?.RefreshToken ?? Request.Cookies[REFRESH_TOKEN_COOKIE];
-
-        if (string.IsNullOrEmpty(refreshToken))
-        {
-            return BadRequest(ApiResponse<LoginResponse>.BadRequest("Refresh token is required"));
-        }
-
-        var result = await _authService.RefreshTokenAsync(refreshToken);
-
-        if (result == null)
-        {
-            // Clear cookies if refresh token is invalid
-            ClearTokenCookies();
-            return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Invalid or expired refresh token"));
-        }
-
-        // Set new cookies
-        SetTokenCookies(result);
-
-        // Return only user info (tokens are stored in HttpOnly cookies)
-        var response = new LoginResponse { User = result.User };
-        return Ok(ApiResponse<LoginResponse>.Ok(response, "Token refreshed successfully"));
-    }
-
-    /// <summary>
-    /// Logout - revoke refresh token
+    /// Logout endpoint
     /// </summary>
     [HttpPost("logout")]
-    public async Task<ActionResult<ApiResponse<bool>>> Logout([FromBody] RefreshTokenRequest? request = null)
+    public ActionResult<ApiResponse<bool>> Logout()
     {
-        // Get refresh token from cookie if not in body
-        var refreshToken = request?.RefreshToken ?? Request.Cookies[REFRESH_TOKEN_COOKIE];
-
-        if (!string.IsNullOrEmpty(refreshToken))
-        {
-            await _authService.RevokeTokenAsync(refreshToken);
-        }
-
-        // Always clear cookies
+        // Clear cookies
         ClearTokenCookies();
 
         return Ok(ApiResponse<bool>.Ok(true, "Logout successful"));
