@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -21,29 +20,37 @@ const AdminDashboard: React.FC = () => {
       title: "Total Users",
       value: "1,234",
       icon: "group",
-      color: "bg-blue-500",
+      bgColor: "bg-blue-50",
+      iconColor: "text-blue-600",
       trend: "+12%",
+      trendUp: true,
     },
     {
       title: "Active Courses",
       value: "42",
       icon: "book",
-      color: "bg-purple-500",
+      bgColor: "bg-purple-50",
+      iconColor: "text-purple-600",
       trend: "+5%",
+      trendUp: true,
     },
     {
       title: "New Signups",
       value: "128",
       icon: "person_add",
-      color: "bg-emerald-500",
+      bgColor: "bg-green-50",
+      iconColor: "text-green-600",
       trend: "+18%",
+      trendUp: true,
     },
     {
       title: "Revenue",
       value: "$12,450",
       icon: "payments",
-      color: "bg-amber-500",
+      bgColor: "bg-amber-50",
+      iconColor: "text-amber-600",
       trend: "+8%",
+      trendUp: true,
     },
   ];
 
@@ -53,193 +60,274 @@ const AdminDashboard: React.FC = () => {
       action: "Created a new course",
       time: "2 hours ago",
       icon: "add_circle",
+      initials: "JD",
+      color: "bg-blue-100 text-blue-600",
     },
     {
       user: "Jane Smith",
       action: "Updated profile",
       time: "4 hours ago",
       icon: "edit",
+      initials: "JS",
+      color: "bg-purple-100 text-purple-600",
     },
     {
       user: "Mike Johnson",
       action: "Registered for React 101",
       time: "5 hours ago",
       icon: "how_to_reg",
+      initials: "MJ",
+      color: "bg-green-100 text-green-600",
     },
     {
       user: "Sarah Williams",
       action: "Posted a new announcement",
       time: "1 day ago",
       icon: "campaign",
+      initials: "SW",
+      color: "bg-orange-100 text-orange-600",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex transition-colors duration-300">
+    <div className="min-h-screen bg-[#f6f6f8] flex font-display">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900 border-r border-white/5 flex flex-col z-20">
-        <div className="p-6 flex items-center gap-3 border-b border-white/5">
+      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-[#dbdfe6] flex flex-col z-20">
+        <div className="p-6 flex items-center gap-3 border-b border-[#dbdfe6]">
           <div className="p-2 bg-primary rounded-lg">
-            <span className="material-symbols-outlined text-white">
-              admin_panel_settings
-            </span>
+            <span className="material-symbols-outlined text-white">admin_panel_settings</span>
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            PIMS Admin
-          </h1>
+          <div>
+            <h1 className="text-base font-bold text-[#111318] leading-none">PIMS Admin</h1>
+            <p className="text-[#616f89] text-xs mt-1">System Administration</p>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-1">
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                activeTab === item.id
-                  ? "bg-primary text-white shadow-lg shadow-primary/25"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${activeTab === item.id
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-[#616f89] hover:bg-[#f6f6f8]"
+                }`}
             >
-              <span
-                className={`material-symbols-outlined transition-colors ${activeTab === item.id ? "text-white" : "text-slate-500 group-hover:text-white"}`}
-              >
-                {item.icon}
-              </span>
-              <span className="font-medium">{item.label}</span>
+              <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
+              <span className="text-sm">{item.label}</span>
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/5 space-y-2">
+        <div className="p-4 border-t border-[#dbdfe6] space-y-2">
           <button
             onClick={() => navigate("/")}
-            className="cursor-pointer hover:text-white hover:bg-white/5 transition-all w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-all"
           >
-            <span className="material-symbols-outlined">arrow_back</span>
-            <span className="font-medium">Back to Home</span>
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+            <span className="text-sm font-medium">Back to Home</span>
           </button>
           <button
             onClick={() => {
               logout();
               navigate("/login");
             }}
-            className="cursor-pointer  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:text-red-500 hover:bg-red-50 transition-all"
           >
-            <span className="material-symbols-outlined">logout</span>
-            <span className="font-medium">Logout</span>
+            <span className="material-symbols-outlined text-[22px]">logout</span>
+            <span className="text-sm font-medium">Logout</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 ml-64">
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white">
-              Welcome back, {user?.fullName || "Admin"}
-            </h2>
-            <p className="text-slate-400 mt-1">
-              Here's what's happening today.
-            </p>
+        <header className="h-16 bg-white border-b border-[#dbdfe6] px-8 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-2">
+              <a
+                className="text-[#616f89] text-sm font-medium hover:text-primary transition-colors"
+                href="#"
+              >
+                Dashboard
+              </a>
+              <span className="text-[#616f89] text-sm">/</span>
+              <span className="text-[#111318] text-sm font-bold">Overview</span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 text-white relative cursor-pointer hover:bg-slate-700 transition-colors">
-              <span className="material-symbols-outlined text-[20px]">
-                notifications
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#616f89]">
+                search
               </span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              <input
+                className="pl-10 pr-4 py-2 bg-[#f6f6f8] border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20"
+                placeholder="Search..."
+                type="text"
+              />
             </div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-purple-500 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">
-              {user?.fullName?.charAt(0) || "A"}
+            <button className="p-2 rounded-lg bg-[#f6f6f8] text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all relative">
+              <span className="material-symbols-outlined">notifications</span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+            </button>
+            <div className="flex items-center gap-3 bg-[#f6f6f8] p-1.5 rounded-lg">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
+                {user?.fullName?.charAt(0) || "A"}
+              </div>
+              <span className="text-sm font-medium pr-2">{user?.fullName || "Admin"}</span>
             </div>
           </div>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="bg-slate-900 border border-white/5 p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:border-primary/30 transition-all group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div
-                  className={`p-3 rounded-xl ${stat.color} bg-opacity-10 text-${stat.color.split("-")[1]}-400 group-hover:bg-opacity-20 transition-all`}
-                >
-                  <span className="material-symbols-outlined">{stat.icon}</span>
-                </div>
-                <span className="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-1 rounded-lg font-bold">
-                  {stat.trend}
-                </span>
-              </div>
-              <h3 className="text-3xl font-bold text-white mb-1">
-                {stat.value}
-              </h3>
-              <p className="text-slate-400 text-sm font-medium">{stat.title}</p>
-            </motion.div>
-          ))}
-        </div>
+        <div className="p-8 max-w-7xl mx-auto">
+          {/* Welcome Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-black text-[#111318] tracking-tight">
+              Welcome back, {user?.fullName || "Admin"}
+            </h2>
+            <p className="text-[#616f89] mt-1">Here's what's happening today.</p>
+          </div>
 
-        {/* Recent Activity Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 bg-slate-900 border border-white/5 rounded-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Recent Activity</h3>
-              <button className="text-sm text-primary hover:text-primary-light font-medium">
-                View All
-              </button>
-            </div>
-            <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
-                >
-                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                    <span className="material-symbols-outlined text-[20px]">
-                      {activity.icon}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="bg-white border border-[#dbdfe6] p-6 rounded-xl shadow-sm hover:shadow-md transition-all"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+                    <span className={`material-symbols-outlined ${stat.iconColor}`}>
+                      {stat.icon}
                     </span>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium">
-                      {activity.user}{" "}
-                      <span className="text-slate-400 font-normal">
-                        {activity.action}
-                      </span>
-                    </p>
-                    <p className="text-slate-500 text-xs mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-bold ${stat.trendUp
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                      }`}
+                  >
+                    {stat.trend}
+                  </span>
                 </div>
-              ))}
-            </div>
+                <h3 className="text-3xl font-bold text-[#111318] mb-1">{stat.value}</h3>
+                <p className="text-[#616f89] text-sm font-medium">{stat.title}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="bg-gradient-to-br from-primary to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-            <h3 className="text-xl font-bold mb-2 relative z-10">
-              Quick Action
-            </h3>
-            <p className="text-white/80 text-sm mb-6 relative z-10">
-              Create a new course or manage existing ones efficiently.
-            </p>
+          {/* Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Recent Activity */}
+            <div className="lg:col-span-2 bg-white border border-[#dbdfe6] rounded-xl shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-[#dbdfe6] flex justify-between items-center">
+                <h3 className="text-lg font-bold text-[#111318]">Recent Activity</h3>
+                <button className="text-sm text-primary font-semibold hover:underline">
+                  View All
+                </button>
+              </div>
+              <div className="divide-y divide-[#dbdfe6]">
+                {recentActivities.map((activity, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-4 p-4 hover:bg-[#f6f6f8] transition-colors"
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${activity.color}`}
+                    >
+                      {activity.initials}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[#111318] font-medium text-sm">
+                        {activity.user}{" "}
+                        <span className="text-[#616f89] font-normal">
+                          {activity.action}
+                        </span>
+                      </p>
+                      <p className="text-[#616f89] text-xs mt-1">{activity.time}</p>
+                    </div>
+                    <button className="text-[#616f89] hover:text-primary transition-colors">
+                      <span className="material-symbols-outlined text-lg">more_horiz</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            <div className="space-y-3 relative z-10">
-              <button className="w-full py-3 bg-white text-primary font-bold rounded-xl shadow-lg hover:bg-slate-50 transition-colors">
-                + Create New Course
-              </button>
-              <button className="w-full py-3 bg-black/20 text-white font-bold rounded-xl border border-white/20 hover:bg-black/30 transition-colors">
-                Manage Users
-              </button>
+            {/* Quick Actions */}
+            <div className="space-y-6">
+              <div className="bg-primary p-6 rounded-xl text-white shadow-lg shadow-primary/20 relative overflow-hidden">
+                <div className="relative z-10">
+                  <h3 className="text-lg font-bold mb-2">Quick Actions</h3>
+                  <p className="text-white/80 text-sm mb-6">
+                    Create a new course or manage existing ones efficiently.
+                  </p>
+                  <div className="space-y-3">
+                    <button className="w-full py-3 bg-white text-primary font-bold rounded-lg hover:bg-slate-50 transition-colors text-sm">
+                      + Create New Course
+                    </button>
+                    <button className="w-full py-3 bg-white/20 text-white font-bold rounded-lg border border-white/20 hover:bg-white/30 transition-colors text-sm">
+                      Manage Users
+                    </button>
+                  </div>
+                </div>
+                <div className="absolute -right-4 -bottom-4 opacity-20">
+                  <span className="material-symbols-outlined text-8xl">rocket_launch</span>
+                </div>
+              </div>
+
+              {/* System Status */}
+              <div className="bg-white border border-[#dbdfe6] rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-[#111318] mb-4">System Status</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-1 text-sm font-medium">
+                      <span className="text-[#616f89]">Server Load</span>
+                      <span className="text-green-600">24%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-green-500 h-2 rounded-full"
+                        style={{ width: "24%" }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1 text-sm font-medium">
+                      <span className="text-[#616f89]">Database</span>
+                      <span className="text-primary">58%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: "58%" }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1 text-sm font-medium">
+                      <span className="text-[#616f89]">Storage</span>
+                      <span className="text-amber-600">72%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-amber-500 h-2 rounded-full"
+                        style={{ width: "72%" }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <footer className="p-8 pt-0 max-w-7xl mx-auto text-center">
+          <p className="text-[#616f89] text-xs font-medium">
+            © 2024 Project-based Learning Management System (PIMS) - Version 2.4.1
+          </p>
+        </footer>
       </main>
     </div>
   );
