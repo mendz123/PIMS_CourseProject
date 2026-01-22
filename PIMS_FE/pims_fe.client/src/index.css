@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #0891b2;
-  --color-primary-light: #22d3ee;
-  --color-background-light: #f8fafc;
-  --color-background-dark: #0f172a;
+  --color-primary: #135bec;
+  --color-primary-light: #3b82f6;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #101622;
 
-  --font-display: "Manrope", sans-serif;
-  --font-sans: "Manrope", sans-serif;
+  --font-display: "Lexend", sans-serif;
+  --font-sans: "Lexend", sans-serif;
 
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 }
 
 @layer base {
+
   html,
   body,
   #root {
@@ -59,13 +60,16 @@
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }

@@ -19,6 +19,8 @@ const Navbar: React.FC = () => {
         return { name: "Teacher Dashboard", href: "/teacher/dashboard" };
       case "student":
         return { name: "Student Dashboard", href: "/student/dashboard" };
+      case "subject_head":
+        return { name: "Subject Head Dashboard", href: "/subject-head/dashboard" };
       default:
         return { name: "Dashboard", href: "/dashboard" };
     }

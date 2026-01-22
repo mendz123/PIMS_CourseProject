@@ -1,17 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
+import { StudentDashboard } from "../pages/Student";
+import { TeacherDashboard } from "../pages/Teacher";
+import { SubjectHeadDashboard } from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 // Placeholder components - sẽ tạo sau
 const Dashboard = () => <div>Dashboard Page</div>;
-// AdminDashboard is now imported
-const TeacherDashboard = () => (
-  <div>Teacher Dashboard - Manage Courses, Grades, etc.</div>
-);
-const StudentDashboard = () => (
-  <div>Student Dashboard - View Courses, Grades, etc.</div>
-);
 const NotFound = () => <div>404 - Page Not Found</div>;
 
 export const router = createBrowserRouter([
@@ -44,6 +40,10 @@ export const router = createBrowserRouter([
         element: <StudentDashboard />,
       },
       {
+        path: "subject-head/dashboard",
+        element: <SubjectHeadDashboard />,
+      },
+      {
         path: "/assign-teacher",
         element: <AssignTeacherPage />,
       },
@@ -54,3 +54,4 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
