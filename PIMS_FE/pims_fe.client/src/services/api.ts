@@ -26,12 +26,24 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and not a refresh request, try to refresh token
+    // List of auth endpoints that should NOT trigger token refresh on 401
+    // These endpoints return specific error messages that frontend needs
+    const authEndpoints = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/refresh",
+      "/auth/me",
+    ];
+
+    const isAuthEndpoint = authEndpoints.some((endpoint) =>
+      originalRequest.url?.includes(endpoint)
+    );
+
+    // If 401 and not an auth endpoint, try to refresh token
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes("/auth/refresh") &&
-      !originalRequest.url?.includes("/auth/me") // Don't retry /auth/me on first load
+      !isAuthEndpoint
     ) {
       originalRequest._retry = true;
 
