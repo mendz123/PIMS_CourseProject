@@ -8,6 +8,7 @@ using PIMS_BE.Services;
 using PIMS_BE.Services.Interfaces;
 using PIMS_BE.Repositories;
 using PIMS_BE.Middlewares;
+using PIMS_BE.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
+// Register Email Service
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddControllers();
 

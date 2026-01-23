@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using PIMS_BE.DTOs;
+using PIMS_BE.Exceptions;
 
 namespace PIMS_BE.Middlewares;
 
@@ -42,6 +43,14 @@ public class ExceptionHandlingMiddleware
 
         var statusCode = exception switch
         {
+            AuthenticationException authEx => authEx.ErrorType switch
+            {
+                AuthErrorType.UserNotFound => (int)HttpStatusCode.NotFound,
+                AuthErrorType.InvalidPassword => (int)HttpStatusCode.Unauthorized,
+                AuthErrorType.EmailNotVerified => (int)HttpStatusCode.Forbidden,
+                AuthErrorType.AccountBanned => (int)HttpStatusCode.Forbidden,
+                _ => (int)HttpStatusCode.Unauthorized
+            },
             ArgumentNullException => (int)HttpStatusCode.BadRequest,
             ArgumentException => (int)HttpStatusCode.BadRequest,
             UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,

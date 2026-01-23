@@ -29,6 +29,8 @@ const Login = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -209,14 +211,22 @@ const Login = () => {
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
         const axiosError = err as {
-          response?: { data?: { message?: string } };
+          response?: { data?: { message?: string }; status?: number };
         };
-        setError(
-          axiosError.response?.data?.message ||
-            "Login failed. Please try again.",
-        );
+        const errorMessage = axiosError.response?.data?.message || "Login failed. Please try again.";
+        const statusCode = axiosError.response?.status;
+
+        setError(errorMessage);
+
+        // Show resend verification option if email not verified (403 status)
+        if (statusCode === 403 && errorMessage.toLowerCase().includes("verify")) {
+          setShowResendVerification(true);
+        } else {
+          setShowResendVerification(false);
+        }
       } else {
         setError("Login failed. Please try again.");
+        setShowResendVerification(false);
       }
     }
   };
@@ -229,7 +239,7 @@ const Login = () => {
         fullName,
       });
       setSuccess(
-        "Registration successful! Welcome " + response.data.user.fullName,
+        `Registration successful! Please check your email (${email}) to verify your account.`,
       );
       console.log("Registration successful:", response.data);
       // TODO: Redirect to dashboard or home page
@@ -240,7 +250,7 @@ const Login = () => {
         };
         setError(
           axiosError.response?.data?.message ||
-            "Registration failed. Please try again.",
+          "Registration failed. Please try again.",
         );
       } else {
         setError("Registration failed. Please try again.");
@@ -280,14 +290,64 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
-    const response = await loginWithGoogle(credentialResponse.credential);
-    setSuccess("Login successful! Welcome " + response.data.user.fullName);
-    navigate("/");
+    setError("");
+    setSuccess("");
+    try {
+      const response = await loginWithGoogle(credentialResponse.credential!);
+      setSuccess("Login successful! Welcome " + response.data.user.fullName);
+      // TODO: Redirect to dashboard
+      navigate("/");
+    } catch (err: unknown) {
+      console.error("Google login error:", err);
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosError = err as {
+          response?: { data?: { message?: string } };
+        };
+        setError(
+          axiosError.response?.data?.message ||
+          "Google login failed. Please try again.",
+        );
+      } else {
+        setError("Google login failed. Please try again.");
+      }
+    }
   };
 
   const handleGoogleError = () => {
     console.log("Google login error");
     setError("Google login failed. Please try again.");
+  };
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setError("Please enter your email address first.");
+      return;
+    }
+
+    setResendLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5172"}/api/Auth/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      if (response.ok) {
+        setSuccess("Verification email sent! Please check your inbox.");
+        setError("");
+        setShowResendVerification(false);
+      } else {
+        const data = await response.json();
+        setError(data.message || "Failed to send verification email.");
+      }
+    } catch {
+      setError("Failed to send verification email. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   return (
@@ -321,7 +381,33 @@ const Login = () => {
         </div>
 
         {/* Alerts */}
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && (
+          <div className="alert alert-error">
+            {error}
+            {showResendVerification && (
+              <button
+                type="button"
+                className="resend-btn"
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                style={{
+                  display: "block",
+                  marginTop: "10px",
+                  padding: "8px 16px",
+                  backgroundColor: "#667eea",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  cursor: resendLoading ? "not-allowed" : "pointer",
+                  width: "100%",
+                  opacity: resendLoading ? 0.7 : 1,
+                }}
+              >
+                {resendLoading ? "Sending..." : "Resend Verification Email"}
+              </button>
+            )}
+          </div>
+        )}
         {success && <div className="alert alert-success">{success}</div>}
 
         {/* Form */}

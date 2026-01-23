@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
 using PIMS_BE.DTOs.Auth;
+using PIMS_BE.Exceptions;
 using PIMS_BE.Services.Interfaces;
 
 namespace PIMS_BE.Controllers;
@@ -41,11 +42,11 @@ public class AuthController : ControllerBase
         }
 
         // Set cookies
-        SetTokenCookies(result);
+        // SetTokenCookies(result); // Don't login automatically
 
         // Return only user info (tokens are stored in HttpOnly cookies)
         var response = new LoginResponse { User = result.User };
-        return StatusCode(201, ApiResponse<LoginResponse>.Created(response, "Registration successful"));
+        return StatusCode(201, ApiResponse<LoginResponse>.Created(response, "Registration successful. Please check your email to verify your account."));
     }
 
     /// <summary>
@@ -54,19 +55,34 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
     {
-        var result = await _authService.LoginAsync(request);
-
-        if (result == null)
+        try
         {
-            return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Invalid email or password"));
+            var result = await _authService.LoginAsync(request);
+
+            if (result == null)
+            {
+                return Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Login failed"));
+            }
+
+            // Set cookies
+            SetTokenCookies(result);
+
+            // Return only user info (tokens are stored in HttpOnly cookies)
+            var response = new LoginResponse { User = result.User };
+            return Ok(ApiResponse<LoginResponse>.Ok(response, "Login successful"));
         }
-
-        // Set cookies
-        SetTokenCookies(result);
-
-        // Return only user info (tokens are stored in HttpOnly cookies)
-        var response = new LoginResponse { User = result.User };
-        return Ok(ApiResponse<LoginResponse>.Ok(response, "Login successful"));
+        catch (AuthenticationException ex)
+        {
+            // Return specific error message based on error type
+            return ex.ErrorType switch
+            {
+                AuthErrorType.UserNotFound => NotFound(ApiResponse<LoginResponse>.NotFound(ex.Message)),
+                AuthErrorType.InvalidPassword => Unauthorized(ApiResponse<LoginResponse>.Unauthorized(ex.Message)),
+                AuthErrorType.EmailNotVerified => StatusCode(403, ApiResponse<LoginResponse>.Forbidden(ex.Message)),
+                AuthErrorType.AccountBanned => StatusCode(403, ApiResponse<LoginResponse>.Forbidden(ex.Message)),
+                _ => Unauthorized(ApiResponse<LoginResponse>.Unauthorized("Login failed"))
+            };
+        }
     }
 
     //Login with gg
@@ -118,6 +134,71 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<UserInfo>.Ok(userInfo, "User info retrieved successfully"));
     }
 
+    /// <summary>
+    /// Verify email address with token
+    /// </summary>
+    [HttpGet("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Verification token is required"));
+        }
+
+        var result = await _authService.VerifyEmailAsync(token);
+
+        if (!result)
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Invalid or expired verification token"));
+        }
+
+        // Return HTML page for better user experience
+        var html = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Verified - PIMS</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .container { background: white; padding: 40px; border-radius: 10px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h1 { color: #667eea; }
+        p { color: #666; }
+        a { display: inline-block; margin-top: 20px; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>✅ Email Verified!</h1>
+        <p>Your email has been successfully verified.<br>You can now log in to PIMS.</p>
+        <a href='http://localhost:49684/login'>Go to Login</a>
+    </div>
+</body>
+</html>";
+
+        return Content(html, "text/html");
+    }
+
+    /// <summary>
+    /// Resend verification email
+    /// </summary>
+    [HttpPost("resend-verification")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResendVerificationEmail([FromBody] ResendVerificationRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Email))
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Email is required"));
+        }
+
+        var result = await _authService.ResendVerificationEmailAsync(request.Email);
+
+        if (!result)
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Unable to resend verification email. User may not exist or is already verified."));
+        }
+
+        return Ok(ApiResponse<bool>.Ok(true, "Verification email sent successfully"));
+    }
+
     // === PRIVATE METHODS ===
 
     /// <summary>
@@ -137,7 +218,7 @@ public class AuthController : ControllerBase
             Path = "/"
         });
 
-        // Refresh token cookie - long lived (7 ngày)
+        // Refresh token cookie - long lived (7 days)
         Response.Cookies.Append(REFRESH_TOKEN_COOKIE, authResponse.RefreshToken, new CookieOptions
         {
             HttpOnly = true,

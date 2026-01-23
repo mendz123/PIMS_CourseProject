@@ -16,6 +16,7 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<any>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  loginWithGoogle: (token: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,8 +69,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
   };
 
-  const loginWithGoogle = async (data: LoginRequest) => {
-    const response = await authService.loginWithGoogle(data);
+  const loginWithGoogle = async (token: string) => {
+    const response = await authService.loginWithGoogle(token);
     await refreshProfile();
     return response;
   };
