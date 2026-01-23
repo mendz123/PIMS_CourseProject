@@ -21,6 +21,16 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Token for email verification (null if already verified)
+    /// </summary>
+    public string? EmailVerificationToken { get; set; }
+
+    /// <summary>
+    /// Expiration time for the verification token
+    /// </summary>
+    public DateTime? EmailVerificationTokenExpiresAt { get; set; }
+
     public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();
 
     public virtual ICollection<Assessment> Assessments { get; set; } = new List<Assessment>();
