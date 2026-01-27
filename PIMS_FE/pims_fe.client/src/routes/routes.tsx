@@ -3,7 +3,10 @@ import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
 import { TeacherDashboard } from "../pages/Teacher";
-import { SubjectHeadDashboard } from "../pages/SubjectHead";
+import {
+  SubjectHeadDashboard,
+  AssessmentManagement,
+} from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 // Placeholder components - sẽ tạo sau
@@ -44,6 +47,10 @@ export const router = createBrowserRouter([
         element: <SubjectHeadDashboard />,
       },
       {
+        path: "subject-head/assessments",
+        element: <AssessmentManagement />,
+      },
+      {
         path: "/assign-teacher",
         element: <AssignTeacherPage />,
       },
@@ -54,4 +61,3 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
-
