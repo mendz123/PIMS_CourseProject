@@ -15,10 +15,12 @@ namespace PIMS_BE.Controllers;
 public class AssessmentCriterionController : ControllerBase
 {
     private readonly IAssessmentCriterionService _criterionService;
+    private readonly ILogger<AssessmentCriterionController> _logger;
 
-    public AssessmentCriterionController(IAssessmentCriterionService criterionService)
+    public AssessmentCriterionController(IAssessmentCriterionService criterionService, ILogger<AssessmentCriterionController> logger)
     {
         _criterionService = criterionService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -108,20 +110,31 @@ public class AssessmentCriterionController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} creating {Count} criteria for assessment {AssessmentId} (batch operation)",
+                userName, dto.Criteria.Count, assessmentId);
 
             var criteria = await _criterionService.CreateMultipleCriteriaAsync(assessmentId, dto.Criteria, userId);
+            
+            _logger.LogInformation("{Count} criteria created successfully for assessment {AssessmentId} by user {UserName}",
+                criteria.Count, assessmentId, userName);
+            
             return StatusCode(201, ApiResponse<List<AssessmentCriterionDto>>.Created(criteria, "Criteria created successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Batch create criteria failed for assessment {AssessmentId} - not found", assessmentId);
             return NotFound(ApiResponse<List<AssessmentCriterionDto>>.NotFound(ex.Message));
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Batch create criteria failed for assessment {AssessmentId}: {Message}", assessmentId, ex.Message);
             return BadRequest(ApiResponse<List<AssessmentCriterionDto>>.BadRequest(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating criteria for assessment {AssessmentId}", assessmentId);
             return StatusCode(500, ApiResponse<List<AssessmentCriterionDto>>.InternalError(ex.Message));
         }
     }

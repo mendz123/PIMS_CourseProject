@@ -9,8 +9,31 @@ using PIMS_BE.Services.Interfaces;
 using PIMS_BE.Repositories;
 using PIMS_BE.Middlewares;
 using PIMS_BE.Helpers;
+using Serilog;
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json")
+        .Build())
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithThreadId()
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: "logs/pims-.txt",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+try
+{
+    Log.Information("Starting PIMS Backend Application");
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Use Serilog
+builder.Host.UseSerilog();
 
 // Add services to the container.
 
@@ -168,6 +191,9 @@ app.UseExceptionHandling();
 
 app.UseCors("AllowFrontend");
 
+// Use Serilog request logging
+app.UseSerilogRequestLogging();
+
 // IMPORTANT: UseAuthentication must come before UseAuthorization
 app.UseAuthentication();
 app.UseAuthorization();
@@ -175,4 +201,12 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

@@ -15,10 +15,12 @@ namespace PIMS_BE.Controllers;
 public class AssessmentController : ControllerBase
 {
     private readonly IAssessmentService _assessmentService;
+    private readonly ILogger<AssessmentController> _logger;
 
-    public AssessmentController(IAssessmentService assessmentService)
+    public AssessmentController(IAssessmentService assessmentService, ILogger<AssessmentController> logger)
     {
         _assessmentService = assessmentService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -29,11 +31,15 @@ public class AssessmentController : ControllerBase
     {
         try
         {
+            var userId = User.Identity?.Name ?? "Unknown";
+            _logger.LogInformation("User {UserId} retrieving assessments for semester {SemesterId}", userId, semesterId);
+            
             var assessments = await _assessmentService.GetAssessmentsBySemesterAsync(semesterId);
             return Ok(ApiResponse<List<AssessmentDto>>.Ok(assessments, "Assessments retrieved successfully"));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving assessments for semester {SemesterId}", semesterId);
             return StatusCode(500, ApiResponse<List<AssessmentDto>>.InternalError(ex.Message));
         }
     }
@@ -109,20 +115,31 @@ public class AssessmentController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} creating assessment: {Title}, Weight: {Weight}%, Semester: {SemesterId}",
+                userName, dto.Title, dto.Weight, dto.SemesterId);
 
             var assessment = await _assessmentService.CreateAssessmentAsync(dto, userId);
+            
+            _logger.LogInformation("Assessment {AssessmentId} created successfully by user {UserName}",
+                assessment.AssessmentId, userName);
+            
             return StatusCode(201, ApiResponse<AssessmentDto>.Created(assessment, "Assessment created successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Create assessment failed - not found: {Message}", ex.Message);
             return NotFound(ApiResponse<AssessmentDto>.NotFound(ex.Message));
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Create assessment failed - invalid operation: {Message}", ex.Message);
             return BadRequest(ApiResponse<AssessmentDto>.BadRequest(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating assessment");
             return StatusCode(500, ApiResponse<AssessmentDto>.InternalError(ex.Message));
         }
     }
@@ -137,20 +154,31 @@ public class AssessmentController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} updating assessment {AssessmentId}: Title={Title}, Weight={Weight}",
+                userName, id, dto.Title, dto.Weight);
 
             var assessment = await _assessmentService.UpdateAssessmentAsync(id, dto, userId);
+            
+            _logger.LogInformation("Assessment {AssessmentId} updated successfully by user {UserName}",
+                id, userName);
+            
             return Ok(ApiResponse<AssessmentDto>.Ok(assessment, "Assessment updated successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Update assessment {AssessmentId} failed - not found", id);
             return NotFound(ApiResponse<AssessmentDto>.NotFound(ex.Message));
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Update assessment {AssessmentId} failed: {Message}", id, ex.Message);
             return BadRequest(ApiResponse<AssessmentDto>.BadRequest(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating assessment {AssessmentId}", id);
             return StatusCode(500, ApiResponse<AssessmentDto>.InternalError(ex.Message));
         }
     }
@@ -165,20 +193,29 @@ public class AssessmentController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogWarning("User {UserName} deleting assessment {AssessmentId}", userName, id);
 
             await _assessmentService.DeleteAssessmentAsync(id, userId);
+            
+            _logger.LogInformation("Assessment {AssessmentId} deleted successfully by user {UserName}", id, userName);
+            
             return Ok(ApiResponse<object>.Ok(new { }, "Assessment deleted successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Delete assessment {AssessmentId} failed - not found", id);
             return NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Delete assessment {AssessmentId} failed: {Message}", id, ex.Message);
             return BadRequest(ApiResponse<object>.BadRequest(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error deleting assessment {AssessmentId}", id);
             return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
         }
     }
@@ -193,16 +230,24 @@ public class AssessmentController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} locking assessment {AssessmentId}", userName, id);
 
             await _assessmentService.LockAssessmentAsync(id, userId);
+            
+            _logger.LogInformation("Assessment {AssessmentId} locked successfully by user {UserName}", id, userName);
+            
             return Ok(ApiResponse<object>.Ok(new { }, "Assessment locked successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Lock assessment {AssessmentId} failed - not found", id);
             return NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error locking assessment {AssessmentId}", id);
             return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
         }
     }
@@ -217,16 +262,24 @@ public class AssessmentController : ControllerBase
         {
             // TODO: Get userId from authenticated user context
             int userId = 1; // Placeholder
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} unlocking assessment {AssessmentId}", userName, id);
 
             await _assessmentService.UnlockAssessmentAsync(id, userId);
+            
+            _logger.LogInformation("Assessment {AssessmentId} unlocked successfully by user {UserName}", id, userName);
+            
             return Ok(ApiResponse<object>.Ok(new { }, "Assessment unlocked successfully"));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Unlock assessment {AssessmentId} failed - not found", id);
             return NotFound(ApiResponse<object>.NotFound(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error unlocking assessment {AssessmentId}", id);
             return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
         }
     }
