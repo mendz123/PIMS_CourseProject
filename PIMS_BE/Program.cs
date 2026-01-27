@@ -36,6 +36,11 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+builder.Services.AddScoped<IDriveFileService, DriveFileService>();
+builder.Services.AddScoped<IProjectSubmissionRepository, ProjectSubmissionRepository>();
+// Đăng ký Service xử lý logic Dự án và Báo cáo
+builder.Services.AddScoped<IProjectService, ProjectService>();
+
 builder.Services.AddControllers();
 
 // Configure JWT Authentication

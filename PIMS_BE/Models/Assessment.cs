@@ -27,5 +27,7 @@ public partial class Assessment
 
     public virtual User CreatedByNavigation { get; set; } = null!;
 
+    public virtual ICollection<ProjectSubmission> ProjectSubmissions { get; set; } = new List<ProjectSubmission>();
+
     public virtual Semester Semester { get; set; } = null!;
 }

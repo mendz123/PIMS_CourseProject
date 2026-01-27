@@ -6,6 +6,7 @@ import { TeacherDashboard } from "../pages/Teacher";
 import { SubjectHeadDashboard } from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
+import StudentGroup from "../pages/Student/StudentGroup";
 // Placeholder components - sẽ tạo sau
 const Dashboard = () => <div>Dashboard Page</div>;
 const NotFound = () => <div>404 - Page Not Found</div>;
@@ -38,7 +39,12 @@ export const router = createBrowserRouter([
       {
         path: "student/dashboard",
         element: <StudentDashboard />,
-      },
+        },
+      {
+        path: "student/group",
+        element: <StudentGroup/>,
+        },
+
       {
         path: "subject-head/dashboard",
         element: <SubjectHeadDashboard />,

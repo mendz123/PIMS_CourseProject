@@ -21,14 +21,8 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
-    /// <summary>
-    /// Token for email verification (null if already verified)
-    /// </summary>
     public string? EmailVerificationToken { get; set; }
 
-    /// <summary>
-    /// Expiration time for the verification token
-    /// </summary>
     public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
     public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();
@@ -54,6 +48,8 @@ public partial class User
     public virtual ICollection<MentorRequest> MentorRequests { get; set; } = new List<MentorRequest>();
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public virtual ICollection<ProjectSubmission> ProjectSubmissions { get; set; } = new List<ProjectSubmission>();
 
     public virtual Role Role { get; set; } = null!;
 
