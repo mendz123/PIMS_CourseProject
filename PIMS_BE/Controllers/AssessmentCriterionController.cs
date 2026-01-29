@@ -78,8 +78,11 @@ public class AssessmentCriterionController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<AssessmentCriterionDto>.Unauthorized("Invalid user authentication"));
+            }
 
             var criterion = await _criterionService.CreateCriterionAsync(assessmentId, dto, userId);
             return StatusCode(201, ApiResponse<AssessmentCriterionDto>.Created(criterion, "Criterion created successfully"));
@@ -108,12 +111,15 @@ public class AssessmentCriterionController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<List<AssessmentCriterionDto>>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogInformation("User {UserName} creating {Count} criteria for assessment {AssessmentId} (batch operation)",
-                userName, dto.Criteria.Count, assessmentId);
+            _logger.LogInformation("User {UserName} (ID: {UserId}) creating {Count} criteria for assessment {AssessmentId} (batch operation)",
+                userName, userId, dto.Criteria.Count, assessmentId);
 
             var criteria = await _criterionService.CreateMultipleCriteriaAsync(assessmentId, dto.Criteria, userId);
             
@@ -148,8 +154,11 @@ public class AssessmentCriterionController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<AssessmentCriterionDto>.Unauthorized("Invalid user authentication"));
+            }
 
             var criterion = await _criterionService.UpdateCriterionAsync(criteriaId, dto, userId);
 
@@ -184,8 +193,11 @@ public class AssessmentCriterionController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
 
             await _criterionService.DeleteCriterionAsync(criteriaId, userId);
             return Ok(ApiResponse<object>.Ok(new { }, "Criterion deleted successfully"));
