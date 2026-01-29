@@ -190,6 +190,15 @@ public class AssessmentService : IAssessmentService
             throw new KeyNotFoundException($"Assessment with ID {assessmentId} not found");
         }
 
+        // Check if assessment has scores - cannot unlock if scores exist
+        var hasScores = await _assessmentRepository.HasScoresAsync(assessmentId);
+        if (hasScores)
+        {
+            throw new InvalidOperationException(
+                "Cannot unlock assessment because scores have been recorded. " +
+                "Unlocking would allow changes to criteria which could invalidate existing scores.");
+        }
+
         assessment.IsLocked = false;
         _assessmentRepository.Update(assessment);
         await _assessmentRepository.SaveChangesAsync();

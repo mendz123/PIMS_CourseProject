@@ -159,19 +159,39 @@ const AssessmentManagement: React.FC = () => {
   };
 
   const handleLockToggle = async (assessment: AssessmentWithCriteriaDto) => {
+    // Confirmation for unlock action
+    if (assessment.isLocked) {
+      const confirmed = confirm(
+        "Are you sure you want to unlock this assessment?\n\n" +
+          "Note: You cannot unlock if scores have already been recorded.\n" +
+          "Unlocking allows modifications to criteria and weights.",
+      );
+      if (!confirmed) return;
+    }
+
     setLoading(true);
     setError("");
+    setSuccess("");
     try {
       if (assessment.isLocked) {
         await assessmentService.unlockAssessment(assessment.assessmentId);
-        setSuccess("Assessment unlocked successfully");
+        setSuccess(
+          "✅ Assessment unlocked successfully. You can now edit criteria and weights.",
+        );
       } else {
         await assessmentService.lockAssessment(assessment.assessmentId);
-        setSuccess("Assessment locked successfully");
+        setSuccess(
+          "🔒 Assessment locked successfully. No further modifications allowed.",
+        );
       }
       loadAssessments();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to toggle lock");
+      const errorMessage =
+        err.response?.data?.message || "Failed to toggle lock";
+      setError(errorMessage);
+
+      // Auto-clear error after 8 seconds for better UX
+      setTimeout(() => setError(""), 8000);
     } finally {
       setLoading(false);
     }
