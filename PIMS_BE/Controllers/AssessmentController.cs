@@ -113,12 +113,15 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<AssessmentDto>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogInformation("User {UserName} creating assessment: {Title}, Weight: {Weight}%, Semester: {SemesterId}",
-                userName, dto.Title, dto.Weight, dto.SemesterId);
+            _logger.LogInformation("User {UserName} (ID: {UserId}) creating assessment: {Title}, Weight: {Weight}%, Semester: {SemesterId}",
+                userName, userId, dto.Title, dto.Weight, dto.SemesterId);
 
             var assessment = await _assessmentService.CreateAssessmentAsync(dto, userId);
             
@@ -152,12 +155,15 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<AssessmentDto>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogInformation("User {UserName} updating assessment {AssessmentId}: Title={Title}, Weight={Weight}",
-                userName, id, dto.Title, dto.Weight);
+            _logger.LogInformation("User {UserName} (ID: {UserId}) updating assessment {AssessmentId}: Title={Title}, Weight={Weight}",
+                userName, userId, id, dto.Title, dto.Weight);
 
             var assessment = await _assessmentService.UpdateAssessmentAsync(id, dto, userId);
             
@@ -191,11 +197,14 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogWarning("User {UserName} deleting assessment {AssessmentId}", userName, id);
+            _logger.LogWarning("User {UserName} (ID: {UserId}) deleting assessment {AssessmentId}", userName, userId, id);
 
             await _assessmentService.DeleteAssessmentAsync(id, userId);
             
@@ -228,11 +237,14 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogInformation("User {UserName} locking assessment {AssessmentId}", userName, id);
+            _logger.LogInformation("User {UserName} (ID: {UserId}) locking assessment {AssessmentId}", userName, userId, id);
 
             await _assessmentService.LockAssessmentAsync(id, userId);
             
@@ -260,11 +272,14 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            // TODO: Get userId from authenticated user context
-            int userId = 1; // Placeholder
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
             var userName = User.Identity?.Name ?? "Unknown";
 
-            _logger.LogInformation("User {UserName} unlocking assessment {AssessmentId}", userName, id);
+            _logger.LogInformation("User {UserName} (ID: {UserId}) unlocking assessment {AssessmentId}", userName, userId, id);
 
             await _assessmentService.UnlockAssessmentAsync(id, userId);
             
