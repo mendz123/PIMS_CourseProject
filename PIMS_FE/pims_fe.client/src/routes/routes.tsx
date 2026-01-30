@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
@@ -7,57 +7,66 @@ import { SubjectHeadDashboard } from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 import StudentGroup from "../pages/Student/StudentGroup";
-// Placeholder components - sẽ tạo sau
-const Dashboard = () => <div>Dashboard Page</div>;
+// Import Layout mới của bạn
+import MainLayout from "../components/student/MainLayout";
+
 const NotFound = () => <div>404 - Page Not Found</div>;
 
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <RouterWrapper />,
-    children: [
-      {
-        index: true,
-        element: <Home />,
-      },
-      {
-        path: "login",
-        element: <Login />,
-      },
-      {
-        path: "dashboard",
-        element: <Dashboard />,
-      },
-      {
-        path: "admin/dashboard",
-        element: <AdminDashboard />,
-      },
-      {
-        path: "teacher/dashboard",
-        element: <TeacherDashboard />,
-      },
-      {
-        path: "student/dashboard",
-        element: <StudentDashboard />,
-        },
-      {
-        path: "student/group",
-        element: <StudentGroup/>,
-        },
+    {
+        path: "/",
+        element: <RouterWrapper />,
+        children: [
+            {
+                index: true,
+                element: <Home />,
+            },
+            {
+                path: "login",
+                element: <Login />,
+            },
 
-      {
-        path: "subject-head/dashboard",
-        element: <SubjectHeadDashboard />,
-      },
-      {
-        path: "/assign-teacher",
-        element: <AssignTeacherPage />,
-      },
-      {
-        path: "*",
-        element: <NotFound />,
-      },
-    ],
-  },
+            // --- NHÓM ROUTE CHO SINH VIÊN (Dùng chung Layout) ---
+            {
+                path: "student",
+                element: <MainLayout />, // Sidebar và Header nằm ở đây
+                children: [
+                    {
+                        path: "dashboard",
+                        element: <StudentDashboard />,
+                    },
+                    {
+                        path: "group",
+                        element: <StudentGroup />,
+                    },
+                    {
+                        path: "reports",
+                        element: <StudentGroup />, // Trang nộp báo cáo bạn vừa sửa
+                    },
+                ],
+            },
+
+            // --- CÁC ROUTE KHÁC (Admin, Teacher...) ---
+            {
+                path: "admin/dashboard",
+                element: <AdminDashboard />,
+            },
+            {
+                path: "teacher/dashboard",
+                element: <TeacherDashboard />,
+            },
+            {
+                path: "subject-head/dashboard",
+                element: <SubjectHeadDashboard />,
+            },
+            {
+                path: "assign-teacher",
+                element: <AssignTeacherPage />,
+            },
+            {
+                path: "*",
+                element: <NotFound />,
+            },
+        ],
+    },
 ]);
-
