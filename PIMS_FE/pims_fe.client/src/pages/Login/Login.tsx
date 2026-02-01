@@ -7,6 +7,8 @@ import { useNavigate } from "react-router-dom";
 import type { CredentialResponse } from "@react-oauth/google";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
+import ForgotPasswordForm from "./components/ForgotPasswordForm";
+import ResetPasswordForm from "./components/ResetPasswordForm";
 
 declare global {
   interface Window {
@@ -14,7 +16,7 @@ declare global {
   }
 }
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "forgot-password" | "reset-password";
 
 const Login = () => {
   const { login, register, loginWithGoogle } = useAuth();
@@ -23,6 +25,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [otp, setOtp] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -172,6 +175,14 @@ const Login = () => {
       return false;
     }
 
+    if (mode === "forgot-password") {
+      if (!otp.trim()) {
+        setError("Verification code is required");
+        return false;
+      }
+      return true;
+    }
+
     if (!password) {
       setError("Password is required");
       return false;
@@ -182,8 +193,8 @@ const Login = () => {
       return false;
     }
 
-    if (mode === "register") {
-      if (!fullName.trim()) {
+    if (mode === "register" || mode === "reset-password") {
+      if (mode === "register" && !fullName.trim()) {
         setError("Full name is required");
         return false;
       }
@@ -193,7 +204,7 @@ const Login = () => {
         return false;
       }
 
-      if (!agreeTerms) {
+      if (mode === "register" && !agreeTerms) {
         setError("You must agree to the terms and conditions");
         return false;
       }
@@ -278,8 +289,16 @@ const Login = () => {
     try {
       if (mode === "login") {
         await handleLogin();
-      } else {
+      } else if (mode === "register") {
         await handleRegister();
+      } else if (mode === "forgot-password") {
+        // UI only: simulate verification
+        setSuccess("OTP Verified! Please set your new password.");
+        setMode("reset-password");
+      } else if (mode === "reset-password") {
+        // UI only: simulate reset
+        setSuccess("Password reset successful! You can now login.");
+        setMode("login");
       }
     } finally {
       setIsLoading(false);
@@ -293,6 +312,14 @@ const Login = () => {
     setPassword("");
     setConfirmPassword("");
     setAgreeTerms(false);
+    setOtp("");
+  };
+
+  const switchToForgotPassword = () => {
+    setMode("forgot-password");
+    setError("");
+    setSuccess("");
+    setOtp("");
   };
 
   const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
@@ -383,7 +410,11 @@ const Login = () => {
         <div className="welcome-text">
           {mode === "login"
             ? "Welcome back! Please login to your account."
-            : "Create your account to get started."}
+            : mode === "register"
+              ? "Create your account to get started."
+              : mode === "forgot-password"
+                ? "Verify your identity to reset your password."
+                : "Reset password."}
         </div>
 
         {/* Alerts */}
@@ -432,8 +463,9 @@ const Login = () => {
             handleGoogleLogin={handleGoogleLogin}
             handleGoogleError={handleGoogleError}
             onSwitchMode={switchMode}
+            onForgotPassword={switchToForgotPassword}
           />
-        ) : (
+        ) : mode === "register" ? (
           <RegisterForm
             fullName={fullName}
             setFullName={setFullName}
@@ -454,6 +486,29 @@ const Login = () => {
             handleGoogleLogin={handleGoogleLogin}
             handleGoogleError={handleGoogleError}
             onSwitchMode={switchMode}
+          />
+        ) : mode === "forgot-password" ? (
+          <ForgotPasswordForm
+            email={email}
+            setEmail={setEmail}
+            otp={otp}
+            setOtp={setOtp}
+            isLoading={isLoading}
+            onVerify={handleSubmit}
+            onBackToLogin={switchMode}
+          />
+        ) : (
+          <ResetPasswordForm
+            password={password}
+            setPassword={setPassword}
+            confirmPassword={confirmPassword}
+            setConfirmPassword={setConfirmPassword}
+            isLoading={isLoading}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            onSubmit={handleSubmit}
           />
         )}
       </div>

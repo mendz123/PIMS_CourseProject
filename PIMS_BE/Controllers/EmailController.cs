@@ -77,5 +77,15 @@ public class EmailController : ControllerBase
 
         return StatusCode(500, ApiResponse<bool>.InternalError("Failed to send welcome email"));
     }
+    [HttpPost("send-verifyCode")]
+    public async Task<ActionResult<ApiResponse<bool>>> SendVerifyCode([FromBody] SendVerificationCodeRequest request)
+    {
+        var result = await _emailService.SendVerificationCodeAsync(request);
+        if (result)
+        {
+            return Ok(ApiResponse<bool>.Ok(true, "Verification code sent successfully"));
+        }
+        return StatusCode(500, ApiResponse<bool>.InternalError("Failed to send verification code"));
+    }
 }
 
