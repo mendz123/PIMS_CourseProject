@@ -50,4 +50,19 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         return await _context.SaveChangesAsync() > 0;
     }
+
+    public Task UpdateAsync(T entity)
+    {
+        _dbSet.Attach(entity);
+        _context.Entry(entity).State = EntityState.Modified;
+        return Task.CompletedTask;
+
+    }
+
+    public Task DeleteAsync(T entity)
+    {
+        _dbSet.Remove(entity);
+        return Task.CompletedTask;
+
+    }
 }

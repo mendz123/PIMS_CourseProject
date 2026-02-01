@@ -29,6 +29,8 @@ public partial class Group
 
     public virtual ICollection<MentorRequest> MentorRequests { get; set; } = new List<MentorRequest>();
 
+    public virtual ICollection<ProjectSubmission> ProjectSubmissions { get; set; } = new List<ProjectSubmission>();
+
     public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 
     public virtual Semester Semester { get; set; } = null!;
