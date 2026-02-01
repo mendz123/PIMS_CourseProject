@@ -3,7 +3,10 @@ import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
 import { TeacherDashboard } from "../pages/Teacher";
-import { SubjectHeadDashboard } from "../pages/SubjectHead";
+import {
+  SubjectHeadDashboard,
+  AssessmentManagement,
+} from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 import StudentGroup from "../pages/Student/StudentGroup";
