@@ -9,6 +9,7 @@ import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
 import ForgotPasswordForm from "./components/ForgotPasswordForm";
 import ResetPasswordForm from "./components/ResetPasswordForm";
+import { authService } from "../../services/authService";
 
 declare global {
   interface Window {
@@ -275,6 +276,75 @@ const Login = () => {
     }
   };
 
+  const handleSendOtp = async (targetEmail: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await authService.forgotPassword(targetEmail);
+      if (response.success) {
+        setSuccess("OTP code sent to your email!");
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to send OTP code.");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      setError("Please enter a valid 6-digit code.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await authService.verifyOtp({ email, otpCode: otp });
+      if (response.success) {
+        setSuccess("OTP Verified! Please set your new password.");
+        setMode("reset-password");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Invalid or expired OTP code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await authService.resetPasswordOtp({
+        email,
+        otpCode: otp,
+        newPassword: password,
+        confirmPassword,
+      });
+      if (response.success) {
+        setSuccess("Password reset successful! You can now login.");
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+        setOtp("");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to reset password.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -292,13 +362,9 @@ const Login = () => {
       } else if (mode === "register") {
         await handleRegister();
       } else if (mode === "forgot-password") {
-        // UI only: simulate verification
-        setSuccess("OTP Verified! Please set your new password.");
-        setMode("reset-password");
+        await handleVerifyOtp();
       } else if (mode === "reset-password") {
-        // UI only: simulate reset
-        setSuccess("Password reset successful! You can now login.");
-        setMode("login");
+        await handleResetPassword();
       }
     } finally {
       setIsLoading(false);
@@ -494,6 +560,7 @@ const Login = () => {
             otp={otp}
             setOtp={setOtp}
             isLoading={isLoading}
+            onSendCode={handleSendOtp}
             onVerify={handleSubmit}
             onBackToLogin={switchMode}
           />

@@ -199,6 +199,48 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<bool>.Ok(true, "Verification email sent successfully"));
     }
 
+    /// <summary>
+    /// Trigger forgot password - sends OTP code
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ApiResponse<bool>>> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+        if (!result)
+        {
+            return NotFound(ApiResponse<bool>.NotFound("Email not found"));
+        }
+        return Ok(ApiResponse<bool>.Ok(true, "OTP code sent to your email"));
+    }
+
+    /// <summary>
+    /// Verify OTP code
+    /// </summary>
+    [HttpPost("verify-otp")]
+    public async Task<ActionResult<ApiResponse<bool>>> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        var result = await _authService.VerifyOtpAsync(request);
+        if (!result)
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Invalid or expired OTP code"));
+        }
+        return Ok(ApiResponse<bool>.Ok(true, "OTP verified successfully"));
+    }
+
+    /// <summary>
+    /// Reset password using OTP
+    /// </summary>
+    [HttpPost("reset-password-otp")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResetPasswordWithOtp([FromBody] ResetPasswordOtpRequest request)
+    {
+        var result = await _authService.ResetPasswordWithOtpAsync(request);
+        if (!result)
+        {
+            return BadRequest(ApiResponse<bool>.BadRequest("Failed to reset password. OTP may be invalid or expired."));
+        }
+        return Ok(ApiResponse<bool>.Ok(true, "Password has been reset successfully"));
+    }
+
     // === PRIVATE METHODS ===
 
     /// <summary>

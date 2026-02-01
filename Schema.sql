@@ -294,3 +294,31 @@ INSERT INTO ProjectStatus (StatusName) VALUES
 INSERT INTO Semesters (SemesterName, StartDate, EndDate, MinGroupSize, MaxGroupSize, IsActive)
 VALUES
 (N'Spring 2026', '2026-01-01', '2026-05-31', 4, 6, 1);
+CREATE TABLE PasswordResetOtp (
+    Id UNIQUEIDENTIFIER NOT NULL
+        CONSTRAINT PK_PasswordResetOtp PRIMARY KEY
+        DEFAULT NEWID(),
+
+    Email NVARCHAR(255) NOT NULL,
+
+    OtpCode NVARCHAR(10) NOT NULL,
+
+    ExpiredAt DATETIME2 NOT NULL,
+
+    IsUsed BIT NOT NULL
+        CONSTRAINT DF_PasswordResetOtp_IsUsed DEFAULT 0,
+
+    CreatedAt DATETIME2 NOT NULL
+        CONSTRAINT DF_PasswordResetOtp_CreatedAt DEFAULT SYSDATETIME(),
+
+    UsedAt DATETIME2 NULL,
+
+    CONSTRAINT FK_PasswordResetOtp_Users
+        FOREIGN KEY (Email) REFERENCES Users(Email)
+);
+CREATE UNIQUE INDEX UX_PasswordResetOtp_Active
+ON PasswordResetOtp (Email)
+WHERE IsUsed = 0;
+CREATE INDEX IX_PasswordResetOtp_Verify
+ON PasswordResetOtp (Email, OtpCode, ExpiredAt);
+

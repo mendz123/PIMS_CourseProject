@@ -245,4 +245,48 @@ public class EmailService : IEmailService
 
         return await SendEmailAsync(toEmail, subject, htmlBody);
     }
+    /// <inheritdoc/>
+    public async Task<bool> SendPasswordResetOtpEmailAsync(string toEmail, string otpCode)
+    {
+        var subject = "PIMS - Password Reset OTP";
+        
+        var htmlBody = $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: linear-gradient(135deg, #0f172a 0%, #020617 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                    .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; text-align: center; }}
+                    .otp-box {{ display: inline-block; background: white; border: 2px solid #22d3ee; color: #22d3ee; padding: 20px 40px; border-radius: 10px; margin: 20px 0; font-size: 32px; font-weight: bold; letter-spacing: 5px; }}
+                    .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-top: 20px; text-align: left; }}
+                    .footer {{ text-align: center; margin-top: 20px; color: #888; font-size: 12px; }}
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <h1>🔐 Password Reset OTP</h1>
+                    </div>
+                    <div class='content'>
+                        <h2>Your Verification Code</h2>
+                        <p>We received a request to reset your password. Use the following code to verify your identity:</p>
+                        <div class='otp-box'>{otpCode}</div>
+                        <p>This code will expire in 10 minutes.</p>
+                        <div class='warning'>
+                            <strong>⚠️ Security Notice:</strong><br>
+                            If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+                        </div>
+                    </div>
+                    <div class='footer'>
+                        <p>© 2026 PIMS - Project Information Management System</p>
+                    </div>
+                </div>
+            </body>
+            </html>";
+
+        return await SendEmailAsync(toEmail, subject, htmlBody);
+    }
 }
+

@@ -18,9 +18,11 @@ namespace PIMS_BE.Services;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private readonly PimsDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IUserRepository _userRepository;
+    private readonly IPasswordResetOtpRepository _otpRepository;
+    private readonly IGenericRepository<Role> _roleRepository;
+    private readonly IGenericRepository<UserStatus> _statusRepository;
     private readonly IGoogleAuthService _googleAuthService;
     private readonly IEmailService _emailService;
     private readonly ILogger<AuthService> _logger;
@@ -31,15 +33,19 @@ public class AuthService : IAuthService
     private const int EMAIL_VERIFICATION_TOKEN_EXPIRATION_HOURS = 24;
 
     public AuthService(
-        PimsDbContext context, 
         IConfiguration configuration, 
         IUserRepository userRepository, 
+        IPasswordResetOtpRepository otpRepository,
+        IGenericRepository<Role> roleRepository,
+        IGenericRepository<UserStatus> statusRepository,
         IGoogleAuthService googleAuthService,
         IEmailService emailService,
         ILogger<AuthService> logger)
     {
-        _context = context;
         _userRepository = userRepository;
+        _otpRepository = otpRepository;
+        _roleRepository = roleRepository;
+        _statusRepository = statusRepository;
         _configuration = configuration;
         _googleAuthService = googleAuthService;
         _emailService = emailService;
@@ -49,10 +55,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
         // Find user by email
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .Include(u => u.Status)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _userRepository.GetByEmailAsync(request.Email);
 
         if (user == null)
         {
@@ -100,24 +103,28 @@ public class AuthService : IAuthService
         var name = googleUser.Name;
         var user = await _userRepository.GetByEmailAsync(email);
         
-        if(user != null)
+        if (user != null)
         {
             // Google users are auto-verified, ensure status is ACTIVE
             if (user.Status?.StatusName == "INACTIVE")
             {
-                var activeStatus = await _context.UserStatuses.FirstOrDefaultAsync(s => s.StatusName == "ACTIVE");
+                var statuses = await _statusRepository.FindAsync(s => s.StatusName == "ACTIVE");
+                var activeStatus = statuses.FirstOrDefault();
                 user.StatusId = activeStatus?.StatusId ?? 1;
                 user.EmailVerificationToken = null;
                 user.EmailVerificationTokenExpiresAt = null;
-                await _context.SaveChangesAsync();
+                await _userRepository.SaveChangesAsync();
             }
             return await GenerateAuthResponseAsync(user);
         } 
         else
         {
             // Create new user with ACTIVE status (Google verified)
-            var studentRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "STUDENT");
-            var activeStatus = await _context.UserStatuses.FirstOrDefaultAsync(s => s.StatusName == "ACTIVE");
+            var roles = await _roleRepository.FindAsync(r => r.RoleName == "STUDENT");
+            var studentRole = roles.FirstOrDefault();
+            
+            var statuses = await _statusRepository.FindAsync(s => s.StatusName == "ACTIVE");
+            var activeStatus = statuses.FirstOrDefault();
 
             var newUser = new User
             {
@@ -130,12 +137,11 @@ public class AuthService : IAuthService
                 EmailVerificationToken = null // No verification needed for Google
             };
 
-            _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
+            await _userRepository.AddAsync(newUser);
+            await _userRepository.SaveChangesAsync();
 
-            newUser = await _context.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserId == newUser.UserId);
+            // Re-fetch to get Includes
+            newUser = await _userRepository.GetByEmailAsync(email);
 
             // Send welcome email
             _ = Task.Run(async () =>
@@ -151,7 +157,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
     {
         // Check if email already exists
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var existingUser = await _userRepository.GetByEmailAsync(request.Email);
         if (existingUser != null)
             return null;
 
@@ -159,8 +165,11 @@ public class AuthService : IAuthService
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
         // Get default role (STUDENT) and status (INACTIVE - pending verification)
-        var studentRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "STUDENT");
-        var inactiveStatus = await _context.UserStatuses.FirstOrDefaultAsync(s => s.StatusName == "INACTIVE");
+        var roles = await _roleRepository.FindAsync(r => r.RoleName == "STUDENT");
+        var studentRole = roles.FirstOrDefault();
+        
+        var statuses = await _statusRepository.FindAsync(s => s.StatusName == "INACTIVE");
+        var inactiveStatus = statuses.FirstOrDefault();
 
         // Generate verification token
         var verificationToken = GenerateVerificationToken();
@@ -178,13 +187,11 @@ public class AuthService : IAuthService
             EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(EMAIL_VERIFICATION_TOKEN_EXPIRATION_HOURS)
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _userRepository.AddAsync(user);
+        await _userRepository.SaveChangesAsync();
 
         // Reload user with Role for auth response
-        user = await _context.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.UserId == user.UserId);
+        user = await _userRepository.GetByEmailAsync(user.Email);
 
         // Send verification email
         var verificationLink = $"http://localhost:5172/api/Auth/verify-email?token={verificationToken}";
@@ -218,9 +225,7 @@ public class AuthService : IAuthService
 
     public async Task<UserInfo?> GetUserInfoAsync(int userId)
     {
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.UserId == userId);
+        var user = await _userRepository.GetByIdAsync(userId);
 
         if (user == null)
             return null;
@@ -236,9 +241,8 @@ public class AuthService : IAuthService
 
     public async Task<bool> VerifyEmailAsync(string token)
     {
-        var user = await _context.Users
-            .Include(u => u.Status)
-            .FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
+        var users = await _userRepository.FindAsync(u => u.EmailVerificationToken == token);
+        var user = users.FirstOrDefault();
 
         if (user == null)
         {
@@ -254,13 +258,15 @@ public class AuthService : IAuthService
         }
 
         // Activate user
-        var activeStatus = await _context.UserStatuses.FirstOrDefaultAsync(s => s.StatusName == "ACTIVE");
+        var statuses = await _statusRepository.FindAsync(s => s.StatusName == "ACTIVE");
+        var activeStatus = statuses.FirstOrDefault();
+        
         user.StatusId = activeStatus?.StatusId ?? 1;
         user.EmailVerificationToken = null;
         user.EmailVerificationTokenExpiresAt = null;
         user.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await _userRepository.SaveChangesAsync();
 
         _logger.LogInformation("Email verified successfully for: {Email}", user.Email);
 
@@ -276,7 +282,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResendVerificationEmailAsync(string email)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await _userRepository.GetByEmailAsync(email);
 
         if (user == null)
         {
@@ -285,7 +291,9 @@ public class AuthService : IAuthService
         }
 
         // Check if already verified
-        var activeStatus = await _context.UserStatuses.FirstOrDefaultAsync(s => s.StatusName == "ACTIVE");
+        var statuses = await _statusRepository.FindAsync(s => s.StatusName == "ACTIVE");
+        var activeStatus = statuses.FirstOrDefault();
+        
         if (user.StatusId == activeStatus?.StatusId)
         {
             _logger.LogWarning("User already verified: {Email}", email);
@@ -297,13 +305,77 @@ public class AuthService : IAuthService
         user.EmailVerificationToken = verificationToken;
         user.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(EMAIL_VERIFICATION_TOKEN_EXPIRATION_HOURS);
 
-        await _context.SaveChangesAsync();
+        await _userRepository.SaveChangesAsync();
 
         // Send verification email
         var verificationLink = $"http://localhost:5172/api/Auth/verify-email?token={verificationToken}";
         var result = await _emailService.SendVerificationEmailAsync(user.Email, user.FullName ?? "User", verificationLink);
 
         return result;
+    }
+
+    public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user == null)
+            return false;
+
+        // Generate 6-digit OTP
+        var otpCode = new Random().Next(100000, 999999).ToString();
+
+        // Expire old ones
+        await _otpRepository.ExpireOtpsByEmailAsync(request.Email);
+
+        // Save to DB
+        var otpEntry = new PasswordResetOtp
+        {
+            Email = request.Email,
+            OtpCode = otpCode,
+            ExpiredAt = DateTime.UtcNow.AddMinutes(10), // 10 minutes expiry
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _otpRepository.AddAsync(otpEntry);
+        await _otpRepository.SaveChangesAsync();
+
+        // Send email
+        return await _emailService.SendPasswordResetOtpEmailAsync(request.Email, otpCode);
+    }
+
+    public async Task<bool> VerifyOtpAsync(VerifyOtpRequest request)
+    {
+        var otpEntry = await _otpRepository.GetActiveOtpByEmailAsync(request.Email, request.OtpCode);
+
+        if (otpEntry == null || otpEntry.ExpiredAt < DateTime.UtcNow)
+            return false;
+
+        return true;
+    }
+
+    public async Task<bool> ResetPasswordWithOtpAsync(ResetPasswordOtpRequest request)
+    {
+        // 1. Verify OTP one last time
+        var otpEntry = await _otpRepository.GetActiveOtpByEmailAsync(request.Email, request.OtpCode);
+
+        if (otpEntry == null || otpEntry.ExpiredAt < DateTime.UtcNow)
+            return false;
+
+        // 2. Find user
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user == null)
+            return false;
+
+        // 3. Update password
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // 4. Mark OTP as used
+        otpEntry.IsUsed = true;
+        otpEntry.UsedAt = DateTime.UtcNow;
+
+        await _userRepository.SaveChangesAsync();
+        return true;
     }
 
     private Task<AuthResponse> GenerateAuthResponseAsync(User user)

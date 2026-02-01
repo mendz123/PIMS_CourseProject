@@ -49,4 +49,24 @@ public interface IAuthService
     /// <param name="email">User email</param>
     /// <returns>True if email sent successfully</returns>
     Task<bool> ResendVerificationEmailAsync(string email);
+    /// <summary>
+    /// Send OTP code for password reset
+    /// </summary>
+    /// <param name="request">Forgot password request</param>
+    /// <returns>True if OTP sent successfully</returns>
+    Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request);
+
+    /// <summary>
+    /// Verify OTP code for password reset
+    /// </summary>
+    /// <param name="request">Verify OTP request</param>
+    /// <returns>True if OTP is valid</returns>
+    Task<bool> VerifyOtpAsync(VerifyOtpRequest request);
+
+    /// <summary>
+    /// Reset password using a valid OTP code
+    /// </summary>
+    /// <param name="request">Reset password request</param>
+    /// <returns>True if password reset successfully</returns>
+    Task<bool> ResetPasswordWithOtpAsync(ResetPasswordOtpRequest request);
 }

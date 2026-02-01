@@ -56,8 +56,8 @@ public partial class PimsDbContext : DbContext
     public virtual DbSet<StudentFinalResult> StudentFinalResults { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
     public virtual DbSet<UserStatus> UserStatuses { get; set; }
+    public virtual DbSet<PasswordResetOtp> PasswordResetOtps { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -469,6 +469,17 @@ public partial class PimsDbContext : DbContext
             entity.ToTable("UserStatus");
 
             entity.Property(e => e.StatusName).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<PasswordResetOtp>(entity =>
+        {
+            entity.ToTable("PasswordResetOtp");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.OtpCode).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.IsUsed).HasDefaultValue(false);
         });
 
         OnModelCreatingPartial(modelBuilder);

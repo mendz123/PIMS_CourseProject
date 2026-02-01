@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+D:\FPT University Project\PIMS_Project\PIMS_BE\Services\AuthService.cs(48,9): error CS0103: The name '_configuration' does not exist in the current context [D:\FPT University Project\PIMS_Project\PIMS_BE\PIMS_BE.csproj]
+D:\FPT University Project\PIMS_Project\PIMS_BE\Services\AuthService.cs(402,27): error CS0103: The name '_configuration' does not exist in the current context [D:\FPT University Project\PIMS_Project\PIMS_BE\PIMS_BE.csproj]
+
+Build FAILED.
+
+D:\FPT University Project\PIMS_Project\PIMS_BE\Services\AuthService.cs(48,9): error CS0103: The name '_configuration' does not exist in the current context [D:\FPT University Project\PIMS_Project\PIMS_BE\PIMS_BE.csproj]
+D:\FPT University Project\PIMS_Project\PIMS_BE\Services\AuthService.cs(402,27): error CS0103: The name '_configuration' does not exist in the current context [D:\FPT University Project\PIMS_Project\PIMS_BE\PIMS_BE.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:03.59
