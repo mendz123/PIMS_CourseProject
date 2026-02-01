@@ -1,17 +1,24 @@
-﻿import React, { useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import toast, { Toaster } from 'react-hot-toast';
+﻿import React, { useState, useEffect } from 'react';
+import { Toaster, toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { CloudUpload, FileText, Info, Loader2, SendHorizontal } from 'lucide-react';
+import { FileText, Users, AlertTriangle, UserPlus, Info, Bell } from 'lucide-react';
 
 const StudentGroup = () => {
-    const [loading, setLoading] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [iteration, setIteration] = useState('');
     const [currentDate] = useState(new Date());
 
-    // Mock Data
+    // Giả lập trạng thái từ Backend (Bạn sẽ thay thế bằng API thực tế)
+    const [userStatus, setUserStatus] = useState({
+        hasGroup: true,       // false nếu chưa có nhóm
+        hasProject: false,    // false nếu nhóm chưa có dự án
+    });
+
+    // Mock dữ liệu danh sách nhóm (dùng khi chưa có nhóm)
+    const availableGroups = [
+        { id: 101, name: "Nhóm 01 - AI Research", members: 3, max: 5, mentor: "TS. Nguyễn Văn A" },
+        { id: 102, name: "Nhóm 05 - Web E-com", members: 2, max: 4, mentor: "ThS. Lê Thị B" },
+    ];
+
     const projectInfo = {
         name: "Phần mềm quản lý đề tài PIMS",
         group: "Nhóm 07",
@@ -19,151 +26,139 @@ const StudentGroup = () => {
         deadline: "Iteration 2 - 15/02/2026"
     };
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        accept: {
-            'application/x-zip-compressed': ['.zip'],
-            'application/x-rar-compressed': ['.rar'],
-            'application/x-7z-compressed': ['.7z']
-        },
-        multiple: false,
-        onDrop: acceptedFiles => {
-            setSelectedFile(acceptedFiles[0]);
-            toast.success(`Đã chọn file: ${acceptedFiles[0].name}`);
-        }
-    });
-
-    const handleSubmit = async () => {
-        if (!iteration || !selectedFile) {
-            toast.error('Vui lòng chọn cột mốc và đính kèm file!');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            // Logic gọi API của bạn ở đây...
-            toast.success('Nộp báo cáo thành công lên Google Drive!');
-            setSelectedFile(null);
-        } catch (error) {
-            toast.error('Có lỗi xảy ra: ' + error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <>
+        <div className="max-w-7xl mx-auto">
             <Toaster position="top-right" />
 
-            {/* Header trang (Nằm dưới Header chung của Layout) */}
+            {/* Header chào mừng */}
             <header className="mb-8">
-                <h2 className="text-3xl font-bold text-[#0f172a]">Chào buổi sáng, Hoàng!</h2>
+                <h2 className="text-3xl font-bold text-[#0f172a]">Thông tin nhóm & Dự án</h2>
                 <p className="text-gray-500 capitalize">{format(currentDate, 'eeee, dd/MM/yyyy', { locale: vi })}</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Card A: Dự án hiện tại */}
-                <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                    <div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* CỘT TRÁI & GIỮA: TRẠNG THÁI NHÓM/DỰ ÁN */}
+                <div className="lg:col-span-2 space-y-8">
+
+                    {!userStatus.hasGroup ? (
+                        /* TRƯỜNG HỢP 1: CHƯA CÓ NHÓM */
+                        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><UserPlus size={24} /></div>
+                                <h3 className="text-xl font-bold text-[#1e293b]">Danh sách nhóm đang tuyển thành viên</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 text-gray-400 text-sm">
+                                            <th className="pb-4 font-semibold">Tên Nhóm</th>
+                                            <th className="pb-4 font-semibold text-center">Thành viên</th>
+                                            <th className="pb-4 font-semibold">Mentor</th>
+                                            <th className="pb-4"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-gray-600">
+                                        {availableGroups.map(group => (
+                                            <tr key={group.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                                                <td className="py-4 font-medium text-gray-900">{group.name}</td>
+                                                <td className="py-4 text-center">{group.members}/{group.max}</td>
+                                                <td className="py-4 text-sm">{group.mentor}</td>
+                                                <td className="py-4 text-right">
+                                                    <button className="bg-primary/10 text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary hover:text-white transition-all">
+                                                        Xin gia nhập
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    ) : (
+                        /* TRƯỜNG HỢP 2: ĐÃ CÓ NHÓM */
+                        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users size={24} /></div>
+                                <h3 className="text-xl font-bold text-[#1e293b]">Nhóm hiện tại: {projectInfo.group}</h3>
+                            </div>
+
+                            {!userStatus.hasProject ? (
+                                /* CẢNH BÁO CHƯA CÓ DỰ ÁN */
+                                <div className="flex flex-col items-center justify-center p-12 bg-amber-50 rounded-2xl border border-amber-100 text-center">
+                                    <AlertTriangle size={48} className="text-amber-500 mb-4 animate-pulse" />
+                                    <h4 className="text-lg font-bold text-amber-900">Nhóm chưa có dự án nào</h4>
+                                    <p className="text-amber-700 mt-2 max-w-md">Vui lòng liên hệ Mentor hoặc đợi cập nhật từ hệ thống để bắt đầu thực hiện dự án.</p>
+                                </div>
+                            ) : (
+                                /* THÔNG TIN DỰ ÁN KHI ĐÃ CÓ */
+                                <div className="space-y-6">
+                                    <div className="bg-slate-50 p-6 rounded-2xl flex items-start gap-4 border border-slate-100">
+                                        <div className="p-3 bg-white shadow-sm rounded-xl text-primary"><FileText size={32} /></div>
+                                        <div>
+                                            <h4 className="text-lg font-bold text-gray-900">{projectInfo.name}</h4>
+                                            <p className="text-gray-500 text-sm mt-1">Dự án chuyên ngành • Spring 2026</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                            <span className="text-gray-400 text-xs font-bold uppercase">Giảng viên hướng dẫn</span>
+                                            <p className="font-semibold text-gray-900 mt-1">{projectInfo.mentor}</p>
+                                        </div>
+                                        <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                            <span className="text-emerald-600 text-xs font-bold uppercase">Hạn nộp báo cáo</span>
+                                            <p className="font-semibold text-emerald-900 mt-1">{projectInfo.deadline}</p>
+                                        </div>
+                                    </div>
+                                    <button className="w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                                        Xem tài liệu dự án
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+                    )}
+                </div>
+
+                {/* CỘT PHẢI: THÔNG BÁO & HƯỚNG DẪN */}
+                <div className="space-y-8">
+                    {/* THÔNG BÁO */}
+                    <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><FileText size={24} /></div>
-                            <h3 className="text-xl font-bold text-[#1e293b]">Dự án hiện tại của bạn</h3>
+                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Bell size={20} /></div>
+                            <h3 className="text-lg font-bold text-[#1e293b] ">Thông báo mới</h3>
                         </div>
-                        <div className="space-y-4 text-gray-600">
-                            <p><span className="font-semibold text-gray-400 block text-sm">Tên dự án:</span> {projectInfo.name}</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <p><span className="font-semibold text-gray-400 block text-sm">Nhóm:</span> {projectInfo.group}</p>
-                                <p><span className="font-semibold text-gray-400 block text-sm">Mentor:</span> {projectInfo.mentor}</p>
-                            </div>
-                            <p className="text-[#10b981] font-medium"><span className="font-semibold text-gray-400 block text-sm">Hạn nộp:</span> {projectInfo.deadline}</p>
+                        <ul className="space-y-4">
+                            <li className="flex gap-4 pb-4 border-b border-gray-50 last:border-0">
+                                <div className="w-1.5 h-1.5 mt-2 bg-red-400 rounded-full shrink-0"></div>
+                                <p className="text-gray-600 text-xs leading-relaxed">Nhắc nhở nộp báo cáo Iteration 2 cho các nhóm đã có dự án.</p>
+                            </li>
+                            <li className="flex gap-4 pb-4 border-b border-gray-50 last:border-0">
+                                <div className="w-1.5 h-1.5 mt-2 bg-blue-400 rounded-full shrink-0"></div>
+                                <p className="text-gray-600 text-xs leading-relaxed">Đã cập nhật danh sách các nhóm chưa đủ thành viên kỳ này.</p>
+                            </li>
+                        </ul>
+                    </section>
+
+                    {/* HƯỚNG DẪN */}
+                    <section className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Info size={18} className="text-primary" />
+                            <h3 className="text-md font-bold text-white">Lưu ý sinh viên</h3>
                         </div>
-                    </div>
-                    <button className="mt-8 w-full py-3 border-2 border-[#10b981] text-[#10b981] rounded-xl font-bold hover:bg-[#10b981] hover:text-white transition-all">
-                        Xem chi tiết dự án
-                    </button>
-                </section>
+                        <ul className="space-y-3 text-xs text-slate-400 leading-relaxed">
+                            <li>• Mỗi nhóm chỉ được có tối đa 5 thành viên theo quy định của bộ môn.</li>
+                            <li>• Sau khi vào nhóm, trưởng nhóm sẽ là người đại diện gán dự án.</li>
+                            <li>• Mentor có quyền từ chối yêu cầu gia nhập nhóm nếu không phù hợp.</li>
+                        </ul>
+                    </section>
+                </div>
 
-                {/* Card B: Thông báo */}
-                <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 className="text-xl font-bold text-[#1e293b] mb-6">Thông báo mới nhất</h3>
-                    <ul className="space-y-4">
-                        <li className="flex gap-4 pb-4 border-b border-gray-50 last:border-0">
-                            <div className="w-2 h-2 mt-2 bg-red-400 rounded-full shrink-0"></div>
-                            <p className="text-gray-600 text-sm">Hệ thống bảo trì đêm nay để nâng cấp máy chủ.</p>
-                        </li>
-                        <li className="flex gap-4 pb-4 border-b border-gray-50 last:border-0">
-                            <div className="w-2 h-2 mt-2 bg-[#10b981] rounded-full shrink-0"></div>
-                            <p className="text-gray-600 text-sm">TS. Nguyễn Văn A đã duyệt báo cáo Iteration 1.</p>
-                        </li>
-                    </ul>
-                </section>
-
-                {/* Card C: Nộp báo cáo */}
-                <section className="bg-white p-8 rounded-2xl shadow-md border-t-4 border-t-[#10b981]">
-                    <h3 className="text-2xl font-bold text-[#1e293b] mb-6">Nộp báo cáo tiến độ</h3>
-                    <div className="mb-6">
-                        <label className="block text-sm font-bold text-gray-400 mb-2 uppercase tracking-wider">Cột mốc báo cáo</label>
-                        <select
-                            value={iteration}
-                            onChange={(e) => setIteration(e.target.value)}
-                            className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#10b981] outline-none"
-                        >
-                            <option value="">Chọn Iteration...</option>
-                            <option value="1">Iteration 1</option>
-                            <option value="2">Iteration 2</option>
-                            <option value="3">Iteration 3</option>
-                        </select>
-                    </div>
-
-                    <div {...getRootProps()} className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer mb-8 ${isDragActive ? 'border-[#10b981] bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'}`}>
-                        <input {...getInputProps()} />
-                        <CloudUpload size={48} className="mx-auto text-gray-300 mb-4" />
-                        {selectedFile ? (
-                            <div className="text-[#10b981] font-medium">
-                                <p className="text-lg">{selectedFile.name}</p>
-                                <p className="text-sm opacity-70">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
-                        ) : (
-                            <div>
-                                <p className="text-gray-500 font-medium">Kéo thả file hoặc nhấn để chọn bài nộp</p>
-                                <p className="text-gray-400 text-sm mt-1">Hỗ trợ .zip, .rar, .7z</p>
-                            </div>
-                        )}
-                    </div>
-
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="w-full bg-[#10b981] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-[#0da673] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                        {loading ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
-                        {loading ? 'ĐANG XỬ LÝ...' : 'NỘP BÀI NGAY'}
-                    </button>
-                </section>
-
-                {/* Card D: Hướng dẫn */}
-                <section className="bg-slate-50 p-8 rounded-2xl border border-slate-200">
-                    <div className="flex items-center gap-2 mb-6 text-slate-800">
-                        <Info size={20} />
-                        <h3 className="text-xl font-bold">Hướng dẫn nộp bài</h3>
-                    </div>
-                    <ul className="space-y-4 text-slate-600">
-                        <li className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-slate-200 text-slate-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                            <span>Đảm bảo chọn đúng cột mốc Iteration.</span>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-slate-200 text-slate-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                            <span>Chỉ chấp nhận .zip, .rar hoặc .7z.</span>
-                        </li>
-                    </ul>
-                </section>
             </div>
 
-            <footer className="text-center py-12 text-gray-400 text-sm">
-                PIMS © 2026. All rights reserved.
-            </footer>
-        </>
+            {/*<footer className="text-center py-12 text-gray-400 text-sm">*/}
+            {/*    PIMS © 2026 Student Portal System.*/}
+            {/*</footer>*/}
+        </div>
     );
 };
 

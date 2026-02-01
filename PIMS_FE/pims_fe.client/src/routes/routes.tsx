@@ -9,6 +9,7 @@ import AssignTeacherPage from "../pages/AssignTeacherPage";
 import StudentGroup from "../pages/Student/StudentGroup";
 // Import Layout mới của bạn
 import MainLayout from "../components/student/MainLayout";
+import ProgressReports from "../pages/Student/ProgressReports";
 
 const NotFound = () => <div>404 - Page Not Found</div>;
 
@@ -41,7 +42,7 @@ export const router = createBrowserRouter([
                     },
                     {
                         path: "reports",
-                        element: <StudentGroup />, // Trang nộp báo cáo bạn vừa sửa
+                        element: <ProgressReports />, // Trang nộp báo cáo bạn vừa sửa
                     },
                 ],
             },
