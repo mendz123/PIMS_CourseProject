@@ -1,0 +1,230 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
+.settings-container {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #dbdfe6;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid #dbdfe6;
+  background: #fafbfc;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 32px;
+}
+
+.settings-tab-btn {
+  padding-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #616f89;
+  position: relative;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.settings-tab-btn:hover {
+  color: var(--primary, #2563eb);
+}
+
+.settings-tab-btn.active {
+  color: var(--primary, #2563eb);
+}
+
+.settings-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--primary, #2563eb);
+  border-radius: 3px 3px 0 0;
+}
+
+.settings-content {
+  padding: 32px;
+}
+
+/* Profile Section */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 48px;
+}
+
+.profile-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.profile-avatar-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+
+.profile-avatar-large {
+  width: 100%;
+  height: 100%;
+  border-radius: 32px;
+  background: var(--primary, #2563eb);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  font-weight: 800;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2);
+}
+
+.avatar-edit-btn {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #dbdfe6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.avatar-edit-btn:hover {
+  background: #f8fafc;
+  transform: scale(1.05);
+}
+
+.form-group-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111318;
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #dbdfe6;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: #f8fafc;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary, #2563eb);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.form-input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  color: #64748b;
+}
+
+.submit-btn {
+  padding: 12px 24px;
+  background: var(--primary, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.submit-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.submit-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Change Password Section */
+.password-section-header {
+  margin-bottom: 32px;
+}
+
+.password-section-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111318;
+  margin-bottom: 8px;
+}
+
+.password-section-header p {
+  font-size: 14px;
+  color: #616f89;
+}
+
+.password-form {
+  max-width: 500px;
+}
+
+@media (max-width: 1024px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar-section {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-group-grid {
+    grid-template-columns: 1fr;
+  }
+}
