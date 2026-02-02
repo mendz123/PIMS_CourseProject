@@ -15,6 +15,8 @@ public partial class User
 
     public int RoleId { get; set; }
 
+    public Role? Role { get; set; }
+
     public int StatusId { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -55,9 +57,7 @@ public partial class User
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
-    public virtual Role Role { get; set; } = null!;
-
-    public virtual UserStatus Status { get; set; } = null!;
+    public virtual UserStatus? Status { get; set; }
 
     public virtual ICollection<StudentFinalResult> StudentFinalResults { get; set; } = new List<StudentFinalResult>();
 }
