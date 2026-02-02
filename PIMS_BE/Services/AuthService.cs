@@ -225,7 +225,7 @@ public class AuthService : IAuthService
 
     public async Task<UserInfo?> GetUserInfoAsync(int userId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdWithDetailsAsync(userId);
 
         if (user == null)
             return null;

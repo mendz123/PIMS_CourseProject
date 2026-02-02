@@ -322,3 +322,7 @@ WHERE IsUsed = 0;
 CREATE INDEX IX_PasswordResetOtp_Verify
 ON PasswordResetOtp (Email, OtpCode, ExpiredAt);
 
+ALTER TABLE Users
+ADD AvatarUrl NVARCHAR(255) NULL,
+    Bio NVARCHAR(500) NULL, 
+    PhoneNumber NVARCHAR(20) NULL;
