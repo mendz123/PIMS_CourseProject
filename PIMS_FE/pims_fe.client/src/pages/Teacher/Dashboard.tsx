@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
+import Notification from "../../components/dashboard/Notification";
 
 const TeacherDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -100,20 +101,21 @@ const TeacherDashboard: React.FC = () => {
                 Welcome back, {user?.fullName || "Dr. Sarah Jenkins"}.
               </p>
             </div>
-            <div
-              className="flex items-center gap-3 bg-white p-1.5 rounded-lg border border-[#dbdfe6] cursor-pointer hover:bg-gray-50 transition-all"
-              onClick={() => setActiveTab("settings")}
-            >
+            <div className="flex items-center gap-4">
+              <Notification />
+              <button
+                className={`p-2 rounded-lg transition-all ${activeTab === "settings" ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:text-primary"}`}
+                onClick={() => setActiveTab("settings")}
+              >
+                <span className="material-symbols-outlined">settings</span>
+              </button>
               <div
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8"
+                className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-primary"
                 style={{
                   backgroundImage:
-                    "url('https://lh3.googleusercontent.com/aida-public/AB6AXuALSk2G9Ojz1Q_QnQlex4qpx7roesE-GxUpVpNhkPl8ue1WQ8dpoS7LjNCJkBNEiNntiMZJc4_xlc_AtMsxohgj-E-UA15FuDZWOQjqrb1u2vXj-fFPjDpsf71-UctSBTKmCYX5d1NtlZ0ON1Uqa2uLpUxsIGTmnOe2mMFJp8Zin1-4xCUKNhKZaEwco9QJ_-KULl4qNMnlSpRIcL8sucq_pnBxpkHXASE1t8am7DUje2VTSOeUVK827I_XFqmG2bxCsJQBUptAM6He')",
+                    "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDnadSgEx4CX46drDPxSjtnPLMgxNliGkSyeHYu7O9zlNYVj_zdPn6Z-zQNLcW8Jih9fR1Rwbwc1vfeXju_j6JWLD8q8OSxBQpe_yuxCDmBZ2PFEibWInVDLKE5r44Nt5V6BWEGgctWIvVPmV5xTOZoN5QzduxrhSPoVYKZTF212z-H_dLuC-az0-Uc1uDraV1FMbEln5LGTeI5RaRilHER8yjQzgtf9DvIIBdOjiPGleeNI6QPese1Uh_jc5Gbv1AtJLiiEWhV_kR')",
                 }}
               ></div>
-              <span className="text-sm font-medium pr-2">
-                {user?.fullName?.split(" ").pop() || "S. Jenkins"}
-              </span>
             </div>
           </div>
         </header>

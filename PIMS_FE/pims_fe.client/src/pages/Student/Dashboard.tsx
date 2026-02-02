@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
+import Notification from "../../components/dashboard/Notification";
 
 const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -81,31 +82,21 @@ const StudentDashboard: React.FC = () => {
                 {activeTab} Dashboard
               </h2>
             </div>
-            <div className="flex items-center gap-6">
-              <label className="relative flex items-center min-w-64">
-                <span className="material-symbols-outlined absolute left-3 text-gray-400">
-                  search
-                </span>
-                <input
-                  className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary"
-                  placeholder="Search tasks or files..."
-                />
-              </label>
-              <div className="flex items-center gap-3">
-                <button
-                  className={`p-2 rounded-lg transition-all ${activeTab === "settings" ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}
-                  onClick={() => setActiveTab("settings")}
-                >
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
-                <div
-                  className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-primary"
-                  style={{
-                    backgroundImage:
-                      "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDnadSgEx4CX46drDPxSjtnPLMgxNliGkSyeHYu7O9zlNYVj_zdPn6Z-zQNLcW8Jih9fR1Rwbwc1vfeXju_j6JWLD8q8OSxBQpe_yuxCDmBZ2PFEibWInVDLKE5r44Nt5V6BWEGgctWIvVPmV5xTOZoN5QzduxrhSPoVYKZTF212z-H_dLuC-az0-Uc1uDraV1FMbEln5LGTeI5RaRilHER8yjQzgtf9DvIIBdOjiPGleeNI6QPese1Uh_jc5Gbv1AtJLiiEWhV_kR')",
-                  }}
-                ></div>
-              </div>
+            <div className="flex items-center gap-4">
+              <Notification />
+              <button
+                className={`p-2 rounded-lg transition-all ${activeTab === "settings" ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:text-primary"}`}
+                onClick={() => setActiveTab("settings")}
+              >
+                <span className="material-symbols-outlined">settings</span>
+              </button>
+              <div
+                className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-primary"
+                style={{
+                  backgroundImage:
+                    "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDnadSgEx4CX46drDPxSjtnPLMgxNliGkSyeHYu7O9zlNYVj_zdPn6Z-zQNLcW8Jih9fR1Rwbwc1vfeXju_j6JWLD8q8OSxBQpe_yuxCDmBZ2PFEibWInVDLKE5r44Nt5V6BWEGgctWIvVPmV5xTOZoN5QzduxrhSPoVYKZTF212z-H_dLuC-az0-Uc1uDraV1FMbEln5LGTeI5RaRilHER8yjQzgtf9DvIIBdOjiPGleeNI6QPese1Uh_jc5Gbv1AtJLiiEWhV_kR')",
+                }}
+              ></div>
             </div>
           </header>
 

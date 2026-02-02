@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
+import UserManagement from "../../components/admin/UserManagement";
+import Notification from "../../components/dashboard/Notification";
 import "./Dashboard.css";
 
 const AdminDashboard: React.FC = () => {
@@ -172,20 +174,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#616f89]">
-                search
-              </span>
-              <input
-                className="pl-10 pr-4 py-2 bg-[#f6f6f8] border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20"
-                placeholder="Search..."
-                type="text"
-              />
-            </div>
-            <button className="p-2 rounded-lg bg-[#f6f6f8] text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
-            </button>
+            <Notification />
             <div className="flex items-center gap-3 bg-[#f6f6f8] p-1.5 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
                 {user?.fullName?.charAt(0) || "A"}
@@ -362,6 +351,8 @@ const AdminDashboard: React.FC = () => {
             </>
           ) : activeTab === "settings" ? (
             <Settings />
+          ) : activeTab === "users" ? (
+            <UserManagement />
           ) : (
             <div className="bg-white border border-[#dbdfe6] rounded-xl p-12 text-center">
               <span className="material-symbols-outlined text-6xl text-[#616f89] mb-4">

@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
+import Notification from "../../components/dashboard/Notification";
 
 const SubjectHeadDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -126,20 +127,7 @@ const SubjectHeadDashboard: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#616f89]">
-                search
-              </span>
-              <input
-                className="pl-10 pr-4 py-2 bg-[#f6f6f8] border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/20"
-                placeholder="Search data..."
-                type="text"
-              />
-            </div>
-            <button className="p-2 rounded-lg bg-[#f6f6f8] text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all relative">
-              <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
-            </button>
+            <Notification />
             <button
               className={`p-2 rounded-lg transition-all ${activeTab === "settings" ? "bg-primary text-white" : "bg-[#f6f6f8] text-[#616f89] hover:text-primary"}`}
               onClick={() => setActiveTab("settings")}
