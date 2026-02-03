@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
 
 const PasswordSettings: React.FC = () => {
   const [passwords, setPasswords] = useState({
@@ -14,7 +15,7 @@ const PasswordSettings: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Changing password:", passwords);
+    toast("Password change functionality is coming soon!");
     // Implementation for change password will go here
   };
 

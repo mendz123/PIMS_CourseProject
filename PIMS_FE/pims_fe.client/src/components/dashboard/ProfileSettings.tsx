@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { userService } from "../../services/userService";
+import { toast } from "react-hot-toast";
 import type { UserInfo } from "../../types";
 
 const ProfileSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
@@ -53,12 +54,12 @@ const ProfileSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
 
       const response = await userService.updateProfile(formPayload);
       if (response.success) {
-        console.log("Profile updated successfully", response.data);
+        toast.success("Profile updated successfully!");
       } else {
-        console.error("Failed to update profile", response.message);
+        toast.error(response.message || "Failed to update profile");
       }
     } catch (error) {
-      console.error("Failed to update profile:", error);
+      toast.error("An unexpected error occurred");
     }
   };
 

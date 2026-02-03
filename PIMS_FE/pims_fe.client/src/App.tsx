@@ -4,10 +4,12 @@ import "./App.css";
 import { AuthProvider } from "./context/AuthContext";
 import { NavigationProvider } from "./context/NavigationContext";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <Toaster position="top-right" reverseOrder={false} />
       <AuthProvider>
         <NavigationProvider>
           <RouterProvider router={router} />
