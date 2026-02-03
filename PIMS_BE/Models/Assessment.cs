@@ -21,6 +21,15 @@ public partial class Assessment
 
     public DateTime? CreatedAt { get; set; }
 
+
+    public DateTime? StartDate { get; set; }
+
+   
+    public DateTime? Deadline { get; set; }
+
+   
+    public string? Description { get; set; }
+
     public virtual ICollection<AssessmentCriterion> AssessmentCriteria { get; set; } = new List<AssessmentCriterion>();
 
     public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();

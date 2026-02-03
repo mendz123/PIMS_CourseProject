@@ -1,33 +1,37 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs.Project;
+using PIMS_BE.Services;
 using PIMS_BE.Services.Interfaces;
-using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace PIMS_BE.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize] // Đảm bảo người dùng phải đăng nhập
+    [Authorize(Roles= "STUDENT")]
     public class SubmissionController : ControllerBase
     {
         private readonly IProjectService _projectService;
         private readonly IDriveFileService _driveFileService;
+        private readonly IAssessmentService _assessmentService;
 
-        public SubmissionController(IProjectService projectService, IDriveFileService driveFileService)
+        public SubmissionController(IProjectService projectService, IDriveFileService driveFileService, IAssessmentService assessmentService)
         {
             _projectService = projectService;
             _driveFileService = driveFileService;
+            _assessmentService = assessmentService;
         }
 
-        // 1. Nộp báo cáo mới
         [HttpPost("submit-report")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> SubmitReport([FromForm] SubmitProjectReportDto dto)
         {
             try
             {
-                int studentId = 15;
-                //int studentId = GetUserIdFromToken();
+                //int studentId = 15;
+                int studentId = GetUserIdFromToken();
+
                 var result = await _projectService.SubmitReportAsync(dto, studentId);
 
                 return Ok(new { Success = true, Message = "Báo cáo đã được nộp thành công!", Data = result });
@@ -38,7 +42,6 @@ namespace PIMS_BE.Controllers
             }
         }
 
-        // 2. Cập nhật báo cáo (Nộp đè file mới)
         [HttpPut("update-report/{submissionId}")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UpdateReport(int submissionId, [FromForm] SubmitProjectReportDto dto)
@@ -57,7 +60,6 @@ namespace PIMS_BE.Controllers
             }
         }
 
-        // 3. Rút bài nộp (Xóa báo cáo)
         [HttpDelete("withdraw-report/{submissionId}")]
         public async Task<IActionResult> WithdrawReport(int submissionId)
         {
@@ -75,14 +77,12 @@ namespace PIMS_BE.Controllers
             }
         }
 
-        // 4. Tải file từ Drive về (Dành cho GV/Mentor chấm bài)
         [HttpGet("download/{fileId}")]
         public async Task<IActionResult> Download(string fileId)
         {
             try
             {
                 var fileBytes = await _driveFileService.DownloadFileAsync(fileId);
-                // Bạn có thể lấy FileName thực tế từ DB nếu muốn tên file khi tải về chính xác hơn
                 return File(fileBytes, "application/octet-stream", "submission_file.zip");
             }
             catch (Exception ex)
@@ -91,12 +91,36 @@ namespace PIMS_BE.Controllers
             }
         }
 
-        // Hàm helper để lấy UserId từ Claim nhằm tránh lặp lại code
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory()
+        {
+            try
+            {
+                int userId = GetUserIdFromToken();
+                var result = await _projectService.GetSubmissionHistoryAsync(userId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Success = false, Message = ex.Message });
+            }
+        }
+        [HttpGet("active-iterations")]
+        public async Task<IActionResult> Get()
+        {
+            var result = await _assessmentService.GetActiveIterations();
+            return Ok(result);
+        }
         private int GetUserIdFromToken()
         {
-            var userIdClaim = User.FindFirst("UserId")?.Value;
+           
+            if (User.Identity?.IsAuthenticated != true)
+                throw new UnauthorizedAccessException("Bạn chưa đăng nhập hoặc Token không hợp lệ.");
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
             if (string.IsNullOrEmpty(userIdClaim))
-                throw new Exception("Phiên đăng nhập không hợp lệ hoặc thiếu User ID.");
+                throw new Exception("Không tìm thấy UserId trong Token.");
 
             return int.Parse(userIdClaim);
         }

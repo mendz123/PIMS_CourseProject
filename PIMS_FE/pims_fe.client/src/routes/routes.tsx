@@ -1,11 +1,11 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
-import { TeacherDashboard } from "../pages/Teacher";
+import { TeacherDashboard, GradingPage } from "../pages/Teacher";
 import {
-  SubjectHeadDashboard,
-  AssessmentManagement,
+    SubjectHeadDashboard,
+    AssessmentManagement,
 } from "../pages/SubjectHead";
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
@@ -29,11 +29,9 @@ export const router = createBrowserRouter([
                 path: "login",
                 element: <Login />,
             },
-
-            // --- NHÓM ROUTE CHO SINH VIÊN (Dùng chung Layout) ---
             {
                 path: "student",
-                element: <MainLayout />, // Sidebar và Header nằm ở đây
+                element: <MainLayout />,
                 children: [
                     {
                         path: "dashboard",
@@ -45,12 +43,10 @@ export const router = createBrowserRouter([
                     },
                     {
                         path: "reports",
-                        element: <ProgressReports />, // Trang nộp báo cáo bạn vừa sửa
+                        element: <ProgressReports />,
                     },
                 ],
             },
-
-            // --- CÁC ROUTE KHÁC (Admin, Teacher...) ---
             {
                 path: "admin/dashboard",
                 element: <AdminDashboard />,
@@ -60,8 +56,16 @@ export const router = createBrowserRouter([
                 element: <TeacherDashboard />,
             },
             {
+                path: "teacher/grading",
+                element: <GradingPage />,
+            },
+            {
                 path: "subject-head/dashboard",
                 element: <SubjectHeadDashboard />,
+            },
+            {
+                path: "subject-head/assessments",
+                element: <AssessmentManagement />,
             },
             {
                 path: "assign-teacher",

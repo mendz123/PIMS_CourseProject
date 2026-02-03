@@ -16,30 +16,25 @@ namespace PIMS_BE.Services.Interfaces
             _config = config;
         }
 
-        // Hàm lấy Service dùng OAuth 2.0 Refresh Token
         private async Task<DriveService> GetDriveServiceAsync()
         {
-            // 1. Tạo đối tượng ClientSecrets từ cấu hình
+          
             var secrets = new ClientSecrets
             {
                 ClientId = _config["GoogleDrive:ClientId"],
                 ClientSecret = _config["GoogleDrive:ClientSecret"]
             };
 
-            // 2. Khởi tạo TokenResponse với RefreshToken hiện có
             var tokenResponse = new TokenResponse { RefreshToken = _config["GoogleDrive:RefreshToken"] };
 
-            // 3. Quan trọng: Sử dụng UserCredential với đầy đủ Flow để có khả năng Refresh
             var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
             {
                 ClientSecrets = secrets,
                 Scopes = new[] { DriveService.Scope.DriveFile }
             });
 
-            // Tạo Credential và buộc nó phải Refresh nếu hết hạn
             var credential = new UserCredential(flow, "user", tokenResponse);
 
-            // Ép làm mới Token ngay lập tức nếu nó đã chết
             if (credential.Token.IsStale)
             {
                 var refreshed = await credential.RefreshTokenAsync(CancellationToken.None);
@@ -57,7 +52,6 @@ namespace PIMS_BE.Services.Interfaces
         {
             if (file == null || file.Length == 0) throw new ArgumentException("File is empty");
 
-            // Lấy service mới nhất (đã có token hợp lệ)
             var service = await GetDriveServiceAsync();
 
             var fileMetadata = new Google.Apis.Drive.v3.Data.File()
@@ -80,8 +74,6 @@ namespace PIMS_BE.Services.Interfaces
 
                 var uploadedFile = request.ResponseBody;
 
-                // Với OAuth cá nhân, không cần set permission "anyone" nếu bạn chỉ muốn mình xem được.
-                // Nhưng nếu muốn trả link cho Mentor xem, vẫn nên giữ đoạn này:
                 var permission = new Google.Apis.Drive.v3.Data.Permission { Role = "reader", Type = "anyone" };
                 await service.Permissions.Create(permission, uploadedFile.Id).ExecuteAsync();
 

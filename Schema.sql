@@ -344,3 +344,8 @@ ADD CONSTRAINT FK_Submission_Group
 ALTER TABLE ProjectSubmissions
 ADD CONSTRAINT FK_Submission_Submitter 
     FOREIGN KEY (SubmitterId) REFERENCES Users(UserId);
+
+	ALTER TABLE Assessments
+ADD StartDate DATETIME NULL,
+    Deadline DATETIME NULL,
+    Description NVARCHAR(MAX) NULL;

@@ -1,4 +1,4 @@
-using PIMS_BE.DTOs.Assessment;
+﻿using PIMS_BE.DTOs.Assessment;
 using PIMS_BE.Models;
 using PIMS_BE.Repositories;
 using PIMS_BE.Services.Interfaces;
@@ -255,4 +255,19 @@ public class AssessmentService : IAssessmentService
             TotalCriteriaWeight = criteria.Sum(c => c.Weight)
         };
     }
+
+    public async Task<IEnumerable<DeadlineAssessmentDto>> GetActiveIterations()
+    {
+        var data = await _assessmentRepository.GetActiveAssessmentsAsync();
+        
+        return data.Select(a => new DeadlineAssessmentDto
+        {
+            AssessmentId = a.AssessmentId,
+            Title = a.Title,
+            Deadline = a.Deadline,
+            Description = a.Description
+        });
+    }
+
+   
 }
