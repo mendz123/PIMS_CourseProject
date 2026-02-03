@@ -15,12 +15,23 @@ public partial class User
 
     public int RoleId { get; set; }
 
+    public Role? Role { get; set; }
+
     public int StatusId { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string? AvatarUrl { get; set; }
+
+    public string? PhoneNumber { get; set; }
+
+    public string? Bio { get; set; }
+
+    /// <summary>
+    /// Token for email verification (null if already verified)
+    /// </summary>
     public string? EmailVerificationToken { get; set; }
 
     public DateTime? EmailVerificationTokenExpiresAt { get; set; }
@@ -49,11 +60,7 @@ public partial class User
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
-    public virtual ICollection<ProjectSubmission> ProjectSubmissions { get; set; } = new List<ProjectSubmission>();
-
-    public virtual Role Role { get; set; } = null!;
-
-    public virtual UserStatus Status { get; set; } = null!;
+    public virtual UserStatus? Status { get; set; }
 
     public virtual ICollection<StudentFinalResult> StudentFinalResults { get; set; } = new List<StudentFinalResult>();
 }

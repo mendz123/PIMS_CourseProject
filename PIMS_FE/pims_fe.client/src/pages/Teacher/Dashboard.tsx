@@ -6,9 +6,14 @@ import TopicApprovalsTable from "../../components/teacher/TopicApprovalsTable";
 import PerformanceChart from "../../components/teacher/PerformanceChart";
 import ProgressTrackingTable from "../../components/teacher/ProgressTrackingTable";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import Settings from "../../components/dashboard/Settings";
+import Notification from "../../components/dashboard/Notification";
 
 const TeacherDashboard: React.FC = () => {
-    const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = React.useState("dashboard");
 
     // Mock data for now (could be fetched from API)
     const topicApprovals = [
@@ -76,14 +81,15 @@ const TeacherDashboard: React.FC = () => {
                     <ProgressTrackingTable items={progressItems} totalCount={24} />
                 </div>
 
-                <footer className="p-8 pt-0 max-w-[1200px] mx-auto text-center">
-                    <p className="text-[#616f89] text-xs font-medium">
-                        © 2024 Project-based Learning Management System (PIMS) - Version 2.4.1
-                    </p>
-                </footer>
-            </main>
-        </div>
-    );
+        <footer className="p-8 pt-0 max-w-[1200px] mx-auto text-center">
+          <p className="text-[#616f89] text-xs font-medium">
+            © 2024 Project-based Learning Management System (PIMS) - Version
+            2.4.1
+          </p>
+        </footer>
+      </main>
+    </div>
+  );
 };
 
 export default TeacherDashboard;

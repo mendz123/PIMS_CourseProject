@@ -67,6 +67,33 @@ export const authService = {
     );
     return response.data;
   },
+
+  forgotPassword: async (email: string): Promise<ApiResponse<boolean>> => {
+    const response = await api.post<ApiResponse<boolean>>(
+      "/api/auth/forgot-password",
+      { email },
+    );
+    return response.data;
+  },
+
+  verifyOtp: async (data: {
+    email: string;
+    otpCode: string;
+  }): Promise<ApiResponse<boolean>> => {
+    const response = await api.post<ApiResponse<boolean>>(
+      "/api/auth/verify-otp",
+      data,
+    );
+    return response.data;
+  },
+
+  resetPasswordOtp: async (data: any): Promise<ApiResponse<boolean>> => {
+    const response = await api.post<ApiResponse<boolean>>(
+      "/api/auth/reset-password-otp",
+      data,
+    );
+    return response.data;
+  },
 };
 
 export default authService;

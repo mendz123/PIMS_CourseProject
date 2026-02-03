@@ -47,4 +47,11 @@ public interface IEmailService
     /// <param name="verificationLink">Full verification URL with token</param>
     /// <returns>True if email sent successfully</returns>
     Task<bool> SendVerificationEmailAsync(string toEmail, string userName, string verificationLink);
+    /// <summary>
+    /// Send password reset email with OTP code
+    /// </summary>
+    /// <param name="toEmail">Recipient email address</param>
+    /// <param name="otpCode">OTP code</param>
+    /// <returns>True if email sent successfully</returns>
+    Task<bool> SendPasswordResetOtpEmailAsync(string toEmail, string otpCode);
 }
