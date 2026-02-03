@@ -13,6 +13,11 @@ export interface UserInfo {
   email: string;
   fullName?: string;
   role?: string;
+  isLoginGoogle?: boolean;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  bio?: string;
+  status?: string;
 }
 
 // Auth Types
