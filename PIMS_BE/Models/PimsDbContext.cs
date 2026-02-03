@@ -49,6 +49,10 @@ public partial class PimsDbContext : DbContext
 
     public virtual DbSet<ProjectStatus> ProjectStatuses { get; set; }
 
+    public virtual DbSet<ProjectSubmission> ProjectSubmissions { get; set; }
+
+    public virtual DbSet<ProjectTemplate> ProjectTemplates { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<Semester> Semesters { get; set; }
@@ -66,6 +70,7 @@ public partial class PimsDbContext : DbContext
             // Connection string is configured through dependency injection
         }
     }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -392,6 +397,38 @@ public partial class PimsDbContext : DbContext
             entity.Property(e => e.StatusName).HasMaxLength(50);
         });
 
+        modelBuilder.Entity<ProjectSubmission>(entity =>
+        {
+            entity.HasKey(e => e.SubmissionId).HasName("PK__ProjectS__449EE125918F1902");
+
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileResourceId).HasMaxLength(255);
+            entity.Property(e => e.SubmittedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.ProjectSubmissions)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Submission_Project");
+        });
+
+        modelBuilder.Entity<ProjectTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId).HasName("PK__ProjectT__F87ADD2755CD81C4");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.FileResourceId).HasMaxLength(255);
+            entity.Property(e => e.TemplateName).HasMaxLength(255);
+
+            entity.HasOne(d => d.Semester).WithMany(p => p.ProjectTemplates)
+                .HasForeignKey(d => d.SemesterId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Template_Semester");
+        });
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE1AE514E27E");
@@ -445,6 +482,10 @@ public partial class PimsDbContext : DbContext
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+            entity.Property(e => e.EmailVerificationToken)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.EmailVerificationTokenExpiresAt).HasColumnType("datetime");
             entity.Property(e => e.FullName).HasMaxLength(255);
             entity.Property(e => e.PasswordHash)
                 .HasMaxLength(255)

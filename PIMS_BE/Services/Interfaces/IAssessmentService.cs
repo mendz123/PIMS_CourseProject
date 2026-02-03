@@ -14,4 +14,6 @@ public interface IAssessmentService
     Task LockAssessmentAsync(int assessmentId, int userId);
     Task UnlockAssessmentAsync(int assessmentId, int userId);
     Task<bool> ValidateAssessmentWeightsAsync(int semesterId, int? excludeAssessmentId = null);
+
+    Task<IEnumerable<DeadlineAssessmentDto>> GetActiveIterations();
 }

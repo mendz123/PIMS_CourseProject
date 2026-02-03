@@ -1,5 +1,6 @@
-using PIMS_BE.Models;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Pqc.Crypto.Lms;
+using PIMS_BE.Models;
 
 namespace PIMS_BE.Repositories;
 
@@ -10,6 +11,7 @@ public interface IAssessmentRepository : IGenericRepository<Assessment>
     Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId);
     Task<bool> HasScoresAsync(int assessmentId);
     Task<decimal> GetTotalWeightBySemesterAsync(int semesterId, int? excludeAssessmentId = null);
+    Task<IEnumerable<Assessment>> GetActiveAssessmentsAsync();
 }
 
 public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRepository
@@ -63,4 +65,8 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
 
         return await query.SumAsync(a => a.Weight ?? 0);
     }
-}
+        public async Task<IEnumerable<Assessment>> GetActiveAssessmentsAsync()
+        {
+            return await _context.Assessments.Where(a => a.IsLocked != true).ToListAsync();
+        }
+    }

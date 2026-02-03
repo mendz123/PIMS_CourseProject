@@ -3,11 +3,11 @@
     "Name": "New Profile",
     "Projects": [
       {
-        "Path": "PIMS_FE\\pims_fe.client\\PIMS_FE.client.esproj",
+        "Path": "PIMS_BE\\PIMS_BE.csproj",
         "Action": "Start"
       },
       {
-        "Path": "PIMS_BE\\PIMS_BE.csproj",
+        "Path": "PIMS_FE\\pims_fe.client\\PIMS_FE.client.esproj",
         "Action": "Start"
       }
     ]

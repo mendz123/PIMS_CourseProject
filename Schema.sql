@@ -294,35 +294,58 @@ INSERT INTO ProjectStatus (StatusName) VALUES
 INSERT INTO Semesters (SemesterName, StartDate, EndDate, MinGroupSize, MaxGroupSize, IsActive)
 VALUES
 (N'Spring 2026', '2026-01-01', '2026-05-31', 4, 6, 1);
-CREATE TABLE PasswordResetOtp (
-    Id UNIQUEIDENTIFIER NOT NULL
-        CONSTRAINT PK_PasswordResetOtp PRIMARY KEY
-        DEFAULT NEWID(),
 
-    Email NVARCHAR(255) NOT NULL,
-
-    OtpCode NVARCHAR(10) NOT NULL,
-
-    ExpiredAt DATETIME2 NOT NULL,
-
-    IsUsed BIT NOT NULL
-        CONSTRAINT DF_PasswordResetOtp_IsUsed DEFAULT 0,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_PasswordResetOtp_CreatedAt DEFAULT SYSDATETIME(),
-
-    UsedAt DATETIME2 NULL,
-
-    CONSTRAINT FK_PasswordResetOtp_Users
-        FOREIGN KEY (Email) REFERENCES Users(Email)
+-- Lưu mẫu từ Trưởng bộ môn
+CREATE TABLE ProjectTemplates (
+    TemplateId INT IDENTITY PRIMARY KEY,
+    SemesterId INT NOT NULL,
+    CreatedBy INT NOT NULL,
+    TemplateName NVARCHAR(255) NOT NULL,
+    TemplateUrl NVARCHAR(MAX) NOT NULL,  
+    FileResourceId NVARCHAR(255),        
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Template_Semester FOREIGN KEY (SemesterId) REFERENCES Semesters(SemesterId)
 );
-CREATE UNIQUE INDEX UX_PasswordResetOtp_Active
-ON PasswordResetOtp (Email)
-WHERE IsUsed = 0;
-CREATE INDEX IX_PasswordResetOtp_Verify
-ON PasswordResetOtp (Email, OtpCode, ExpiredAt);
 
-ALTER TABLE Users
-ADD AvatarUrl NVARCHAR(255) NULL,
-    Bio NVARCHAR(500) NULL, 
-    PhoneNumber NVARCHAR(20) NULL;
+
+-- Lưu bài nộp của Sinh viên
+CREATE TABLE ProjectSubmissions (
+    SubmissionId INT IDENTITY PRIMARY KEY,
+    ProjectId INT NOT NULL,
+    SubmitterId INT NOT NULL,
+    FileName NVARCHAR(255) NOT NULL,
+    ReportUrl NVARCHAR(MAX) NOT NULL,
+    FileResourceId NVARCHAR(255), 
+    SubmittedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Submission_Project FOREIGN KEY (ProjectId) REFERENCES Projects(ProjectId)
+);
+
+-- 1. Thêm cột AssessmentId (Bắt buộc để biết nộp cho đợt nào: Iteration 1, 2, Final...)
+ALTER TABLE ProjectSubmissions
+ADD AssessmentId INT NOT NULL;
+
+-- 2. Thêm cột GroupId (Để truy vấn nhanh nhóm nào nộp bài mà không cần JOIN xa)
+ALTER TABLE ProjectSubmissions
+ADD GroupId INT NOT NULL;
+
+-- 3. Thêm cột Note (Cho phép sinh viên để lại lời nhắn khi nộp file)
+ALTER TABLE ProjectSubmissions
+ADD Note NVARCHAR(MAX) NULL;
+
+-- 4. Tạo các khóa ngoại (Foreign Keys) để đảm bảo tính toàn vẹn
+ALTER TABLE ProjectSubmissions
+ADD CONSTRAINT FK_Submission_Assessment 
+    FOREIGN KEY (AssessmentId) REFERENCES Assessments(AssessmentId);
+
+ALTER TABLE ProjectSubmissions
+ADD CONSTRAINT FK_Submission_Group 
+    FOREIGN KEY (GroupId) REFERENCES Groups(GroupId);
+
+ALTER TABLE ProjectSubmissions
+ADD CONSTRAINT FK_Submission_Submitter 
+    FOREIGN KEY (SubmitterId) REFERENCES Users(UserId);
+
+	ALTER TABLE Assessments
+ADD StartDate DATETIME NULL,
+    Deadline DATETIME NULL,
+    Description NVARCHAR(MAX) NULL;

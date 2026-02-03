@@ -78,3 +78,5 @@ appsettings.json
 *.ntvs*
 *.njsproj
 *.sln.docstates
+
+.fake

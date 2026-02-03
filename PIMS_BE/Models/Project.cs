@@ -17,5 +17,7 @@ public partial class Project
 
     public virtual Group Group { get; set; } = null!;
 
+    public virtual ICollection<ProjectSubmission> ProjectSubmissions { get; set; } = new List<ProjectSubmission>();
+
     public virtual ProjectStatus Status { get; set; } = null!;
 }

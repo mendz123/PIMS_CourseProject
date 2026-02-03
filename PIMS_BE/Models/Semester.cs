@@ -25,5 +25,7 @@ public partial class Semester
 
     public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
 
+    public virtual ICollection<ProjectTemplate> ProjectTemplates { get; set; } = new List<ProjectTemplate>();
+
     public virtual ICollection<StudentFinalResult> StudentFinalResults { get; set; } = new List<StudentFinalResult>();
 }

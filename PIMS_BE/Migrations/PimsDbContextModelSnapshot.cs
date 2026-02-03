@@ -38,6 +38,12 @@ namespace PIMS_BE.Migrations
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("Deadline")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool?>("IsFinal")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -50,6 +56,9 @@ namespace PIMS_BE.Migrations
 
                     b.Property<int>("SemesterId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Title")
                         .HasMaxLength(255)
@@ -550,6 +559,98 @@ namespace PIMS_BE.Migrations
                     b.ToTable("ProjectStatus", (string)null);
                 });
 
+            modelBuilder.Entity("PIMS_BE.Models.ProjectSubmission", b =>
+                {
+                    b.Property<int>("SubmissionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubmissionId"));
+
+                    b.Property<int>("AssessmentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FileResourceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReportUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("SubmitterId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubmissionId")
+                        .HasName("PK__ProjectS__449EE125918F1902");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("SubmitterId");
+
+                    b.ToTable("ProjectSubmissions");
+                });
+
+            modelBuilder.Entity("PIMS_BE.Models.ProjectTemplate", b =>
+                {
+                    b.Property<int>("TemplateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TemplateId"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileResourceId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("SemesterId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("TemplateUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TemplateId")
+                        .HasName("PK__ProjectT__F87ADD2755CD81C4");
+
+                    b.HasIndex("SemesterId");
+
+                    b.ToTable("ProjectTemplates");
+                });
+
             modelBuilder.Entity("PIMS_BE.Models.Role", b =>
                 {
                     b.Property<int>("RoleId")
@@ -671,10 +772,12 @@ namespace PIMS_BE.Migrations
                         .HasColumnType("varchar(100)");
 
                     b.Property<string>("EmailVerificationToken")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)");
 
                     b.Property<DateTime?>("EmailVerificationTokenExpiresAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime");
 
                     b.Property<string>("FullName")
                         .HasMaxLength(255)
@@ -1011,6 +1114,52 @@ namespace PIMS_BE.Migrations
                     b.Navigation("Status");
                 });
 
+            modelBuilder.Entity("PIMS_BE.Models.ProjectSubmission", b =>
+                {
+                    b.HasOne("PIMS_BE.Models.Assessment", "Assessment")
+                        .WithMany("ProjectSubmissions")
+                        .HasForeignKey("AssessmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PIMS_BE.Models.Group", "Group")
+                        .WithMany("ProjectSubmissions")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PIMS_BE.Models.Project", "Project")
+                        .WithMany("ProjectSubmissions")
+                        .HasForeignKey("ProjectId")
+                        .IsRequired()
+                        .HasConstraintName("FK_Submission_Project");
+
+                    b.HasOne("PIMS_BE.Models.User", "Submitter")
+                        .WithMany("ProjectSubmissions")
+                        .HasForeignKey("SubmitterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assessment");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Submitter");
+                });
+
+            modelBuilder.Entity("PIMS_BE.Models.ProjectTemplate", b =>
+                {
+                    b.HasOne("PIMS_BE.Models.Semester", "Semester")
+                        .WithMany("ProjectTemplates")
+                        .HasForeignKey("SemesterId")
+                        .IsRequired()
+                        .HasConstraintName("FK_Template_Semester");
+
+                    b.Navigation("Semester");
+                });
+
             modelBuilder.Entity("PIMS_BE.Models.StudentFinalResult", b =>
                 {
                     b.HasOne("PIMS_BE.Models.Semester", "Semester")
@@ -1054,6 +1203,8 @@ namespace PIMS_BE.Migrations
                     b.Navigation("AssessmentCriteria");
 
                     b.Navigation("AssessmentScores");
+
+                    b.Navigation("ProjectSubmissions");
                 });
 
             modelBuilder.Entity("PIMS_BE.Models.AssessmentCriterion", b =>
@@ -1082,6 +1233,8 @@ namespace PIMS_BE.Migrations
 
                     b.Navigation("MentorRequests");
 
+                    b.Navigation("ProjectSubmissions");
+
                     b.Navigation("Projects");
                 });
 
@@ -1098,6 +1251,11 @@ namespace PIMS_BE.Migrations
             modelBuilder.Entity("PIMS_BE.Models.MentorRequestStatus", b =>
                 {
                     b.Navigation("MentorRequests");
+                });
+
+            modelBuilder.Entity("PIMS_BE.Models.Project", b =>
+                {
+                    b.Navigation("ProjectSubmissions");
                 });
 
             modelBuilder.Entity("PIMS_BE.Models.ProjectStatus", b =>
@@ -1117,6 +1275,8 @@ namespace PIMS_BE.Migrations
                     b.Navigation("Councils");
 
                     b.Navigation("Groups");
+
+                    b.Navigation("ProjectTemplates");
 
                     b.Navigation("StudentFinalResults");
                 });
@@ -1146,6 +1306,8 @@ namespace PIMS_BE.Migrations
                     b.Navigation("MentorRequests");
 
                     b.Navigation("Notifications");
+
+                    b.Navigation("ProjectSubmissions");
 
                     b.Navigation("StudentFinalResults");
                 });

@@ -54,6 +54,7 @@ builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpRepository>();
 
 // Register Services
@@ -65,6 +66,11 @@ builder.Services.AddScoped<IAssessmentCriterionService, AssessmentCriterionServi
 // Register Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
+
+builder.Services.AddScoped<IDriveFileService, DriveFileService>();
+builder.Services.AddScoped<IProjectSubmissionRepository, ProjectSubmissionRepository>();
+// Đăng ký Service xử lý logic Dự án và Báo cáo
+builder.Services.AddScoped<IProjectService, ProjectService>();
 
 builder.Services.AddControllers();
 

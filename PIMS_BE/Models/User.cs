@@ -34,9 +34,6 @@ public partial class User
     /// </summary>
     public string? EmailVerificationToken { get; set; }
 
-    /// <summary>
-    /// Expiration time for the verification token
-    /// </summary>
     public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
     public virtual ICollection<AssessmentScore> AssessmentScores { get; set; } = new List<AssessmentScore>();

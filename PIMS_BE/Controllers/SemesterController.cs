@@ -1,3 +1,4 @@
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
@@ -92,3 +93,4 @@ public class SemesterDto
     public DateOnly? EndDate { get; set; }
     public bool? IsActive { get; set; }
 }
+
