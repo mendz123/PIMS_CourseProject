@@ -6,6 +6,9 @@ using Microsoft.OpenApi.Models;
 using PIMS_BE.Models;
 using PIMS_BE.Services;
 using PIMS_BE.Services.Interfaces;
+using PIMS_BE.Configurations;
+using Microsoft.Extensions.Options;
+using CloudinaryDotNet;
 using PIMS_BE.Repositories;
 using PIMS_BE.Middlewares;
 using PIMS_BE.Helpers;
@@ -56,6 +59,7 @@ builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpRepository>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // Register Services
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -112,6 +116,25 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
+
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("Cloudinary"));
+
+builder.Services.AddSingleton(provider =>
+{
+    var config = provider
+        .GetRequiredService<IOptions<CloudinarySettings>>()
+        .Value;
+
+    var account = new Account(
+        config.CloudName,
+        config.ApiKey,
+        config.ApiSecret
+    );
+
+    return new Cloudinary(account);
+});
+
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

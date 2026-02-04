@@ -129,7 +129,7 @@ public class AuthService : IAuthService
             var newUser = new User
             {
                 Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("nopassword"),
                 FullName = name,
                 RoleId = studentRole?.RoleId ?? 1,
                 StatusId = activeStatus?.StatusId ?? 1, // ACTIVE - Google verified
@@ -229,13 +229,19 @@ public class AuthService : IAuthService
 
         if (user == null)
             return null;
-
+        
+        bool IsLoginGoogle = BCrypt.Net.BCrypt.Verify("nopassword", user.PasswordHash);
         return new UserInfo
         {
             UserId = user.UserId,
             Email = user.Email,
             FullName = user.FullName,
-            Role = user.Role?.RoleName
+            Role = user.Role?.RoleName,
+            AvatarUrl = user.AvatarUrl,
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            Status = user.Status?.StatusName,
+            IsLoginGoogle = IsLoginGoogle,
         };
     }
 

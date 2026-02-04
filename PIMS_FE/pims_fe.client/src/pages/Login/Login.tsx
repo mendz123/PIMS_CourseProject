@@ -10,6 +10,7 @@ import RegisterForm from "./components/RegisterForm";
 import ForgotPasswordForm from "./components/ForgotPasswordForm";
 import ResetPasswordForm from "./components/ResetPasswordForm";
 import { authService } from "../../services/authService";
+import { toast } from "react-hot-toast";
 
 declare global {
   interface Window {
@@ -217,6 +218,7 @@ const Login = () => {
   const handleLogin = async () => {
     try {
       const response = await login({ email, password });
+      toast.success("Login successful! Welcome " + response.data.user.fullName);
       setSuccess("Login successful! Welcome " + response.data.user.fullName);
       console.log("Login successful:", response.data);
       // TODO: Redirect to dashboard or home page
@@ -231,6 +233,7 @@ const Login = () => {
           "Login failed. Please try again.";
         const statusCode = axiosError.response?.status;
 
+        toast.error(errorMessage);
         setError(errorMessage);
 
         // Show resend verification option if email not verified (403 status)
@@ -243,6 +246,7 @@ const Login = () => {
           setShowResendVerification(false);
         }
       } else {
+        toast.error("Login failed. Please try again.");
         setError("Login failed. Please try again.");
         setShowResendVerification(false);
       }
@@ -256,6 +260,9 @@ const Login = () => {
         password,
         fullName,
       });
+      toast.success(
+        "Registration successful! Please check your email to verify.",
+      );
       setSuccess(
         `Registration successful! Please check your email (${email}) to verify your account.`,
       );
@@ -266,11 +273,13 @@ const Login = () => {
         const axiosError = err as {
           response?: { data?: { message?: string } };
         };
-        setError(
+        const msg =
           axiosError.response?.data?.message ||
-            "Registration failed. Please try again.",
-        );
+          "Registration failed. Please try again.";
+        toast.error(msg);
+        setError(msg);
       } else {
+        toast.error("Registration failed. Please try again.");
         setError("Registration failed. Please try again.");
       }
     }
@@ -283,12 +292,15 @@ const Login = () => {
     try {
       const response = await authService.forgotPassword(targetEmail);
       if (response.success) {
+        toast.success("OTP code sent to your email!");
         setSuccess("OTP code sent to your email!");
         return true;
       }
       return false;
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to send OTP code.");
+      const msg = err?.response?.data?.message || "Failed to send OTP code.";
+      toast.error(msg);
+      setError(msg);
       return false;
     } finally {
       setIsLoading(false);
@@ -306,11 +318,15 @@ const Login = () => {
     try {
       const response = await authService.verifyOtp({ email, otpCode: otp });
       if (response.success) {
+        toast.success("OTP Verified! Please set your new password.");
         setSuccess("OTP Verified! Please set your new password.");
         setMode("reset-password");
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Invalid or expired OTP code.");
+      const msg =
+        err?.response?.data?.message || "Invalid or expired OTP code.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -332,6 +348,7 @@ const Login = () => {
         confirmPassword,
       });
       if (response.success) {
+        toast.success("Password reset successful! You can now login.");
         setSuccess("Password reset successful! You can now login.");
         setMode("login");
         setPassword("");
@@ -339,7 +356,9 @@ const Login = () => {
         setOtp("");
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to reset password.");
+      const msg = err?.response?.data?.message || "Failed to reset password.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -393,6 +412,7 @@ const Login = () => {
     setSuccess("");
     try {
       const response = await loginWithGoogle(credentialResponse.credential!);
+      toast.success("Login successful! Welcome " + response.data.user.fullName);
       setSuccess("Login successful! Welcome " + response.data.user.fullName);
       // TODO: Redirect to dashboard
       navigate("/");
@@ -402,11 +422,13 @@ const Login = () => {
         const axiosError = err as {
           response?: { data?: { message?: string } };
         };
-        setError(
+        const msg =
           axiosError.response?.data?.message ||
-            "Google login failed. Please try again.",
-        );
+          "Google login failed. Please try again.";
+        toast.error(msg);
+        setError(msg);
       } else {
+        toast.error("Google login failed. Please try again.");
         setError("Google login failed. Please try again.");
       }
     }
@@ -435,14 +457,18 @@ const Login = () => {
       );
 
       if (response.ok) {
+        toast.success("Verification email sent! Please check your inbox.");
         setSuccess("Verification email sent! Please check your inbox.");
         setError("");
         setShowResendVerification(false);
       } else {
         const data = await response.json();
-        setError(data.message || "Failed to send verification email.");
+        const msg = data.message || "Failed to send verification email.";
+        toast.error(msg);
+        setError(msg);
       }
     } catch {
+      toast.error("Failed to send verification email. Please try again.");
       setError("Failed to send verification email. Please try again.");
     } finally {
       setResendLoading(false);
