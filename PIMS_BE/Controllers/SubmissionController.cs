@@ -9,7 +9,7 @@ namespace PIMS_BE.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles= "STUDENT")]
+   [Authorize(Roles= "STUDENT")]
     public class SubmissionController : ControllerBase
     {
         private readonly IProjectService _projectService;
@@ -29,7 +29,7 @@ namespace PIMS_BE.Controllers
         {
             try
             {
-                //int studentId = 15;
+                
                 int studentId = GetUserIdFromToken();
 
                 var result = await _projectService.SubmitReportAsync(dto, studentId);

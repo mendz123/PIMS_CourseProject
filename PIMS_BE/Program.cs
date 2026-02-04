@@ -71,6 +71,7 @@ builder.Services.AddScoped<IDriveFileService, DriveFileService>();
 builder.Services.AddScoped<IProjectSubmissionRepository, ProjectSubmissionRepository>();
 // Đăng ký Service xử lý logic Dự án và Báo cáo
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITemplateService, TemplateService>();
 
 builder.Services.AddControllers();
 
