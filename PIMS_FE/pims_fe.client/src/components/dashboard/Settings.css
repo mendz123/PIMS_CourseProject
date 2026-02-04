@@ -211,7 +211,11 @@
 .password-form {
   max-width: 500px;
 }
-
+.form-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 6px 0 0;
+}
 @media (max-width: 1024px) {
   .profile-grid {
     grid-template-columns: 1fr;

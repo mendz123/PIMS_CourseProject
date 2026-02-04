@@ -62,6 +62,30 @@ public class UserController : BaseApiController
             return StatusCode(500, ApiResponse<UserInfo>.InternalError("Internal Server Error: " + ex.Message));
         }
     }
+    
+    [HttpPost("me/change-password")]
+    [Authorize]
+    public async  Task<ActionResult<ApiResponse<UserInfo>>> ChangePassword([FromBody] ChangePasswordRequestDto request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<UserInfo>.Unauthorized("Invalid user ID in token"));
+            }
 
+            var user = await _userService.ChangePasswordAsync(request, userId);
+            if (user == null)
+            {
+                return NotFound(ApiResponse<UserInfo>.NotFound("User not found"));
+            }
+
+            return Ok(ApiResponse<UserInfo>.Ok(user, "Password changed successfully"));
+        } catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<UserInfo>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
     
 }

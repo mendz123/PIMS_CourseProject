@@ -73,4 +73,43 @@ public class UserService : IUserService
             // Status mapping if needed, but not in DTO or UserInfo based on previous context 
         };
     }
+
+    public async Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+        bool isLogginGoogle = BCrypt.Net.BCrypt.Verify("nopassword", user.PasswordHash);
+        if (!isLogginGoogle)
+        {
+            if(!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Current password is incorrect");
+            }
+            if(request.CurrentPassword == request.NewPassword)
+            {
+                throw new ArgumentException("New password must be different from current password");
+            }
+            if(request.NewPassword != request.ConfirmPassword)
+            {
+                throw new ArgumentException("New password and confirm password do not match");
+            }
+            
+        }
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+        return new UserInfo 
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role != null ? user.Role.RoleName : null, // Assuming Role is loaded or not needed to be updated here
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl
+        };
+    }
 }

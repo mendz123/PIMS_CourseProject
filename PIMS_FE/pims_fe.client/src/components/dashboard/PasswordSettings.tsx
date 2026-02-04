@@ -1,22 +1,79 @@
 import React, { useState } from "react";
 import { toast } from "react-hot-toast";
+import type { UserInfo } from "../../types";
+import userService from "../../services/userService";
 
-const PasswordSettings: React.FC = () => {
+type FieldErrors = {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+};
+
+const PasswordSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
   const [passwords, setPasswords] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPasswords((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast("Password change functionality is coming soon!");
-    // Implementation for change password will go here
+    const newErrors: FieldErrors = {};
+
+    if (!user?.isLoginGoogle && !passwords.currentPassword.trim()) {
+      newErrors.currentPassword = "Current password is required";
+    }
+    if (!passwords.newPassword.trim()) {
+      newErrors.newPassword = "New password is required";
+    } else if (passwords.newPassword.length < 6) {
+      newErrors.newPassword = "Password must be at least 6 characters";
+    }
+    if (!passwords.confirmPassword.trim()) {
+      newErrors.confirmPassword = "Please confirm your new password";
+    } else if (passwords.newPassword !== passwords.confirmPassword) {
+      newErrors.confirmPassword = "New password and confirm password do not match";
+    }
+    if (
+      !user?.isLoginGoogle &&
+      passwords.currentPassword &&
+      passwords.currentPassword === passwords.newPassword
+    ) {
+      newErrors.newPassword = "New password must be different from current password";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    try {
+      const response = await userService.changePassword(passwords);
+      toast.success(response.message);
+      setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err: unknown) {
+      const message =
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object" &&
+        "data" in err.response &&
+        err.response.data &&
+        typeof err.response.data === "object" &&
+        "message" in err.response.data &&
+        typeof (err.response.data as { message?: unknown }).message === "string"
+          ? (err.response.data as { message: string }).message
+          : "Failed to change password";
+      toast.error(message);
+    }
   };
 
   return (
@@ -27,28 +84,36 @@ const PasswordSettings: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="password-form">
-        <div className="form-group">
-          <label className="form-label">Current Password</label>
-          <input
-            type="password"
-            name="currentPassword"
-            className="form-input"
-            value={passwords.currentPassword}
-            onChange={handleChange}
-            placeholder="••••••••"
-          />
-        </div>
+        {!user?.isLoginGoogle && (
+          <div className="form-group">
+            <label className="form-label">Current Password</label>
+            <input
+              type="password"
+              name="currentPassword"
+              className={`form-input ${errors.currentPassword ? "form-input-error" : ""}`}
+              value={passwords.currentPassword}
+              onChange={handleChange}
+              placeholder="••••••••"
+            />
+            {errors.currentPassword && (
+              <p className="form-error">{errors.currentPassword}</p>
+            )}
+          </div>
+        )}
 
         <div className="form-group">
           <label className="form-label">New Password</label>
           <input
             type="password"
             name="newPassword"
-            className="form-input"
+            className={`form-input ${errors.newPassword ? "form-input-error" : ""}`}
             value={passwords.newPassword}
             onChange={handleChange}
             placeholder="••••••••"
           />
+          {errors.newPassword && (
+            <p className="form-error">{errors.newPassword}</p>
+          )}
         </div>
 
         <div className="form-group">
@@ -56,17 +121,25 @@ const PasswordSettings: React.FC = () => {
           <input
             type="password"
             name="confirmPassword"
-            className="form-input"
+            className={`form-input ${errors.confirmPassword ? "form-input-error" : ""}`}
             value={passwords.confirmPassword}
             onChange={handleChange}
             placeholder="••••••••"
           />
+          {errors.confirmPassword && (
+            <p className="form-error">{errors.confirmPassword}</p>
+          )}
         </div>
 
         <div className="pt-4">
           <button
             type="submit"
             className="submit-btn w-full sm:w-auto justify-center"
+            disabled={
+              (!user?.isLoginGoogle && !passwords.currentPassword.trim()) ||
+              !passwords.newPassword.trim() ||
+              !passwords.confirmPassword.trim()
+            }
           >
             <span className="material-symbols-outlined">key</span>
             Update Password

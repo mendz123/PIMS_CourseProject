@@ -33,7 +33,7 @@ const Settings: React.FC = () => {
         {activeSubTab === "profile" ? (
           <ProfileSettings user={user} />
         ) : (
-          <PasswordSettings />
+          <PasswordSettings user={user} />
         )}
       </div>
     </div>
