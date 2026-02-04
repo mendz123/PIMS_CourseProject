@@ -4,15 +4,24 @@ import toast, { Toaster } from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
-    CloudUpload, FileText, Info, Loader2, SendHorizontal,
-    Clock, User, ShieldCheck, AlertCircle, Download, BellRing, History, Trash2, Edit3, X
+    CloudUpload, Info, Loader2, SendHorizontal,
+    Clock, User, AlertCircle, Download, BellRing, History, Trash2, Edit3, X
 } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 interface AssessmentDTO {
     assessmentId: number;
     title: string;
     deadline: string | null;
     description: string | null;
+}
+
+interface TemplateDTO {
+    templateId: number;
+    templateName: string;
+    templateUrl: string;
+    fileResourceId: string;
+    createdAt: string;
 }
 const ProgressReports = () => {
     const [loading, setLoading] = useState(false);
@@ -26,17 +35,16 @@ const ProgressReports = () => {
     const [currentDate] = useState(new Date());
 
 
+    const { user } = useAuth();
+
     const [userStatus] = useState({
         hasGroup: true,
-        studentName: "Lê Xuân Hoàng",
-        mssv: "SE170000"
+        studentName: user?.fullName || "Student",
+        mssv: user?.email?.split('@')[0].toUpperCase() || "N/A"
     });
 
 
-    const [templates] = useState([
-        { id: 1, title: "Mẫu báo cáo Iteration 1 (SRS)", fileUrl: "#", type: "DOCX" },
-        { id: 2, title: "Mẫu báo cáo thiết kế (Architecture)", fileUrl: "#", type: "PDF" },
-    ]);
+    const [templates, setTemplates] = useState<TemplateDTO[]>([]);
 
 
     const [deadlines] = useState([
@@ -168,9 +176,21 @@ const ProgressReports = () => {
             }
         };
 
+        const fetchTemplates = async () => {
+            try {
+                const response = await api.get('/api/ProjectTemplate/active');
+                if (response.data.success) {
+                    setTemplates(response.data.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch templates:", error);
+            }
+        };
+
         fetchAssessments();
         fetchProjectInfo();
         fetchSubmissionHistory();
+        fetchTemplates();
     }, []);
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-10">
@@ -404,21 +424,33 @@ const ProgressReports = () => {
                                 <h3 className="text-lg font-bold text-gray-900">Tải File mẫu</h3>
                             </div>
                             <div className="space-y-3">
-                                {templates.map(tmp => (
-                                    <a key={tmp.id} href={tmp.fileUrl} className="group flex items-center justify-between p-3 rounded-2xl border border-gray-50 hover:border-emerald-200 hover:bg-emerald-50 transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className="text-[9px] font-black bg-emerald-100 px-2 py-1 rounded text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-all uppercase">{tmp.type}</div>
-                                            <p className="text-[11px] font-bold text-gray-700">{tmp.title}</p>
-                                        </div>
-                                        <Download size={14} className="text-gray-300 group-hover:text-emerald-600" />
-                                    </a>
-                                ))}
+                                {templates.length > 0 ? (
+                                    templates.map(tmp => (
+                                        <a
+                                            key={tmp.templateId}
+                                            href={tmp.templateUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center justify-between p-3 rounded-2xl border border-gray-50 hover:border-emerald-200 hover:bg-emerald-50 transition-all font-display"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-[9px] font-black bg-emerald-100 px-2 py-1 rounded text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-all uppercase">
+                                                    {tmp.templateName.split('.').pop()?.toUpperCase() || 'FILE'}
+                                                </div>
+                                                <p className="text-[11px] font-bold text-gray-700">{tmp.templateName}</p>
+                                            </div>
+                                            <Download size={14} className="text-gray-300 group-hover:text-emerald-600" />
+                                        </a>
+                                    ))
+                                ) : (
+                                    <p className="text-xs text-gray-400 italic text-center py-4 font-display">Chưa có tài liệu mẫu nào.</p>
+                                )}
                             </div>
                             <p className="text-[10px] text-gray-400 mt-4 italic text-center">* Sinh viên vui lòng nộp bài đúng mẫu quy định.</p>
                         </section>
 
                         <section className="bg-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
-                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white">
                                 <Info size={20} className="text-primary" /> Lưu ý nộp
                             </h3>
                             <ul className="space-y-4 text-[11px] text-slate-400 leading-relaxed">

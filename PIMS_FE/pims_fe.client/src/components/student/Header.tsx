@@ -1,10 +1,13 @@
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 
 interface HeaderProps {
     title: string;
 }
 
 const Header: React.FC<HeaderProps> = ({ title }) => {
+    const { user } = useAuth();
+
     return (
         <header className="sticky top-0 z-10 flex items-center justify-between bg-white border-b border-gray-200 px-8 py-4">
             <div className="flex items-center gap-4">
@@ -22,10 +25,18 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
                     <button className="p-2 bg-gray-100 rounded-lg text-gray-600">
                         <span className="material-symbols-outlined">settings</span>
                     </button>
-                    <div
-                        className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-primary"
-                        style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCDnadSgEx4CX46drDPxSjtnPLMgxNliGkSyeHYu7O9zlNYVj_zdPn6Z-zQNLcW8Jih9fR1Rwbwc1vfeXju_j6JWLD8q8OSxBQpe_yuxCDmBZ2PFEibWInVDLKE5r44Nt5V6BWEGgctWIvVPmV5xTOZoN5QzduxrhSPoVYKZTF212z-H_dLuC-az0-Uc1uDraV1FMbEln5LGTeI5RaRilHER8yjQzgtf9DvIIBdOjiPGleeNI6QPese1Uh_jc5Gbv1AtJLiiEWhV_kR')" }}
-                    ></div>
+                    <div className="flex items-center gap-3 pl-2 border-l border-gray-100">
+                        <div className="text-right hidden sm:block">
+                            <p className="text-sm font-bold text-gray-900 leading-none">{user?.fullName || "Student"}</p>
+                            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">{user?.role || "Student"}</p>
+                        </div>
+                        <div
+                            className="h-10 w-10 rounded-full bg-cover bg-center border-2 border-primary"
+                            style={{
+                                backgroundImage: `url('https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "S")}&background=135bec&color=fff')`
+                            }}
+                        ></div>
+                    </div>
                 </div>
             </div>
         </header>

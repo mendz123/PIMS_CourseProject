@@ -11,7 +11,7 @@ namespace PIMS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+//[Authorize]
 public class SemesterController : ControllerBase
 {
     private readonly ISemesterRepository _semesterRepository;
