@@ -20,7 +20,10 @@ const Navbar: React.FC = () => {
       case "student":
         return { name: "Student Dashboard", href: "/student/dashboard" };
       case "subject_head":
-        return { name: "Subject Head Dashboard", href: "/subject-head/dashboard" };
+        return {
+          name: "Subject Head Dashboard",
+          href: "/subject-head/dashboard",
+        };
       default:
         return { name: "Dashboard", href: "/dashboard" };
     }
@@ -31,7 +34,7 @@ const Navbar: React.FC = () => {
   const navLinks = [
     { name: "Home", href: "#home" },
     { name: "News", href: "#news" },
-      { name: "Student Dashboard", href: "/student/dashboard" },
+    { name: "FAQ", href: "#faq" },
     ...(dashboardLink ? [dashboardLink] : []),
   ];
 

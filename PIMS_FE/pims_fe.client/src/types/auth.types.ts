@@ -13,6 +13,11 @@ export interface UserInfo {
   email: string;
   fullName?: string;
   role?: string;
+  isLoginGoogle?: boolean;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  bio?: string;
+  status?: string;
 }
 
 // Auth Types
@@ -43,6 +48,12 @@ export interface VerifyOtpRequest {
 export interface ResetPasswordOtpRequest {
   email: string;
   otpCode: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 }
