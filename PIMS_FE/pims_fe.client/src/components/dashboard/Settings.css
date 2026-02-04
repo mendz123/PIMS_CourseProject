@@ -211,6 +211,40 @@
 .password-form {
   max-width: 500px;
 }
+
+.password-form .password-input-wrap {
+  position: relative;
+}
+
+.password-form .password-input-wrap .form-input {
+  padding-right: 44px;
+}
+
+.password-form .password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #616f89;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.password-form .password-toggle:hover {
+  color: #111318;
+}
+
+.password-form .password-toggle .material-symbols-outlined {
+  font-size: 20px;
+}
+
 .form-error {
   color: #dc2626;
   font-size: 13px;

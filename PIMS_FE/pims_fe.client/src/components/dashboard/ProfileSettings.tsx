@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { userService } from "../../services/userService";
 import { toast } from "react-hot-toast";
 import type { UserInfo } from "../../types";
 
 const ProfileSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
+  const { refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     fullName: user?.fullName || "",
     email: user?.email || "",
@@ -55,10 +57,11 @@ const ProfileSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
       const response = await userService.updateProfile(formPayload);
       if (response.success) {
         toast.success("Profile updated successfully!");
+        await refreshProfile();
       } else {
         toast.error(response.message || "Failed to update profile");
       }
-    } catch (error) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   };
@@ -71,6 +74,18 @@ const ProfileSettings: React.FC<{ user: UserInfo | null }> = ({ user }) => {
       }
     };
   }, [previewUrl]);
+
+  // Sync formData when user prop changes (e.g. after refreshProfile)
+  React.useEffect(() => {
+    setFormData({
+      fullName: user?.fullName ?? "",
+      email: user?.email ?? "",
+      role: user?.role ?? "User",
+      phoneNumber: user?.phoneNumber ?? "",
+      bio: user?.bio ?? "",
+      avatarUrl: user?.avatarUrl ?? "",
+    });
+  }, [user]);
 
   return (
     <div className="profile-section">
