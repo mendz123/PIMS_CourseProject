@@ -12,12 +12,21 @@ public class UserService : IUserService
     private readonly PimsDbContext _context;
     private readonly IUserRepository _userRepository;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IGenericRepository<Role> _roleRepository;
+    private readonly IGenericRepository<UserStatus> _userStatusRepository;
 
-    public UserService(PimsDbContext context, IUserRepository userRepository, ICloudinaryService cloudinaryService)
+    public UserService(
+        PimsDbContext context,
+        IUserRepository userRepository,
+        ICloudinaryService cloudinaryService,
+        IGenericRepository<Role> roleRepository,
+        IGenericRepository<UserStatus> userStatusRepository)
     {
         _context = context;
         _userRepository = userRepository;
         _cloudinaryService = cloudinaryService;
+        _roleRepository = roleRepository;
+        _userStatusRepository = userStatusRepository;
     }
 
     public async Task<List<UserInfo>> GetTeachersAsync()
@@ -110,6 +119,85 @@ public class UserService : IUserService
             PhoneNumber = user.PhoneNumber,
             Bio = user.Bio,
             AvatarUrl = user.AvatarUrl
+        };
+    }
+
+    public async Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status)
+    {
+        var pagedUsers = await _userRepository.GetUsersPagedAsync(pageIndex, pageSize, search, role, status);
+
+        var pagedUserInfos = new PagedResult<UserInfo>
+        {
+            PageIndex = pagedUsers.PageIndex,
+            PageSize = pagedUsers.PageSize,
+            TotalCount = pagedUsers.TotalCount,
+            Items = pagedUsers.Items.Select(u => new UserInfo
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FullName = u.FullName,
+                Role = u.Role != null ? u.Role.RoleName : null,
+                Status = u.Status != null ? u.Status.StatusName : null,
+                PhoneNumber = u.PhoneNumber,
+                Bio = u.Bio,
+                AvatarUrl = u.AvatarUrl
+            }).ToList()
+        };
+
+        return pagedUserInfos;
+    }
+    public async Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request)
+    {
+        var user = await _userRepository.GetByIdWithDetailsAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(request.FullName))
+        {
+            user.FullName = request.FullName;
+        }
+
+        if (!string.IsNullOrEmpty(request.PhoneNumber))
+        {
+            user.PhoneNumber = request.PhoneNumber;
+        }
+
+        if (!string.IsNullOrEmpty(request.RoleName))
+        {
+            var roles = await _roleRepository.FindAsync(r => r.RoleName == request.RoleName);
+            var role = roles.FirstOrDefault();
+            if (role != null)
+            {
+                user.RoleId = role.RoleId;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(request.StatusName))
+        {
+            var statuses = await _userStatusRepository.FindAsync(s => s.StatusName == request.StatusName);
+            var status = statuses.FirstOrDefault();
+            if (status != null)
+            {
+                user.StatusId = status.StatusId;
+            }
+        }
+
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+        var updatedUser = await _userRepository.GetByIdWithDetailsAsync(id);
+
+        return new UserInfo
+        {
+            UserId = updatedUser.UserId,
+            Email = updatedUser.Email,
+            FullName = updatedUser.FullName,
+            Role = updatedUser.Role != null ? updatedUser.Role.RoleName : null,
+            Status = updatedUser.Status != null ? updatedUser.Status.StatusName : null,
+            PhoneNumber = updatedUser.PhoneNumber,
+            Bio = updatedUser.Bio,
+            AvatarUrl = updatedUser.AvatarUrl
         };
     }
 }

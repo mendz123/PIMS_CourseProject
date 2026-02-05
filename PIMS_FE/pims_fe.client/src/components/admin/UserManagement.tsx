@@ -1,95 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./UserManagement.css";
+import userService from "../../services/userService";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: string;
-  status: "Active" | "Inactive" | "Pending";
+  status: "ACTIVE" | "INACTIVE" | "PENDING";
   joinDate: string;
   phone: string;
   avatar?: string;
 }
 
-const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    email: "vana@gmail.com",
-    role: "Student",
-    status: "Active",
-    joinDate: "2023-09-15",
-    phone: "0912345671",
-  },
-  {
-    id: "2",
-    name: "Trần Thị B",
-    email: "thib@gmail.com",
-    role: "Teacher",
-    status: "Active",
-    joinDate: "2023-08-20",
-    phone: "0912345672",
-  },
-  {
-    id: "3",
-    name: "Lê Văn C",
-    email: "vanc@gmail.com",
-    role: "Student",
-    status: "Inactive",
-    joinDate: "2023-10-01",
-    phone: "0912345673",
-  },
-  {
-    id: "4",
-    name: "Phạm Minh D",
-    email: "minhd@gmail.com",
-    role: "Subject Head",
-    status: "Active",
-    joinDate: "2023-07-12",
-    phone: "0912345674",
-  },
-  {
-    id: "5",
-    name: "Hoàng Công E",
-    email: "conge@gmail.com",
-    role: "Student",
-    status: "Pending",
-    joinDate: "2024-01-05",
-    phone: "0912345675",
-  },
-  {
-    id: "6",
-    name: "Vũ Thị F",
-    email: "thif@gmail.com",
-    role: "Student",
-    status: "Active",
-    joinDate: "2023-11-22",
-    phone: "0912345676",
-  },
-  {
-    id: "7",
-    name: "Đặng Văn G",
-    email: "vang@gmail.com",
-    role: "Teacher",
-    status: "Active",
-    joinDate: "2023-06-30",
-    phone: "0912345677",
-  },
-  {
-    id: "8",
-    name: "Bùi Minh H",
-    email: "minhh@gmail.com",
-    role: "Student",
-    status: "Inactive",
-    joinDate: "2023-09-02",
-    phone: "0912345678",
-  },
-];
-
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<User["status"] | "">("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
@@ -97,30 +26,90 @@ const UserManagement: React.FC = () => {
     email: "",
     phone: "",
     role: "Student",
-    status: "Active",
+    status: "ACTIVE",
   });
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   const usersPerPage = 5;
 
-  const filteredUsers = mockUsers.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await userService.getUsers(
+        currentPage - 1,
+        usersPerPage,
+        searchTerm,
+        roleFilter || undefined,
+        statusFilter || undefined,
+      );
 
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+      if (response.success && response.data) {
+        interface UserData {
+          userId: number;
+          fullName?: string;
+          email?: string;
+          role?: string;
+          status?: string;
+          createdAt?: string;
+          phoneNumber?: string;
+          avatarUrl?: string;
+        }
+        const mappedUsers: User[] = response.data.items.map(
+          (user: UserData) => ({
+            id: user.userId.toString(),
+            name: user.fullName || "",
+            email: user.email || "",
+            role: user.role || "Student",
+            status: (user.status || "ACTIVE").toUpperCase() as
+              | "ACTIVE"
+              | "INACTIVE"
+              | "PENDING",
+            joinDate: user.createdAt
+              ? new Date(user.createdAt).toISOString().split("T")[0]
+              : "",
+            phone: user.phoneNumber || "",
+            avatar: user.avatarUrl,
+          }),
+        );
+        setUsers(mappedUsers);
+        setTotalCount(response.data.totalCount);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch users");
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, usersPerPage, searchTerm, roleFilter, statusFilter]);
+
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const filteredUsers = users.filter((user) => {
+    const matchRole = roleFilter ? user.role === roleFilter : true;
+    const matchStatus = statusFilter ? user.status === statusFilter : true;
+    return matchRole && matchStatus;
+  });
+
+  const startIndex =
+    totalCount === 0 ? 0 : (currentPage - 1) * usersPerPage + 1;
+  const endIndex = totalCount === 0 ? 0 : startIndex + filteredUsers.length - 1;
+  const currentUsers = filteredUsers;
+  const totalPages = Math.ceil(totalCount / usersPerPage);
 
   const getStatusClass = (status: string) => {
     switch (status) {
-      case "Active":
+      case "ACTIVE":
         return "status-active";
-      case "Inactive":
+      case "INACTIVE":
         return "status-inactive";
-      case "Pending":
+      case "PENDING":
         return "status-pending";
       default:
         return "";
@@ -143,7 +132,7 @@ const UserManagement: React.FC = () => {
       email: "",
       phone: "",
       role: "Student",
-      status: "Active",
+      status: "ACTIVE",
     });
     setIsModalOpen(true);
   };
@@ -159,11 +148,46 @@ const UserManagement: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Saving user:", formData);
-    // In a real app, you would call an API here
-    closeModal();
+    setError(null);
+
+    if (editingUser) {
+      // Calculate changes
+      const changes: Partial<{
+        fullName: string;
+        phoneNumber: string;
+        roleName: string;
+        statusName: string;
+      }> = {};
+
+      if (formData.name !== editingUser.name) changes.fullName = formData.name;
+      if (formData.phone !== editingUser.phone)
+        changes.phoneNumber = formData.phone;
+      if (formData.role !== editingUser.role) changes.roleName = formData.role;
+      if (formData.status !== editingUser.status)
+        changes.statusName = formData.status;
+
+      // If no changes, just close modal
+      if (Object.keys(changes).length === 0) {
+        closeModal();
+        return;
+      }
+
+      try {
+        await userService.patchUser(Number(editingUser.id), changes);
+        await fetchUsers(); // Refresh list
+        toast.success("User updated successfully");
+        closeModal();
+      } catch (err) {
+        console.error("Error updating user:", err);
+        toast.error("Failed to update user");
+      }
+    } else {
+      // TODO: Implement Add User logic
+      console.log("Add User logic not implemented yet");
+      closeModal();
+    }
   };
 
   return (
@@ -175,21 +199,53 @@ const UserManagement: React.FC = () => {
         </p>
       </div>
 
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
       <div className="search-filter-bar">
         <div className="search-input-wrapper">
           <span className="material-symbols-outlined">search</span>
           <input
             type="text"
-            placeholder="Search users by name, email or role..."
+            placeholder="Search users by name or email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
         <div className="action-buttons">
-          <button className="btn-secondary">
-            <span className="material-symbols-outlined">filter_list</span>
-            Filters
-          </button>
+          <select
+            className="form-select filter-select"
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">All Roles</option>
+            <option value="STUDENT">Student</option>
+            <option value="TEACHER">Teacher</option>
+            <option value="SUBJECT HEAD">Subject Head</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+          <select
+            className="form-select filter-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as User["status"] | "");
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="PENDING">Pending</option>
+          </select>
           <button className="btn-primary" onClick={handleAddNew}>
             <span className="material-symbols-outlined">person_add</span>
             Add New User
@@ -197,76 +253,11 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="user-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Join Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentUsers.map((user) => (
-              <tr key={user.id}>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar-wrapper">
-                      {getInitials(user.name)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm">{user.name}</div>
-                      <div className="text-xs text-[#616f89]">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="role-badge">{user.role}</span>
-                </td>
-                <td>
-                  <span
-                    className={`status-badge ${getStatusClass(user.status)}`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td>
-                  <span className="text-[#616f89] text-sm">
-                    {user.joinDate}
-                  </span>
-                </td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="p-1.5 rounded-lg text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all"
-                      onClick={() => handleEdit(user)}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">
-                        edit
-                      </span>
-                    </button>
-                    <button className="p-1.5 rounded-lg text-[#616f89] hover:bg-red-50 hover:text-red-500 transition-all">
-                      <span className="material-symbols-outlined text-[20px]">
-                        delete_outline
-                      </span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       <div className="pagination">
         <span className="text-sm">
-          Showing <span className="font-bold">{indexOfFirstUser + 1}</span> to{" "}
-          <span className="font-bold">
-            {Math.min(indexOfLastUser, filteredUsers.length)}
-          </span>{" "}
-          of <span className="font-bold">{filteredUsers.length}</span> results
+          Showing <span className="font-bold">{startIndex}</span> to{" "}
+          <span className="font-bold">{endIndex}</span> of{" "}
+          <span className="font-bold">{totalCount}</span> results
         </span>
         <div className="pagination-controls">
           <button
@@ -293,6 +284,91 @@ const UserManagement: React.FC = () => {
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
         </div>
+      </div>
+
+      <div className="table-container">
+        {loading ? (
+          <div className="text-center py-8">
+            <p className="text-[#616f89]">Loading users...</p>
+          </div>
+        ) : currentUsers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-[#616f89]">No users found</p>
+          </div>
+        ) : (
+          <table className="user-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Join Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentUsers.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="avatar-wrapper">
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt="User Avatar"
+                            className="w-10 h-10 rounded-full"
+                          />
+                        ) : (
+                          <div className="">
+                            <span className="">{getInitials(user.name)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm">{user.name}</div>
+                        <div className="text-xs text-[#616f89]">
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="role-badge">{user.role}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={`status-badge ${getStatusClass(user.status)}`}
+                    >
+                      {user.status}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="text-[#616f89] text-sm">
+                      {user.joinDate}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="p-1.5 rounded-lg text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          edit
+                        </span>
+                      </button>
+                      <button className="p-1.5 rounded-lg text-[#616f89] hover:bg-red-50 hover:text-red-500 transition-all">
+                        <span className="material-symbols-outlined text-[20px]">
+                          delete_outline
+                        </span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* User Modal */}
@@ -331,6 +407,7 @@ const UserManagement: React.FC = () => {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     required
+                    disabled
                   />
                 </div>
                 <div className="form-group">
@@ -343,7 +420,6 @@ const UserManagement: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
-                    required
                   />
                 </div>
                 <div className="form-grid">
@@ -356,10 +432,10 @@ const UserManagement: React.FC = () => {
                         setFormData({ ...formData, role: e.target.value })
                       }
                     >
-                      <option value="Student">Student</option>
-                      <option value="Teacher">Teacher</option>
-                      <option value="Subject Head">Subject Head</option>
-                      <option value="Admin">Admin</option>
+                      <option value="STUDENT">Student</option>
+                      <option value="TEACHER">Teacher</option>
+                      <option value="SUBJECT HEAD">Subject Head</option>
+                      <option value="ADMIN">Admin</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -370,13 +446,16 @@ const UserManagement: React.FC = () => {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          status: e.target.value as any,
+                          status: e.target.value as
+                            | "ACTIVE"
+                            | "INACTIVE"
+                            | "PENDING",
                         })
                       }
                     >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Pending">Pending</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="PENDING">Pending</option>
                     </select>
                   </div>
                 </div>

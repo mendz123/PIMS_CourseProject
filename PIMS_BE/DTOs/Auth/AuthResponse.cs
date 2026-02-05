@@ -26,6 +26,7 @@ public class UserInfo
     public string? Role { get; set; }
     public string? Status { get; set; }
     public bool IsLoginGoogle { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>

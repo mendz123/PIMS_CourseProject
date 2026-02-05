@@ -18,6 +18,28 @@ public class UserController : BaseApiController
         _userService = userService;
     }
 
+
+    /// getAllUsers
+    [HttpGet]
+    // [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<ApiResponse<List<UserInfo>>>> GetAllUsers(
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? role = null,
+        [FromQuery] string? status = null)
+    {
+        try
+        {
+            PagedResult<UserInfo> users = await _userService.GetUsersPagedAsync(pageIndex, pageSize, search, role, status);
+            return Ok(ApiResponse<PagedResult<UserInfo>>.Ok(users, "Users retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<PagedResult<UserInfo>>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
+
     /// <summary>
     /// Get list of teachers
     /// </summary>
@@ -88,4 +110,22 @@ public class UserController : BaseApiController
         }
     }
     
+    [HttpPatch("{id}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<ApiResponse<UserInfo>>> PatchUser(int id, [FromBody] AdminUpdateUserRequestDto request)
+    {
+        try
+        {
+            var user = await _userService.PatchUserAsync(id, request);
+            if (user == null)
+            {
+                return NotFound(ApiResponse<UserInfo>.NotFound("User not found"));
+            }
+            return Ok(ApiResponse<UserInfo>.Ok(user, "User updated successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<UserInfo>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
 }

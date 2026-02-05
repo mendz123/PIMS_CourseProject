@@ -6,8 +6,9 @@ namespace PIMS_BE.Services.Interfaces;
 
 public interface IUserService
 {
+    Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status);
     Task<List<UserInfo>> GetTeachersAsync();
     Task<UserInfo> UpdateUserByIdAsync(UpdateProfileRequestDto request, int id);
-
     Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id);
+    Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request);
 }
