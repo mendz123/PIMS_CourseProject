@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "./UserManagement.css";
 import userService from "../../services/userService";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -57,21 +58,23 @@ const UserManagement: React.FC = () => {
           phoneNumber?: string;
           avatarUrl?: string;
         }
-        const mappedUsers: User[] = response.data.items.map((user: UserData) => ({
-          id: user.userId.toString(),
-          name: user.fullName || "",
-          email: user.email || "",
-          role: user.role || "Student",
-          status: (user.status || "ACTIVE").toUpperCase() as
-            | "ACTIVE"
-            | "INACTIVE"
-            | "PENDING",
-          joinDate: user.createdAt
-            ? new Date(user.createdAt).toISOString().split("T")[0]
-            : "",
-          phone: user.phoneNumber || "",
-          avatar: user.avatarUrl,
-        }));
+        const mappedUsers: User[] = response.data.items.map(
+          (user: UserData) => ({
+            id: user.userId.toString(),
+            name: user.fullName || "",
+            email: user.email || "",
+            role: user.role || "Student",
+            status: (user.status || "ACTIVE").toUpperCase() as
+              | "ACTIVE"
+              | "INACTIVE"
+              | "PENDING",
+            joinDate: user.createdAt
+              ? new Date(user.createdAt).toISOString().split("T")[0]
+              : "",
+            phone: user.phoneNumber || "",
+            avatar: user.avatarUrl,
+          }),
+        );
         setUsers(mappedUsers);
         setTotalCount(response.data.totalCount);
       }
@@ -96,8 +99,7 @@ const UserManagement: React.FC = () => {
 
   const startIndex =
     totalCount === 0 ? 0 : (currentPage - 1) * usersPerPage + 1;
-  const endIndex =
-    totalCount === 0 ? 0 : startIndex + filteredUsers.length - 1;
+  const endIndex = totalCount === 0 ? 0 : startIndex + filteredUsers.length - 1;
   const currentUsers = filteredUsers;
   const totalPages = Math.ceil(totalCount / usersPerPage);
 
@@ -146,11 +148,46 @@ const UserManagement: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Saving user:", formData);
-    // TODO: Implement create/update API call and refresh users list
-    closeModal();
+    setError(null);
+
+    if (editingUser) {
+      // Calculate changes
+      const changes: Partial<{
+        fullName: string;
+        phoneNumber: string;
+        roleName: string;
+        statusName: string;
+      }> = {};
+
+      if (formData.name !== editingUser.name) changes.fullName = formData.name;
+      if (formData.phone !== editingUser.phone)
+        changes.phoneNumber = formData.phone;
+      if (formData.role !== editingUser.role) changes.roleName = formData.role;
+      if (formData.status !== editingUser.status)
+        changes.statusName = formData.status;
+
+      // If no changes, just close modal
+      if (Object.keys(changes).length === 0) {
+        closeModal();
+        return;
+      }
+
+      try {
+        await userService.patchUser(Number(editingUser.id), changes);
+        await fetchUsers(); // Refresh list
+        toast.success("User updated successfully");
+        closeModal();
+      } catch (err) {
+        console.error("Error updating user:", err);
+        toast.error("Failed to update user");
+      }
+    } else {
+      // TODO: Implement Add User logic
+      console.log("Add User logic not implemented yet");
+      closeModal();
+    }
   };
 
   return (
@@ -219,8 +256,8 @@ const UserManagement: React.FC = () => {
       <div className="pagination">
         <span className="text-sm">
           Showing <span className="font-bold">{startIndex}</span> to{" "}
-          <span className="font-bold">{endIndex}</span>{" "}
-          of <span className="font-bold">{totalCount}</span> results
+          <span className="font-bold">{endIndex}</span> of{" "}
+          <span className="font-bold">{totalCount}</span> results
         </span>
         <div className="pagination-controls">
           <button
@@ -275,8 +312,12 @@ const UserManagement: React.FC = () => {
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="avatar-wrapper">
-                      {user.avatar ? (
-                          <img src={user.avatar} alt="User Avatar" className="w-10 h-10 rounded-full" />
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt="User Avatar"
+                            className="w-10 h-10 rounded-full"
+                          />
                         ) : (
                           <div className="">
                             <span className="">{getInitials(user.name)}</span>
@@ -366,6 +407,7 @@ const UserManagement: React.FC = () => {
                       setFormData({ ...formData, email: e.target.value })
                     }
                     required
+                    disabled
                   />
                 </div>
                 <div className="form-group">
@@ -378,7 +420,6 @@ const UserManagement: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
-                    required
                   />
                 </div>
                 <div className="form-grid">

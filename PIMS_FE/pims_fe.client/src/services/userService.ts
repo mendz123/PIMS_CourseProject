@@ -45,6 +45,22 @@ export const userService = {
     );
     return response.data;
   },
+
+  patchUser: async (
+    id: number,
+    data: Partial<{
+      fullName: string;
+      phoneNumber: string;
+      roleName: string;
+      statusName: string;
+    }>,
+  ): Promise<ApiResponse<UserInfo>> => {
+    const response = await api.patch<ApiResponse<UserInfo>>(
+      `/api/user/${id}`,
+      data,
+    );
+    return response.data;
+  },
 };
 
 export default userService;
