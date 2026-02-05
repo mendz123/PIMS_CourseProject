@@ -29,9 +29,10 @@ export const userService = {
   getUsers: async (
     pageIndex: number,
     pageSize: number,
+    search: string,
   ): Promise<ApiResponse<PagedResult<UserInfo>>> => {
     const response = await api.get<ApiResponse<PagedResult<UserInfo>>>(
-      `/api/user?pageIndex=${pageIndex}&pageSize=${pageSize}`,
+      `/api/user?pageIndex=${pageIndex}&pageSize=${pageSize}&search=${search}`,
     );
     return response.data;
   },

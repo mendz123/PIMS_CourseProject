@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./UserManagement.css";
 import userService from "../../services/userService";
 
@@ -7,7 +7,7 @@ interface User {
   name: string;
   email: string;
   role: string;
-  status: "Active" | "Inactive" | "Pending";
+  status: "ACTIVE" | "INACTIVE" | "PENDING";
   joinDate: string;
   phone: string;
   avatar?: string;
@@ -23,7 +23,7 @@ const UserManagement: React.FC = () => {
     email: "",
     phone: "",
     role: "Student",
-    status: "Active",
+    status: "ACTIVE",
   });
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,19 +32,14 @@ const UserManagement: React.FC = () => {
 
   const usersPerPage = 5;
 
-  // Fetch users from API
-  useEffect(() => {
-    fetchUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await userService.getUsers(
         currentPage - 1,
         usersPerPage,
+        searchTerm,
       );
 
       if (response.success && response.data) {
@@ -58,23 +53,21 @@ const UserManagement: React.FC = () => {
           phoneNumber?: string;
           avatarUrl?: string;
         }
-        const mappedUsers: User[] = response.data.items.map(
-          (user: UserData) => ({
-            id: user.userId.toString(),
-            name: user.fullName || "",
-            email: user.email || "",
-            role: user.role || "Student",
-            status: (user.status || "Active") as
-              | "Active"
-              | "Inactive"
-              | "Pending",
-            joinDate: user.createdAt
-              ? new Date(user.createdAt).toISOString().split("T")[0]
-              : "",
-            phone: user.phoneNumber || "",
-            avatar: user.avatarUrl,
-          }),
-        );
+        const mappedUsers: User[] = response.data.items.map((user: UserData) => ({
+          id: user.userId.toString(),
+          name: user.fullName || "",
+          email: user.email || "",
+          role: user.role || "Student",
+          status: (user.status || "ACTIVE").toUpperCase() as
+            | "ACTIVE"
+            | "INACTIVE"
+            | "PENDING",
+          joinDate: user.createdAt
+            ? new Date(user.createdAt).toISOString().split("T")[0]
+            : "",
+          phone: user.phoneNumber || "",
+          avatar: user.avatarUrl,
+        }));
         setUsers(mappedUsers);
         setTotalCount(response.data.totalCount);
       }
@@ -84,18 +77,18 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, usersPerPage, searchTerm]);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers;
+  const startIndex =
+    totalCount === 0 ? 0 : (currentPage - 1) * usersPerPage + 1;
+  const endIndex =
+    totalCount === 0 ? 0 : startIndex + users.length - 1;
+  const currentUsers = users;
   const totalPages = Math.ceil(totalCount / usersPerPage);
 
   const getStatusClass = (status: string) => {
@@ -127,7 +120,7 @@ const UserManagement: React.FC = () => {
       email: "",
       phone: "",
       role: "Student",
-      status: "Active",
+      status: "ACTIVE",
     });
     setIsModalOpen(true);
   };
@@ -170,9 +163,12 @@ const UserManagement: React.FC = () => {
           <span className="material-symbols-outlined">search</span>
           <input
             type="text"
-            placeholder="Search users by name, email or role..."
+            placeholder="Search users by name or email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
         <div className="action-buttons">
@@ -189,10 +185,8 @@ const UserManagement: React.FC = () => {
 
       <div className="pagination">
         <span className="text-sm">
-          Showing <span className="font-bold">{indexOfFirstUser + 1}</span> to{" "}
-          <span className="font-bold">
-            {Math.min(indexOfLastUser, totalCount)}
-          </span>{" "}
+          Showing <span className="font-bold">{startIndex}</span> to{" "}
+          <span className="font-bold">{endIndex}</span>{" "}
           of <span className="font-bold">{totalCount}</span> results
         </span>
         <div className="pagination-controls">
@@ -379,15 +373,15 @@ const UserManagement: React.FC = () => {
                         setFormData({
                           ...formData,
                           status: e.target.value as
-                            | "Active"
-                            | "Inactive"
-                            | "Pending",
+                            | "ACTIVE"
+                            | "INACTIVE"
+                            | "PENDING",
                         })
                       }
                     >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                      <option value="Pending">Pending</option>
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="PENDING">Pending</option>
                     </select>
                   </div>
                 </div>

@@ -22,11 +22,11 @@ public class UserController : BaseApiController
     /// getAllUsers
     [HttpGet]
     // [Authorize(Roles = "ADMIN")]
-    public async Task<ActionResult<ApiResponse<List<UserInfo>>>> GetAllUsers([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+    public async Task<ActionResult<ApiResponse<List<UserInfo>>>> GetAllUsers([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
     {
         try
         {
-            PagedResult<UserInfo> users = await _userService.GetUsersPagedAsync(pageIndex, pageSize);
+            PagedResult<UserInfo> users = await _userService.GetUsersPagedAsync(pageIndex, pageSize, search);
             return Ok(ApiResponse<PagedResult<UserInfo>>.Ok(users, "Users retrieved successfully"));
         }
         catch (Exception ex)
