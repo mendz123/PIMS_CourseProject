@@ -16,6 +16,8 @@ interface User {
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<User["status"] | "">("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
@@ -40,6 +42,8 @@ const UserManagement: React.FC = () => {
         currentPage - 1,
         usersPerPage,
         searchTerm,
+        roleFilter || undefined,
+        statusFilter || undefined,
       );
 
       if (response.success && response.data) {
@@ -77,18 +81,24 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, usersPerPage, searchTerm]);
+  }, [currentPage, usersPerPage, searchTerm, roleFilter, statusFilter]);
 
   // Fetch users from API
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
+  const filteredUsers = users.filter((user) => {
+    const matchRole = roleFilter ? user.role === roleFilter : true;
+    const matchStatus = statusFilter ? user.status === statusFilter : true;
+    return matchRole && matchStatus;
+  });
+
   const startIndex =
     totalCount === 0 ? 0 : (currentPage - 1) * usersPerPage + 1;
   const endIndex =
-    totalCount === 0 ? 0 : startIndex + users.length - 1;
-  const currentUsers = users;
+    totalCount === 0 ? 0 : startIndex + filteredUsers.length - 1;
+  const currentUsers = filteredUsers;
   const totalPages = Math.ceil(totalCount / usersPerPage);
 
   const getStatusClass = (status: string) => {
@@ -172,10 +182,33 @@ const UserManagement: React.FC = () => {
           />
         </div>
         <div className="action-buttons">
-          <button className="btn-secondary">
-            <span className="material-symbols-outlined">filter_list</span>
-            Filters
-          </button>
+          <select
+            className="form-select filter-select"
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">All Roles</option>
+            <option value="STUDENT">Student</option>
+            <option value="TEACHER">Teacher</option>
+            <option value="SUBJECT HEAD">Subject Head</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+          <select
+            className="form-select filter-select"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as User["status"] | "");
+              setCurrentPage(1);
+            }}
+          >
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="PENDING">Pending</option>
+          </select>
           <button className="btn-primary" onClick={handleAddNew}>
             <span className="material-symbols-outlined">person_add</span>
             Add New User
@@ -358,10 +391,10 @@ const UserManagement: React.FC = () => {
                         setFormData({ ...formData, role: e.target.value })
                       }
                     >
-                      <option value="Student">Student</option>
-                      <option value="Teacher">Teacher</option>
-                      <option value="Subject Head">Subject Head</option>
-                      <option value="Admin">Admin</option>
+                      <option value="STUDENT">Student</option>
+                      <option value="TEACHER">Teacher</option>
+                      <option value="SUBJECT HEAD">Subject Head</option>
+                      <option value="ADMIN">Admin</option>
                     </select>
                   </div>
                   <div className="form-group">

@@ -113,9 +113,9 @@ public class UserService : IUserService
         };
     }
 
-    public async Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search)
+    public async Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status)
     {
-        var pagedUsers = await _userRepository.GetUsersPagedAsync(pageIndex, pageSize, search);
+        var pagedUsers = await _userRepository.GetUsersPagedAsync(pageIndex, pageSize, search, role, status);
 
         var pagedUserInfos = new PagedResult<UserInfo>
         {

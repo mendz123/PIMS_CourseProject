@@ -30,9 +30,18 @@ export const userService = {
     pageIndex: number,
     pageSize: number,
     search: string,
+    role?: string,
+    status?: string,
   ): Promise<ApiResponse<PagedResult<UserInfo>>> => {
+    const params = new URLSearchParams();
+    params.set("pageIndex", String(pageIndex));
+    params.set("pageSize", String(pageSize));
+    if (search) params.set("search", search);
+    if (role) params.set("role", role);
+    if (status) params.set("status", status);
+
     const response = await api.get<ApiResponse<PagedResult<UserInfo>>>(
-      `/api/user?pageIndex=${pageIndex}&pageSize=${pageSize}&search=${search}`,
+      `/api/user?${params.toString()}`,
     );
     return response.data;
   },
