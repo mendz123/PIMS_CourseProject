@@ -112,4 +112,29 @@ public class UserService : IUserService
             AvatarUrl = user.AvatarUrl
         };
     }
+
+    public async Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize)
+    {
+        var pagedUsers = await _userRepository.GetUsersPagedAsync(pageIndex, pageSize);
+
+        var pagedUserInfos = new PagedResult<UserInfo>
+        {
+            PageIndex = pagedUsers.PageIndex,
+            PageSize = pagedUsers.PageSize,
+            TotalCount = pagedUsers.TotalCount,
+            Items = pagedUsers.Items.Select(u => new UserInfo
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FullName = u.FullName,
+                Role = u.Role != null ? u.Role.RoleName : null,
+                Status = u.Status != null ? u.Status.StatusName : null,
+                PhoneNumber = u.PhoneNumber,
+                Bio = u.Bio,
+                AvatarUrl = u.AvatarUrl
+            }).ToList()
+        };
+
+        return pagedUserInfos;
+    }
 }

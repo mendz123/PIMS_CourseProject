@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./UserManagement.css";
+import userService from "../../services/userService";
 
 interface User {
   id: string;
@@ -11,81 +12,6 @@ interface User {
   phone: string;
   avatar?: string;
 }
-
-const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    email: "vana@gmail.com",
-    role: "Student",
-    status: "Active",
-    joinDate: "2023-09-15",
-    phone: "0912345671",
-  },
-  {
-    id: "2",
-    name: "Trần Thị B",
-    email: "thib@gmail.com",
-    role: "Teacher",
-    status: "Active",
-    joinDate: "2023-08-20",
-    phone: "0912345672",
-  },
-  {
-    id: "3",
-    name: "Lê Văn C",
-    email: "vanc@gmail.com",
-    role: "Student",
-    status: "Inactive",
-    joinDate: "2023-10-01",
-    phone: "0912345673",
-  },
-  {
-    id: "4",
-    name: "Phạm Minh D",
-    email: "minhd@gmail.com",
-    role: "Subject Head",
-    status: "Active",
-    joinDate: "2023-07-12",
-    phone: "0912345674",
-  },
-  {
-    id: "5",
-    name: "Hoàng Công E",
-    email: "conge@gmail.com",
-    role: "Student",
-    status: "Pending",
-    joinDate: "2024-01-05",
-    phone: "0912345675",
-  },
-  {
-    id: "6",
-    name: "Vũ Thị F",
-    email: "thif@gmail.com",
-    role: "Student",
-    status: "Active",
-    joinDate: "2023-11-22",
-    phone: "0912345676",
-  },
-  {
-    id: "7",
-    name: "Đặng Văn G",
-    email: "vang@gmail.com",
-    role: "Teacher",
-    status: "Active",
-    joinDate: "2023-06-30",
-    phone: "0912345677",
-  },
-  {
-    id: "8",
-    name: "Bùi Minh H",
-    email: "minhh@gmail.com",
-    role: "Student",
-    status: "Inactive",
-    joinDate: "2023-09-02",
-    phone: "0912345678",
-  },
-];
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,10 +25,68 @@ const UserManagement: React.FC = () => {
     role: "Student",
     status: "Active",
   });
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   const usersPerPage = 5;
 
-  const filteredUsers = mockUsers.filter(
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await userService.getUsers(
+        currentPage - 1,
+        usersPerPage,
+      );
+
+      if (response.success && response.data) {
+        interface UserData {
+          userId: number;
+          fullName?: string;
+          email?: string;
+          role?: string;
+          status?: string;
+          createdAt?: string;
+          phoneNumber?: string;
+          avatarUrl?: string;
+        }
+        const mappedUsers: User[] = response.data.items.map(
+          (user: UserData) => ({
+            id: user.userId.toString(),
+            name: user.fullName || "",
+            email: user.email || "",
+            role: user.role || "Student",
+            status: (user.status || "Active") as
+              | "Active"
+              | "Inactive"
+              | "Pending",
+            joinDate: user.createdAt
+              ? new Date(user.createdAt).toISOString().split("T")[0]
+              : "",
+            phone: user.phoneNumber || "",
+            avatar: user.avatarUrl,
+          }),
+        );
+        setUsers(mappedUsers);
+        setTotalCount(response.data.totalCount);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch users");
+      console.error("Error fetching users:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,16 +95,16 @@ const UserManagement: React.FC = () => {
 
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const currentUsers = filteredUsers;
+  const totalPages = Math.ceil(totalCount / usersPerPage);
 
   const getStatusClass = (status: string) => {
     switch (status) {
-      case "Active":
+      case "ACTIVE":
         return "status-active";
-      case "Inactive":
+      case "INACTIVE":
         return "status-inactive";
-      case "Pending":
+      case "PENDING":
         return "status-pending";
       default:
         return "";
@@ -162,7 +146,7 @@ const UserManagement: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Saving user:", formData);
-    // In a real app, you would call an API here
+    // TODO: Implement create/update API call and refresh users list
     closeModal();
   };
 
@@ -174,6 +158,12 @@ const UserManagement: React.FC = () => {
           Manage all platform users, their roles and system access.
         </p>
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
 
       <div className="search-filter-bar">
         <div className="search-input-wrapper">
@@ -197,76 +187,13 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="user-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Join Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentUsers.map((user) => (
-              <tr key={user.id}>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar-wrapper">
-                      {getInitials(user.name)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm">{user.name}</div>
-                      <div className="text-xs text-[#616f89]">{user.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="role-badge">{user.role}</span>
-                </td>
-                <td>
-                  <span
-                    className={`status-badge ${getStatusClass(user.status)}`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td>
-                  <span className="text-[#616f89] text-sm">
-                    {user.joinDate}
-                  </span>
-                </td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="p-1.5 rounded-lg text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all"
-                      onClick={() => handleEdit(user)}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">
-                        edit
-                      </span>
-                    </button>
-                    <button className="p-1.5 rounded-lg text-[#616f89] hover:bg-red-50 hover:text-red-500 transition-all">
-                      <span className="material-symbols-outlined text-[20px]">
-                        delete_outline
-                      </span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       <div className="pagination">
         <span className="text-sm">
           Showing <span className="font-bold">{indexOfFirstUser + 1}</span> to{" "}
           <span className="font-bold">
-            {Math.min(indexOfLastUser, filteredUsers.length)}
+            {Math.min(indexOfLastUser, totalCount)}
           </span>{" "}
-          of <span className="font-bold">{filteredUsers.length}</span> results
+          of <span className="font-bold">{totalCount}</span> results
         </span>
         <div className="pagination-controls">
           <button
@@ -293,6 +220,87 @@ const UserManagement: React.FC = () => {
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
         </div>
+      </div>
+
+      <div className="table-container">
+        {loading ? (
+          <div className="text-center py-8">
+            <p className="text-[#616f89]">Loading users...</p>
+          </div>
+        ) : currentUsers.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-[#616f89]">No users found</p>
+          </div>
+        ) : (
+          <table className="user-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Join Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentUsers.map((user) => (
+                <tr key={user.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="avatar-wrapper">
+                      {user.avatar ? (
+                          <img src={user.avatar} alt="User Avatar" className="w-10 h-10 rounded-full" />
+                        ) : (
+                          <div className="">
+                            <span className="">{getInitials(user.name)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm">{user.name}</div>
+                        <div className="text-xs text-[#616f89]">
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="role-badge">{user.role}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={`status-badge ${getStatusClass(user.status)}`}
+                    >
+                      {user.status}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="text-[#616f89] text-sm">
+                      {user.joinDate}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="p-1.5 rounded-lg text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <span className="material-symbols-outlined text-[20px]">
+                          edit
+                        </span>
+                      </button>
+                      <button className="p-1.5 rounded-lg text-[#616f89] hover:bg-red-50 hover:text-red-500 transition-all">
+                        <span className="material-symbols-outlined text-[20px]">
+                          delete_outline
+                        </span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* User Modal */}
@@ -370,7 +378,10 @@ const UserManagement: React.FC = () => {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          status: e.target.value as any,
+                          status: e.target.value as
+                            | "Active"
+                            | "Inactive"
+                            | "Pending",
                         })
                       }
                     >

@@ -18,6 +18,23 @@ public class UserController : BaseApiController
         _userService = userService;
     }
 
+
+    /// getAllUsers
+    [HttpGet]
+    // [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<ApiResponse<List<UserInfo>>>> GetAllUsers([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+    {
+        try
+        {
+            PagedResult<UserInfo> users = await _userService.GetUsersPagedAsync(pageIndex, pageSize);
+            return Ok(ApiResponse<PagedResult<UserInfo>>.Ok(users, "Users retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<PagedResult<UserInfo>>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
+
     /// <summary>
     /// Get list of teachers
     /// </summary>
