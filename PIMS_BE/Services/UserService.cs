@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PIMS_BE.DTOs.Auth;
+using PIMS_BE.DTOs.Notification;
 using PIMS_BE.DTOs.User;
 using PIMS_BE.Models;
 using PIMS_BE.Repositories;
@@ -13,19 +14,18 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly ICloudinaryService _cloudinaryService;
     private readonly IGenericRepository<Role> _roleRepository;
-    private readonly IGenericRepository<UserStatus> _userStatusRepository;
+    private readonly IGenericRepository<UserStatus> _userStatusRepository; 
 
-    public UserService(
-        PimsDbContext context,
-        IUserRepository userRepository,
-        ICloudinaryService cloudinaryService,
-        IGenericRepository<Role> roleRepository,
+    private readonly INotificationService _notificationService; 
+
+    public UserService(PimsDbContext context, IUserRepository userRepository, ICloudinaryService cloudinaryService, INotificationService notificationService, IGenericRepository<Role> roleRepository,
         IGenericRepository<UserStatus> userStatusRepository)
     {
         _context = context;
         _userRepository = userRepository;
         _cloudinaryService = cloudinaryService;
-        _roleRepository = roleRepository;
+        _notificationService = notificationService;
+         _roleRepository = roleRepository;
         _userStatusRepository = userStatusRepository;
     }
 
@@ -110,6 +110,14 @@ public class UserService : IUserService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         await _userRepository.UpdateAsync(user);
         await _userRepository.SaveChangesAsync();
+        CreateNotificationRequest notificationRequest = new CreateNotificationRequest
+        {
+            UserId = user.UserId,
+            Title = "Password Changed",
+            Content = "Your password has been changed successfully.",
+        };
+        await _notificationService.CreateNotificationAsync(user.UserId, notificationRequest);
+        
         return new UserInfo 
         {
             UserId = user.UserId,

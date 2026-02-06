@@ -66,6 +66,7 @@ builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 builder.Services.AddScoped<IAssessmentCriterionService, AssessmentCriterionService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Register Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));

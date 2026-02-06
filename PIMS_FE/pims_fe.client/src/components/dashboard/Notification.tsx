@@ -1,61 +1,33 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./Notification.css";
-
-interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  type: "info" | "success" | "warning";
-  read: boolean;
-  icon: string;
-}
-
-const mockNotifications: NotificationItem[] = [
-  {
-    id: "1",
-    title: "New Registration",
-    message: "A new student, Nguyễn Văn A, has joined the platform.",
-    time: "5 mins ago",
-    type: "info",
-    read: false,
-    icon: "person_add",
-  },
-  {
-    id: "2",
-    title: "Course Updated",
-    message: "The 'React Advanced' course content has been updated.",
-    time: "2 hours ago",
-    type: "success",
-    read: false,
-    icon: "update",
-  },
-  {
-    id: "3",
-    title: "System Alert",
-    message: "Scheduled maintenance will occur tonight at 00:00 AM.",
-    time: "4 hours ago",
-    type: "warning",
-    read: true,
-    icon: "warning",
-  },
-  {
-    id: "4",
-    title: "New Report",
-    message: "Monthly revenue report is ready for viewing.",
-    time: "1 day ago",
-    type: "info",
-    read: true,
-    icon: "analytics",
-  },
-];
+import { notificationService } from "../../services/notificationService";
+import type { NotificationDto } from "../../types/notification.types";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 const Notification: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const response = await notificationService.getMyNotifications();
+      if (response && response.success) {
+        setNotifications(response.data || []);
+      } else {
+        setNotifications([]);
+      }
+    } catch (error) {
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,8 +43,29 @@ const Notification: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+  useEffect(() => {
+    // Fetch when component mounts
+    fetchNotifications();
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleMarkAll = async () => {
+    try {
+      await notificationService.markAllAsRead();
+    } catch (error) {
+      // ignore
+    }
+    fetchNotifications();
+  };
+
+  const handleMarkRead = async (id: number) => {
+    try {
+      await notificationService.markAsRead(id);
+    } catch (error) {
+      // ignore
+    }
+    fetchNotifications();
   };
 
   return (
@@ -94,32 +87,19 @@ const Notification: React.FC = () => {
           <div className="notification-header">
             <h3>Notifications</h3>
             {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="mark-read-btn">
+              <button onClick={handleMarkAll} className="mark-read-btn">
                 Mark all as read
               </button>
             )}
           </div>
           <div className="notification-list">
-            {notifications.length > 0 ? (
-              notifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className={`notification-item ${!notif.read ? "unread" : ""}`}
-                >
-                  <div className={`notification-icon ${notif.type}`}>
-                    <span className="material-symbols-outlined text-[20px]">
-                      {notif.icon}
-                    </span>
-                  </div>
-                  <div className="notification-content">
-                    <p className="notification-title">{notif.title}</p>
-                    <p className="notification-message">{notif.message}</p>
-                    <p className="notification-time">{notif.time}</p>
-                  </div>
-                  {!notif.read && <div className="unread-dot"></div>}
-                </div>
-              ))
-            ) : (
+            {loading && (
+              <div className="p-4 text-center text-gray-400 text-sm">
+                Loading...
+              </div>
+            )}
+
+            {!loading && notifications.length === 0 && (
               <div className="no-notifications">
                 <span className="material-symbols-outlined text-4xl mb-2">
                   notifications_off
@@ -127,9 +107,52 @@ const Notification: React.FC = () => {
                 <p>No new notifications</p>
               </div>
             )}
+
+            {!loading &&
+              notifications.map((notif) => (
+                <div
+                  key={notif.notificationId}
+                  className={`notification-item ${!notif.isRead ? "unread" : ""}`}
+                >
+                  {/* <div className={`notification-icon`}>
+                    <span className="material-symbols-outlined text-[20px]">
+                      notifications
+                    </span>
+                  </div> */}
+                  <div className="notification-content">
+                    <p className="notification-title">
+                      {notif.title || "Notification"}
+                    </p>
+                    <p className="notification-message">
+                      {notif.content || "No details provided."}
+                    </p>
+                    <p className="notification-time">
+                      {notif.createdAt
+                        ? formatDistanceToNow(new Date(notif.createdAt), {
+                            locale: vi,
+                            addSuffix: true,
+                          })
+                        : "Just now"}
+                    </p>
+                  </div>
+                  {!notif.isRead ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkRead(notif.notificationId);
+                      }}
+                      className="notification-action-btn"
+                    >
+                      Mark read
+                    </button>
+                  ) : null}
+                </div>
+              ))}
           </div>
           <div className="notification-footer">
-            <button className="view-all-btn">View All Notifications</button>
+            <button onClick={() => navigate("/")} className="view-all-btn">
+              View All Notifications
+            </button>
           </div>
         </div>
       )}
