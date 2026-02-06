@@ -1,21 +1,28 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import UserManagement from "../../components/admin/UserManagement";
-import Notification from "../../components/dashboard/Notification";
+import NotificationNavbar from "../../components/dashboard/NotificationNavbar";
+import Notifications from "../../components/dashboard/Notifications";
 import "./Dashboard.css";
 
 const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get active tab from URL query param "tab", default to "overview" if missing
+  const activeTab = searchParams.get("tab") || "overview";
+
+  const handleTabChange = (tabId: string) => {
+    setSearchParams({ tab: tabId });
+  };
 
   const sidebarItems = [
     { id: "overview", icon: "dashboard", label: "Overview" },
     { id: "users", icon: "group", label: "Users Management" },
-    { id: "courses", icon: "school", label: "Courses" },
-    { id: "reports", icon: "analytics", label: "Reports" },
+    { id: "notifications", icon: "notifications", label: "Notifications" },
     { id: "settings", icon: "settings", label: "Settings" },
   ];
 
@@ -115,7 +122,7 @@ const AdminDashboard: React.FC = () => {
           {sidebarItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => handleTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                 activeTab === item.id
                   ? "bg-primary/10 text-primary font-medium"
@@ -174,7 +181,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Notification />
+            <NotificationNavbar />
             <div className="flex items-center gap-3 bg-[#f6f6f8] p-1.5 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
                 {user?.fullName?.charAt(0) || "A"}
@@ -349,6 +356,8 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </>
+          ) : activeTab === "notifications" ? (
+            <Notifications />
           ) : activeTab === "settings" ? (
             <Settings />
           ) : activeTab === "users" ? (

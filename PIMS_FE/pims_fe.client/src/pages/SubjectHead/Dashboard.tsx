@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
-import Notification from "../../components/dashboard/Notification";
+import Notification from "../../components/dashboard/NotificationNavbar";
 
 const SubjectHeadDashboard: React.FC = () => {
   const { user, logout } = useAuth();

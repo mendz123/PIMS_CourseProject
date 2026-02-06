@@ -18,6 +18,7 @@ export interface UserInfo {
   phoneNumber?: string;
   bio?: string;
   status?: string;
+  CreatedAt?: string;
 }
 
 // Auth Types
