@@ -1,17 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
-import "./Notification.css";
+import "./NotificationNavbar.css";
 import { notificationService } from "../../services/notificationService";
 import type { NotificationDto } from "../../types/notification.types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
-const Notification: React.FC = () => {
+const NotificationNavbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -150,7 +152,14 @@ const Notification: React.FC = () => {
               ))}
           </div>
           <div className="notification-footer">
-            <button onClick={() => navigate("/")} className="view-all-btn">
+            <button
+              onClick={() =>
+                navigate(
+                  `/${user?.role ? user.role.toLowerCase() : "student"}/dashboard?tab=notifications`,
+                )
+              }
+              className="view-all-btn"
+            >
               View All Notifications
             </button>
           </div>
@@ -160,4 +169,4 @@ const Notification: React.FC = () => {
   );
 };
 
-export default Notification;
+export default NotificationNavbar;
