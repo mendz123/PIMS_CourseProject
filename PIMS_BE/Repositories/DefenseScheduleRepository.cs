@@ -8,9 +8,14 @@ public interface IDefenseScheduleRepository : IGenericRepository<Models.DefenseS
     Task<IEnumerable<Models.DefenseSchedule>> GetByCouncilAsync(int councilId);
     Task<IEnumerable<Models.DefenseSchedule>> GetBySemesterAsync(int semesterId);
     Task<Models.DefenseSchedule?> GetWithDetailsAsync(int scheduleId);
-    /// <summary>Kiểm tra trùng giờ trong cùng hội đồng cùng ngày</summary>
+    /// <summary>Check time conflict for same council on same day</summary>
     Task<bool> IsTimeConflictAsync(int councilId, DateOnly date,
         TimeOnly start, TimeOnly end, int? excludeScheduleId = null);
+    /// <summary>Check time conflict for a room on same day (TC-DS-06/TC-DS-10)</summary>
+    Task<bool> IsRoomTimeConflictAsync(int roomId, DateOnly date,
+        TimeOnly start, TimeOnly end, int? excludeScheduleId = null);
+    /// <summary>Return the scheduleId that uses this room (for TC-ROOM-07 error message)</summary>
+    Task<int?> GetScheduleIdByRoomAsync(int roomId);
 }
 
 public class DefenseScheduleRepository
@@ -56,5 +61,26 @@ public class DefenseScheduleRepository
                 (!excludeScheduleId.HasValue || ds.ScheduleId != excludeScheduleId.Value) &&
                 ds.StartTime < end &&
                 ds.EndTime   > start);
+    }
+
+    public async Task<bool> IsRoomTimeConflictAsync(
+        int roomId, DateOnly date, TimeOnly start, TimeOnly end,
+        int? excludeScheduleId = null)
+    {
+        return await _context.DefenseSchedules
+            .AnyAsync(ds =>
+                ds.RoomId == roomId &&
+                ds.DefenseDate == date &&
+                (!excludeScheduleId.HasValue || ds.ScheduleId != excludeScheduleId.Value) &&
+                ds.StartTime < end &&
+                ds.EndTime   > start);
+    }
+
+    public async Task<int?> GetScheduleIdByRoomAsync(int roomId)
+    {
+        var schedule = await _context.DefenseSchedules
+            .Where(ds => ds.RoomId == roomId)
+            .FirstOrDefaultAsync();
+        return schedule?.ScheduleId;
     }
 }

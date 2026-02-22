@@ -7,11 +7,13 @@ namespace PIMS_BE.Services;
 
 public class RoomService : IRoomService
 {
-    private readonly IRoomRepository _roomRepo;
+    private readonly IRoomRepository            _roomRepo;
+    private readonly IDefenseScheduleRepository _scheduleRepo;
 
-    public RoomService(IRoomRepository roomRepo)
+    public RoomService(IRoomRepository roomRepo, IDefenseScheduleRepository scheduleRepo)
     {
-        _roomRepo = roomRepo;
+        _roomRepo     = roomRepo;
+        _scheduleRepo = scheduleRepo;
     }
 
     public async Task<IEnumerable<RoomDto>> GetAllAsync()
@@ -51,8 +53,11 @@ public class RoomService : IRoomService
         var room = await _roomRepo.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Room {id} not found");
 
-        if (await _roomRepo.IsRoomInUseAsync(id))
-            throw new InvalidOperationException("Cannot delete a room that is currently assigned to a defense schedule");
+        // TC-ROOM-07: include the scheduleId that is using this room
+        var scheduleId = await _scheduleRepo.GetScheduleIdByRoomAsync(id);
+        if (scheduleId.HasValue)
+            throw new InvalidOperationException(
+                $"Cannot delete room: currently assigned to defense schedule id {scheduleId.Value}");
 
         _roomRepo.Remove(room);
         await _roomRepo.SaveChangesAsync();

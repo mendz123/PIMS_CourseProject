@@ -69,6 +69,16 @@ public class DefenseScheduleService : IDefenseScheduleService
             throw new InvalidOperationException(
                 "Time conflict: the council already has a defense session in this time slot");
 
+        // Check room time conflict if roomId is provided (TC-DS-06)
+        if (dto.RoomId.HasValue)
+        {
+            bool roomConflict = await _scheduleRepo.IsRoomTimeConflictAsync(
+                dto.RoomId.Value, dto.DefenseDate, dto.StartTime, dto.EndTime);
+            if (roomConflict)
+                throw new InvalidOperationException(
+                    $"Time conflict: room is already booked for another schedule overlapping this time");
+        }
+
         var schedule = new DefenseSchedule
         {
             CouncilId   = dto.CouncilId,
@@ -92,10 +102,19 @@ public class DefenseScheduleService : IDefenseScheduleService
         var schedule = await _scheduleRepo.GetWithDetailsAsync(scheduleId)
             ?? throw new KeyNotFoundException($"Schedule {scheduleId} not found");
 
-        // Validate Room nếu không null
+        // Validate Room exists, then check time conflict (TC-DS-09 / TC-DS-10)
         if (dto.RoomId.HasValue)
+        {
             _ = await _roomRepo.GetByIdAsync(dto.RoomId.Value)
                 ?? throw new KeyNotFoundException($"Room {dto.RoomId} not found");
+
+            bool roomConflict = await _scheduleRepo.IsRoomTimeConflictAsync(
+                dto.RoomId.Value, schedule.DefenseDate, schedule.StartTime, schedule.EndTime,
+                excludeScheduleId: scheduleId);
+            if (roomConflict)
+                throw new InvalidOperationException(
+                    "Time conflict: room is already booked for another schedule overlapping this time");
+        }
 
         schedule.RoomId = dto.RoomId;
         _scheduleRepo.Update(schedule);
