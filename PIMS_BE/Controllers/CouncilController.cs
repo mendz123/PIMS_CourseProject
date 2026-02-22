@@ -50,7 +50,7 @@ public class CouncilController : ControllerBase
         }
     }
 
-    // UC21 — Tạo hội đồng bảo vệ
+    // UC21 — Create defense council (HeadOfSubject only)
     [HttpPost]
     [Authorize(Roles = "SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<CouncilDto>>> Create([FromBody] CreateCouncilDto dto)
@@ -71,7 +71,7 @@ public class CouncilController : ControllerBase
         }
     }
 
-    // UC22 — Cập nhật hội đồng bảo vệ
+    // UC22 — Update defense council (HeadOfSubject only)
     [HttpPut("{id}")]
     [Authorize(Roles = "SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<CouncilDto>>> Update(

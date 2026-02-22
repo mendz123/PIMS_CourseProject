@@ -109,19 +109,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Đọc token từ cookie nếu không có trong header
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            // Nếu không có token trong header, thử lấy từ cookie
-            if (string.IsNullOrEmpty(context.Token))
-            {
-                context.Token = context.Request.Cookies["access_token"];
-            }
-            return Task.CompletedTask;
-        }
-    };
+    options.Events = JwtBearerEventHandler.Create();
 });
 
 builder.Services.Configure<CloudinarySettings>(

@@ -51,7 +51,7 @@ public class DefenseScheduleController : ControllerBase
         }
     }
 
-    // UC23 — Lên lịch bảo vệ
+    // UC23 — Schedule defense session (HeadOfSubject only)
     [HttpPost]
     [Authorize(Roles = "SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<DefenseScheduleDto>>> Create(
@@ -81,7 +81,7 @@ public class DefenseScheduleController : ControllerBase
         }
     }
 
-    // UC24 — Gán phòng cho buổi bảo vệ
+    // UC24 — Assign room to defense session (HeadOfSubject only)
     [HttpPatch("{id}/room")]
     [Authorize(Roles = "SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<DefenseScheduleDto>>> AssignRoom(
