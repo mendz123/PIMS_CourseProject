@@ -1,14 +1,26 @@
+using Microsoft.EntityFrameworkCore;
 using PIMS_BE.Models;
 
 namespace PIMS_BE.Repositories;
 
 public interface IGroupRepository : IGenericRepository<Group>
 {
+    Task<Group?> GetGroupWithDetailsAsync(int groupId);
 }
 
 public class GroupRepository : GenericRepository<Group>, IGroupRepository
 {
     public GroupRepository(PimsDbContext context) : base(context)
     {
+    }
+
+    public async Task<Group?> GetGroupWithDetailsAsync(int groupId)
+    {
+        return await _dbSet
+            .Include(g => g.Status)
+            .Include(g => g.Semester)
+            .Include(g => g.Leader)
+            .Include(g => g.GroupMembers)
+            .FirstOrDefaultAsync(g => g.GroupId == groupId);
     }
 }
