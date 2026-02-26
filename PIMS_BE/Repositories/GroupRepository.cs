@@ -6,6 +6,7 @@ namespace PIMS_BE.Repositories;
 public interface IGroupRepository : IGenericRepository<Group>
 {
     Task<Group?> GetGroupWithDetailsAsync(int groupId);
+    Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int pageNumber, int pageSize);
 }
 
 public class GroupRepository : GenericRepository<Group>, IGroupRepository
@@ -22,5 +23,27 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.Leader)
             .Include(g => g.GroupMembers)
             .FirstOrDefaultAsync(g => g.GroupId == groupId);
+    }
+
+    public async Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int pageNumber, int pageSize)
+    {
+        var query = _dbSet
+            .Include(g => g.Status)
+            .Include(g => g.Semester)
+            .Include(g => g.Leader)
+            .Include(g => g.GroupMembers)
+            .Where(g => g.SemesterId == semesterId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(g => g.GroupName != null && g.GroupName.Contains(search));
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderBy(g => g.GroupId)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
     }
 }

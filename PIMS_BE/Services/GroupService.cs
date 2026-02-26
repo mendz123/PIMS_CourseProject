@@ -94,5 +94,31 @@ namespace PIMS_BE.Services
                 MemberCount = group.GroupMembers.Count(m => m.StatusId == 1)
             };
         }
+
+        public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize)
+        {
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault()
+                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+
+            var (groups, totalCount) = await _groupRepository.GetGroupsInActiveSemesterAsync(
+                activeSemester.SemesterId, search, pageNumber, pageSize);
+
+            var items = groups.Select(g => new GroupDto
+            {
+                GroupId = g.GroupId,
+                GroupName = g.GroupName ?? "",
+                SemesterId = g.SemesterId,
+                SemesterName = g.Semester?.SemesterName ?? "",
+                LeaderId = g.LeaderId,
+                LeaderName = g.Leader?.FullName ?? "",
+                StatusId = g.StatusId,
+                StatusName = g.Status?.StatusName ?? "",
+                IsLeader = false,
+                MemberCount = g.GroupMembers.Count(m => m.StatusId == 1)
+            }).ToList();
+
+            return (items, totalCount);
+        }
     }
 }

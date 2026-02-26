@@ -19,19 +19,43 @@ namespace PIMS_BE.Controllers
             _groupService = groupService;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse<PaginatedResponse<GroupDto>>>> GetGroups(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                if (pageNumber < 1) pageNumber = 1;
+                if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
+                var (items, totalCount) = await _groupService.GetGroupsAsync(search, pageNumber, pageSize);
+                return OkPaginated(items, totalCount, pageNumber, pageSize, "Get list of groups successfully.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<PaginatedResponse<GroupDto>>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<PaginatedResponse<GroupDto>>(ex.Message);
+            }
+        }
+
         [HttpGet("my-group")]
         public async Task<ActionResult<ApiResponse<GroupDto>>> GetMyGroup()
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null) return UnauthorizedResponse<GroupDto>("Không tìm th?y thông tin ng??i dùng.");
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
 
                 var group = await _groupService.GetMyGroupAsync(userId.Value);
                 if (group == null)
-                    return OkResponse<GroupDto?>(null, "B?n ch?a có nhóm trong h?c k? hi?n t?i.");
+                    return OkResponse<GroupDto?>(null, "You don't have a group in the current semester.");
 
-                return OkResponse(group, "L?y thông tin nhóm thành công.");
+                return OkResponse(group, "Get information of group successfully.");
             }
             catch (Exception ex)
             {
@@ -45,13 +69,13 @@ namespace PIMS_BE.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                    return BadRequestResponse<GroupDto>("D? li?u không h?p l?.");
+                    return BadRequestResponse<GroupDto>("Invalid data.");
 
                 var userId = GetCurrentUserId();
-                if (userId == null) return UnauthorizedResponse<GroupDto>("Không tìm th?y thông tin ng??i dùng.");
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found..");
 
                 var group = await _groupService.CreateGroupAsync(userId.Value, request.GroupName);
-                return CreatedResponse(group, $"T?o nhóm '{group.GroupName}' thành công.");
+                return CreatedResponse(group, $"Create group '{group.GroupName}' successfully.");
             }
             catch (InvalidOperationException ex)
             {
