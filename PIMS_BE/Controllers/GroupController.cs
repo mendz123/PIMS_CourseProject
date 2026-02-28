@@ -9,7 +9,7 @@ namespace PIMS_BE.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "STUDENT")]
+    [Authorize]
     public class GroupController : BaseApiController
     {
         private readonly IGroupService _groupService;
@@ -20,6 +20,7 @@ namespace PIMS_BE.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "MENTOR,SUBJECT_HEAD")]
         public async Task<ActionResult<ApiResponse<PaginatedResponse<GroupDto>>>> GetGroups(
             [FromQuery] string? search,
             [FromQuery] int pageNumber = 1,
@@ -30,7 +31,23 @@ namespace PIMS_BE.Controllers
                 if (pageNumber < 1) pageNumber = 1;
                 if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
-                var (items, totalCount) = await _groupService.GetGroupsAsync(search, pageNumber, pageSize);
+                bool isMentor = User.IsInRole("MENTOR");
+                int? filterByMentorId = null;
+                bool includeMentorInfo = false;
+
+                if (isMentor)
+                {
+                    var userId = GetCurrentUserId();
+                    if (userId == null) return UnauthorizedResponse<PaginatedResponse<GroupDto>>("User information not found.");
+                    filterByMentorId = userId.Value;
+                }
+                else
+                {
+                    // SUBJECT_HEAD: see all groups with mentor info
+                    includeMentorInfo = true;
+                }
+
+                var (items, totalCount) = await _groupService.GetGroupsAsync(search, pageNumber, pageSize, filterByMentorId, includeMentorInfo);
                 return OkPaginated(items, totalCount, pageNumber, pageSize, "Get list of groups successfully.");
             }
             catch (InvalidOperationException ex)
@@ -44,6 +61,7 @@ namespace PIMS_BE.Controllers
         }
 
         [HttpGet("my-group")]
+        [Authorize(Roles = "STUDENT")]
         public async Task<ActionResult<ApiResponse<GroupDto>>> GetMyGroup()
         {
             try
@@ -64,6 +82,7 @@ namespace PIMS_BE.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "STUDENT")]
         public async Task<ActionResult<ApiResponse<GroupDto>>> CreateGroup([FromBody] CreateGroupRequestDto request)
         {
             try

@@ -95,14 +95,14 @@ namespace PIMS_BE.Services
             };
         }
 
-        public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize)
+        public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize, int? filterByMentorId, bool includeMentorInfo)
         {
             var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
             var activeSemester = semesters.FirstOrDefault()
                 ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
 
             var (groups, totalCount) = await _groupRepository.GetGroupsInActiveSemesterAsync(
-                activeSemester.SemesterId, search, pageNumber, pageSize);
+                activeSemester.SemesterId, search, filterByMentorId, pageNumber, pageSize);
 
             var items = groups.Select(g => new GroupDto
             {
@@ -112,6 +112,8 @@ namespace PIMS_BE.Services
                 SemesterName = g.Semester?.SemesterName ?? "",
                 LeaderId = g.LeaderId,
                 LeaderName = g.Leader?.FullName ?? "",
+                MentorId = includeMentorInfo ? g.MentorId : null,
+                MentorName = includeMentorInfo ? (g.Mentor?.FullName ?? "") : null,
                 StatusId = g.StatusId,
                 StatusName = g.Status?.StatusName ?? "",
                 IsLeader = false,

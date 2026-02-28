@@ -6,6 +6,6 @@ namespace PIMS_BE.Services.Interfaces
     {
         Task<GroupDto> CreateGroupAsync(int userId, string groupName);
         Task<GroupDto?> GetMyGroupAsync(int userId);
-        Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize);
+        Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize, int? filterByMentorId, bool includeMentorInfo);
     }
 }

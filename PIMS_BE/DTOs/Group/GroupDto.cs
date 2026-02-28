@@ -8,6 +8,8 @@ namespace PIMS_BE.DTOs.Group
         public string SemesterName { get; set; } = string.Empty;
         public int LeaderId { get; set; }
         public string LeaderName { get; set; } = string.Empty;
+        public int? MentorId { get; set; }
+        public string? MentorName { get; set; }
         public int StatusId { get; set; }
         public string StatusName { get; set; } = string.Empty;
         public bool IsLeader { get; set; }
