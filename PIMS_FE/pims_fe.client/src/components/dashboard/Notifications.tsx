@@ -288,7 +288,7 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-gray-900">{notif.title}</p>
+                            <p className="text-sm font-bold text-gray-900">Group Invitation</p>
                             {isPending ? (
                                 <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                                     Pending
