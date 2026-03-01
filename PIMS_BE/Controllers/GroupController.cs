@@ -20,7 +20,7 @@ namespace PIMS_BE.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "MENTOR,SUBJECT_HEAD")]
+        [Authorize(Roles = "TEACHER,SUBJECT_HEAD")]
         public async Task<ActionResult<ApiResponse<PaginatedResponse<GroupDto>>>> GetGroups(
             [FromQuery] string? search,
             [FromQuery] int pageNumber = 1,
@@ -31,11 +31,11 @@ namespace PIMS_BE.Controllers
                 if (pageNumber < 1) pageNumber = 1;
                 if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
-                bool isMentor = User.IsInRole("MENTOR");
+                bool isTeacher = User.IsInRole("TEACHER");
                 int? filterByMentorId = null;
                 bool includeMentorInfo = false;
 
-                if (isMentor)
+                if (isTeacher)
                 {
                     var userId = GetCurrentUserId();
                     if (userId == null) return UnauthorizedResponse<PaginatedResponse<GroupDto>>("User information not found.");
@@ -57,6 +57,24 @@ namespace PIMS_BE.Controllers
             catch (Exception ex)
             {
                 return InternalErrorResponse<PaginatedResponse<GroupDto>>(ex.Message);
+            }
+        }
+
+        [HttpGet("{groupId}")]
+        [Authorize(Roles = "TEACHER,SUBJECT_HEAD")]
+        public async Task<ActionResult<ApiResponse<GroupDetailDto>>> GetGroupDetail(int groupId)
+        {
+            try
+            {
+                var detail = await _groupService.GetGroupDetailAsync(groupId);
+                if (detail == null)
+                    return NotFoundResponse<GroupDetailDto>("Group not found.");
+
+                return OkResponse(detail, "Get group detail successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDetailDto>(ex.Message);
             }
         }
 

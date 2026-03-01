@@ -122,5 +122,37 @@ namespace PIMS_BE.Services
 
             return (items, totalCount);
         }
+
+        public async Task<GroupDetailDto?> GetGroupDetailAsync(int groupId)
+        {
+            var group = await _groupRepository.GetGroupWithDetailsAsync(groupId);
+            if (group == null) return null;
+
+            return new GroupDetailDto
+            {
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                SemesterId = group.SemesterId,
+                SemesterName = group.Semester?.SemesterName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MentorId = group.MentorId,
+                MentorName = group.Mentor?.FullName,
+                StatusId = group.StatusId,
+                StatusName = group.Status?.StatusName ?? "",
+                IsLeader = false,
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == 1),
+                Members = group.GroupMembers.Select(m => new GroupMemberDto
+                {
+                    GroupMemberId = m.GroupMemberId,
+                    UserId = m.UserId,
+                    FullName = m.User?.FullName ?? "",
+                    Email = m.User?.Email ?? "",
+                    AvatarUrl = m.User?.AvatarUrl,
+                    StatusId = m.StatusId,
+                    StatusName = m.Status?.StatusName ?? ""
+                }).ToList()
+            };
+        }
     }
 }

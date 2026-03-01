@@ -21,7 +21,9 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.Status)
             .Include(g => g.Semester)
             .Include(g => g.Leader)
-            .Include(g => g.GroupMembers)
+            .Include(g => g.Mentor)
+            .Include(g => g.GroupMembers).ThenInclude(m => m.User)
+            .Include(g => g.GroupMembers).ThenInclude(m => m.Status)
             .FirstOrDefaultAsync(g => g.GroupId == groupId);
     }
 

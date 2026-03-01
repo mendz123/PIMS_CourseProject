@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import Notification from "../../components/dashboard/NotificationNavbar";
 import AssessmentManagementContent from "./AssessmentManagementContent";
+import GroupListContent from "../../components/shared/GroupListContent";
 
 const SubjectHeadDashboard: React.FC = () => {
   const { user, logout, loading: authLoading } = useAuth();
@@ -59,6 +60,15 @@ const SubjectHeadDashboard: React.FC = () => {
                 groups
               </span>
               <span className="text-sm">Faculty Management</span>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "group-management" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("group-management")}
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                manage_accounts
+              </span>
+              <span className="text-sm">Group Management</span>
             </button>
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "syllabus-assessment" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
@@ -500,6 +510,8 @@ const SubjectHeadDashboard: React.FC = () => {
             </>
           ) : activeTab === "syllabus-assessment" ? (
             <AssessmentManagementContent />
+          ) : activeTab === "group-management" ? (
+            <GroupListContent showMentorInfo={true} />
           ) : activeTab === "settings" ? (
             <Settings />
           ) : (

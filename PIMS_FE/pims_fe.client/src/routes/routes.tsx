@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
-import { TeacherDashboard, GradingPage } from "../pages/Teacher";
+import { TeacherDashboard, GradingPage, GroupListPage } from "../pages/Teacher";
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -66,6 +66,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/dashboard",
         element: <TeacherDashboard />,
+      },
+      {
+        path: "teacher/groups",
+        element: <GroupListPage />,
       },
       {
         path: "teacher/grading",
