@@ -248,6 +248,35 @@ public partial class PimsDbContext : DbContext
                 .HasConstraintName("FK_DS_Group");
         });
 
+        modelBuilder.Entity<GroupInvitation>(entity =>
+        {
+            entity.HasKey(e => e.InvitationId).HasName("PK__GroupInv__ItemId");
+
+            entity.HasIndex(e => new { e.GroupId, e.InvitedUserId }, "UQ_GroupInvitation_User").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.Status)
+                .HasDefaultValue(InvitationStatus.Pending);
+
+            entity.HasOne(d => d.Group).WithMany(p => p.GroupInvitations)
+                .HasForeignKey(d => d.GroupId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_Group");
+
+            entity.HasOne(d => d.InvitedUser).WithMany(p => p.GroupInvitationInvitedUsers)
+                .HasForeignKey(d => d.InvitedUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_InvitedUser");
+
+            entity.HasOne(d => d.InvitedByUser).WithMany(p => p.GroupInvitationInvitedByUsers)
+                .HasForeignKey(d => d.InvitedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_InvitedByUser");
+        });
+
         modelBuilder.Entity<Group>(entity =>
         {
             entity.HasKey(e => e.GroupId).HasName("PK__Groups__149AF36A64CFC685");
