@@ -8,6 +8,11 @@ export const groupService = {
         return response.data;
     },
 
+    async getMyGroupDetail(): Promise<ApiResponse<GroupDetailDto | null>> {
+        const response = await api.get<ApiResponse<GroupDetailDto | null>>('/api/group/my-group/detail');
+        return response.data;
+    },
+
     async createGroup(groupName: string): Promise<ApiResponse<GroupDto>> {
         const response = await api.post<ApiResponse<GroupDto>>('/api/group', { groupName });
         return response.data;

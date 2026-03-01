@@ -99,6 +99,27 @@ namespace PIMS_BE.Controllers
             }
         }
 
+        [HttpGet("my-group/detail")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<GroupDetailDto>>> GetMyGroupDetail()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<GroupDetailDto>("User information not found.");
+
+                var detail = await _groupService.GetMyGroupDetailAsync(userId.Value);
+                if (detail == null)
+                    return OkResponse<GroupDetailDto?>(null, "You don't have a group in the current semester.");
+
+                return OkResponse(detail, "Get group detail successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDetailDto>(ex.Message);
+            }
+        }
+
         [HttpPost]
         [Authorize(Roles = "STUDENT")]
         public async Task<ActionResult<ApiResponse<GroupDto>>> CreateGroup([FromBody] CreateGroupRequestDto request)
@@ -107,6 +128,7 @@ namespace PIMS_BE.Controllers
             {
                 if (!ModelState.IsValid)
                     return BadRequestResponse<GroupDto>("Invalid data.");
+
 
                 var userId = GetCurrentUserId();
                 if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found..");

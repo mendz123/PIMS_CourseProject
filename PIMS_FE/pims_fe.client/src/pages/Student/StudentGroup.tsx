@@ -1,20 +1,21 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Users, UserPlus, BookOpen, GraduationCap, Lock, CheckCircle2, Info, Loader2, X } from 'lucide-react';
+import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info } from 'lucide-react';
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
+import type { GroupMemberDto } from '../../types/group.types';
 import InviteMemberModal from '../../components/student/InviteMemberModal';
 import InviteMentorModal from '../../components/student/InviteMentorModal';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    CREATED: { label: 'Vừa tạo', color: 'bg-blue-100 text-blue-700' },
-    FORMING: { label: 'Đang tuyển thành viên', color: 'bg-yellow-100 text-yellow-700' },
-    SUBMITTED: { label: 'Đã nộp đề tài', color: 'bg-purple-100 text-purple-700' },
-    APPROVED: { label: 'Mentor đã duyệt', color: 'bg-green-100 text-green-700' },
-    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-cyan-100 text-cyan-700' },
-    COMPLETED: { label: 'Hoàn thành', color: 'bg-emerald-100 text-emerald-700' },
-    CANCELLED: { label: 'Đã huỷ', color: 'bg-red-100 text-red-700' },
+    CREATED:     { label: 'CREATED',     color: 'bg-blue-100 text-blue-700' },
+    FORMING:     { label: 'FORMING',     color: 'bg-yellow-100 text-yellow-700' },
+    SUBMITTED:   { label: 'SUBMITTED',   color: 'bg-purple-100 text-purple-700' },
+    APPROVED:    { label: 'APPROVED',    color: 'bg-green-100 text-green-700' },
+    IN_PROGRESS: { label: 'IN_PROGRESS', color: 'bg-cyan-100 text-cyan-700' },
+    COMPLETED:   { label: 'COMPLETED',   color: 'bg-emerald-100 text-emerald-700' },
+    CANCELLED:   { label: 'CANCELLED',   color: 'bg-red-100 text-red-700' },
 };
 
 const StudentGroup: React.FC = () => {
@@ -26,9 +27,20 @@ const [nameError, setNameError] = useState('');
 const [creating, setCreating] = useState(false);
 const [showInviteModal, setShowInviteModal] = useState(false);
 const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
+const [members, setMembers] = useState<GroupMemberDto[]>([]);
+const [membersLoading, setMembersLoading] = useState(false);
 
 const isForming = !!group && group.statusId >= 2;
-const canInviteMentor = !!group && group.isLeader && group.statusName === 'FORMING' && !group.mentorId;
+const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
+
+useEffect(() => {
+    if (!hasGroup) { setMembers([]); return; }
+    setMembersLoading(true);
+    groupService.getMyGroupDetail()
+        .then(res => { if (res.success && res.data) setMembers(res.data.members ?? []); })
+        .catch(() => {})
+        .finally(() => setMembersLoading(false));
+}, [hasGroup, group?.memberCount]);
 
     const handleOpenModal = () => {
         setGroupName('');
@@ -168,51 +180,57 @@ const canInviteMentor = !!group && group.isLeader && group.statusName === 'FORMI
                             label="Mentor"
                             description={
                                 group!.mentorId
-                                    ? `Đã có mentor: ${group!.mentorName || 'Assigned'}`
+                                    ? `Assigned: ${group!.mentorName || 'Mentor'}`
                                     : canInviteMentor
-                                    ? 'Mời giảng viên hướng dẫn'
+                                    ? 'Invite a supervisor'
                                     : !group!.isLeader
-                                    ? 'Chỉ trưởng nhóm thực hiện được'
-                                    : 'Mở khi nhóm đạt 4–5 thành viên'
+                                    ? 'Leader only'
+                                    : 'Unlocks at 4–5 members (FORMING)'
                             }
-                            locked={!canInviteMentor}
+                            locked={!canInviteMentor && !group!.mentorId}
                             lockReason={
-                                group!.mentorId
-                                    ? 'Nhóm đã có mentor'
-                                    : !group!.isLeader
-                                    ? 'Chỉ trưởng nhóm thực hiện được'
-                                    : 'Mở khi nhóm đạt 4–5 thành viên (FORMING)'
+                                !group!.isLeader
+                                    ? 'Leader only'
+                                    : 'Unlocks at FORMING status'
                             }
                             onClick={() => setShowInviteMentorModal(true)}
                         />
                     </div>
 
-                    <div className="bg-slate-900 p-6 rounded-2xl text-white">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Info size={16} className="text-primary" />
-                            <h4 className="text-sm font-bold">Các bước tiếp theo</h4>
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+                            <Users size={16} className="text-primary" />
+                            <h4 className="text-sm font-bold text-gray-900">Members</h4>
+                            <span className="ml-auto text-xs text-gray-400">{group!.memberCount}/5</span>
                         </div>
-                        <ol className="space-y-2 text-xs text-slate-400 leading-relaxed list-none">
-                            <li className="flex items-start gap-2">
-                                <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                <span>Nhóm đã được tạo thành công.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                {isForming
-                                    ? <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                    : <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                }
-                                <span>Mời thêm thành viên để nhóm đạt từ 4–5 người.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                <span>Đăng ký đề tài sau khi nhóm ổn định.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                <span>Gửi yêu cầu Mentor khi đã có đề tài.</span>
-                            </li>
-                        </ol>
+                        {membersLoading ? (
+                            <div className="p-6 flex justify-center">
+                                <Loader2 size={20} className="animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-50">
+                                {members.map(m => (
+                                    <div key={m.userId} className="flex items-center gap-3 px-5 py-3">
+                                        <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">
+                                            {m.fullName.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-gray-900 truncate">{m.fullName}</p>
+                                            <p className="text-xs text-gray-400">ID: {m.userId} &bull; {m.email}</p>
+                                        </div>
+                                        {m.userId === group!.leaderId ? (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                                <Crown size={10} /> Leader
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                                <User size={10} /> Member
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -102,6 +102,22 @@ namespace PIMS_BE.Services
             if (memberInfo == null) return null;
 
             var group = memberInfo.Group;
+            var memberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
+
+            // Auto-transition to FORMING if the group has reached the minimum member count
+            if (group.StatusId == StatusCreated && memberCount >= MinMembersForForming)
+            {
+                group.StatusId = StatusForming;
+                await _groupRepository.UpdateAsync(group);
+                await _groupRepository.SaveChangesAsync();
+                var refreshed = await _groupRepository.GetGroupWithDetailsAsync(group.GroupId);
+                if (refreshed != null)
+                {
+                    group = refreshed;
+                    memberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
+                }
+            }
+
             return new GroupDto
             {
                 GroupId = group.GroupId,
@@ -110,10 +126,53 @@ namespace PIMS_BE.Services
                 SemesterName = group.Semester?.SemesterName ?? "",
                 LeaderId = group.LeaderId,
                 LeaderName = group.Leader?.FullName ?? "",
+                MentorId = group.MentorId,
+                MentorName = group.Mentor?.FullName,
                 StatusId = group.StatusId,
                 StatusName = group.Status?.StatusName ?? "",
                 IsLeader = group.LeaderId == userId,
-                MemberCount = group.GroupMembers.Count(m => m.StatusId == 1)
+                MemberCount = memberCount
+            };
+        }
+
+        public async Task<GroupDetailDto?> GetMyGroupDetailAsync(int userId)
+        {
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault();
+            if (activeSemester == null) return null;
+
+            var memberInfo = await _memberRepository.GetActiveMemberWithGroupInSemesterAsync(userId, activeSemester.SemesterId);
+            if (memberInfo == null) return null;
+
+            var group = await _groupRepository.GetGroupWithDetailsAsync(memberInfo.GroupId);
+            if (group == null) return null;
+
+            return new GroupDetailDto
+            {
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                SemesterId = group.SemesterId,
+                SemesterName = group.Semester?.SemesterName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MentorId = group.MentorId,
+                MentorName = group.Mentor?.FullName,
+                StatusId = group.StatusId,
+                StatusName = group.Status?.StatusName ?? "",
+                IsLeader = group.LeaderId == userId,
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
+                Members = group.GroupMembers
+                    .Where(m => m.StatusId == MemberStatusActive)
+                    .Select(m => new GroupMemberDto
+                    {
+                        GroupMemberId = m.GroupMemberId,
+                        UserId = m.UserId,
+                        FullName = m.User?.FullName ?? "",
+                        Email = m.User?.Email ?? "",
+                        AvatarUrl = m.User?.AvatarUrl,
+                        StatusId = m.StatusId,
+                        StatusName = m.Status?.StatusName ?? ""
+                    }).ToList()
             };
         }
 
