@@ -13,6 +13,7 @@ namespace PIMS_BE.Services
         private readonly IGroupInvitationRepository _invitationRepository;
         private readonly IUserRepository _userRepository;
         private readonly INotificationService _notificationService;
+        private readonly IMentorRequestRepository _mentorRequestRepository;
 
         private const int StatusCreated = 1;
         private const int StatusForming = 2;
@@ -20,6 +21,9 @@ namespace PIMS_BE.Services
         private const int UserStatusActive = 1;
         private const int MinMembersForForming = 4;
         private const int MaxGroupMembers = 5;
+        private const int MentorRequestStatusPending = 1;
+        private const int MentorRequestStatusAccepted = 2;
+        private const int MentorRequestStatusRejected = 3;
 
         public GroupService(
             IGroupRepository groupRepository,
@@ -27,7 +31,8 @@ namespace PIMS_BE.Services
             ISemesterRepository semesterRepository,
             IGroupInvitationRepository invitationRepository,
             IUserRepository userRepository,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IMentorRequestRepository mentorRequestRepository)
         {
             _groupRepository = groupRepository;
             _memberRepository = memberRepository;
@@ -35,6 +40,7 @@ namespace PIMS_BE.Services
             _invitationRepository = invitationRepository;
             _userRepository = userRepository;
             _notificationService = notificationService;
+            _mentorRequestRepository = mentorRequestRepository;
         }
 
         public async Task<GroupDto> CreateGroupAsync(int userId, string groupName)
@@ -348,6 +354,165 @@ namespace PIMS_BE.Services
                 InvitedByUserName = invitation.InvitedByUser?.FullName ?? "",
                 Status = invitation.Status.ToString()
             };
+        }
+
+        public async Task<MentorRequestDto> SendMentorInvitationAsync(int leaderId, int groupId, int mentorUserId, string? message)
+        {
+            var group = await _groupRepository.GetGroupWithDetailsAsync(groupId)
+                ?? throw new InvalidOperationException("Group not found.");
+
+            if (group.LeaderId != leaderId)
+                throw new InvalidOperationException("Only the group leader can invite a mentor.");
+
+            if (group.StatusId != StatusForming)
+                throw new InvalidOperationException("Group must be in FORMING status (4–5 members) to invite a mentor.");
+
+            if (group.MentorId != null)
+                throw new InvalidOperationException("This group already has a mentor assigned.");
+
+            var pendingRequest = await _mentorRequestRepository.GetPendingRequestByGroupAsync(groupId);
+            if (pendingRequest != null)
+                throw new InvalidOperationException("There is already a pending mentor invitation for this group. Please wait for a response.");
+
+            var mentor = await _userRepository.GetByIdWithDetailsAsync(mentorUserId)
+                ?? throw new InvalidOperationException($"User with ID {mentorUserId} not found.");
+
+            if (mentor.StatusId != UserStatusActive)
+                throw new InvalidOperationException("This teacher account is inactive.");
+
+            if (mentor.Role?.RoleName != "TEACHER")
+                throw new InvalidOperationException("The specified user is not a teacher.");
+
+            var request = new MentorRequest
+            {
+                GroupId = groupId,
+                UserId = mentorUserId,
+                Message = message,
+                StatusId = MentorRequestStatusPending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _mentorRequestRepository.AddAsync(request);
+            await _mentorRequestRepository.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(mentorUserId, new DTOs.Notification.CreateNotificationRequest
+            {
+                Title = "Mentor Invitation",
+                Content = $"Group '{group.GroupName}' has invited you to be their mentor. MentorRequest ID: #{request.RequestId}."
+            });
+
+            return new MentorRequestDto
+            {
+                RequestId = request.RequestId,
+                GroupId = groupId,
+                GroupName = group.GroupName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MentorUserId = mentorUserId,
+                MentorUserName = mentor.FullName ?? "",
+                Message = message,
+                Status = "Pending",
+                CreatedAt = request.CreatedAt
+            };
+        }
+
+        public async Task<List<MentorRequestDto>> GetPendingMentorRequestsAsync(int teacherUserId)
+        {
+            var requests = await _mentorRequestRepository.GetPendingRequestsForTeacherAsync(teacherUserId);
+            return requests.Select(r => new MentorRequestDto
+            {
+                RequestId = r.RequestId,
+                GroupId = r.GroupId,
+                GroupName = r.Group?.GroupName ?? "",
+                LeaderId = r.Group?.LeaderId ?? 0,
+                LeaderName = r.Group?.Leader?.FullName ?? "",
+                MentorUserId = r.UserId,
+                MentorUserName = "",
+                Message = r.Message,
+                Status = r.Status?.StatusName ?? "Pending",
+                CreatedAt = r.CreatedAt
+            }).ToList();
+        }
+
+        public async Task<MentorRequestDetailDto?> GetMentorRequestDetailAsync(int teacherUserId, int requestId)
+        {
+            var request = await _mentorRequestRepository.GetRequestWithDetailsAsync(requestId);
+            if (request == null || request.UserId != teacherUserId) return null;
+
+            var group = request.Group;
+            return new MentorRequestDetailDto
+            {
+                RequestId = request.RequestId,
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
+                Members = group.GroupMembers
+                    .Where(m => m.StatusId == MemberStatusActive)
+                    .Select(m => new GroupMemberDto
+                    {
+                        GroupMemberId = m.GroupMemberId,
+                        UserId = m.UserId,
+                        FullName = m.User?.FullName ?? "",
+                        Email = m.User?.Email ?? "",
+                        AvatarUrl = m.User?.AvatarUrl,
+                        StatusId = m.StatusId,
+                        StatusName = m.Status?.StatusName ?? ""
+                    }).ToList(),
+                Message = request.Message,
+                Status = request.Status?.StatusName ?? "Pending",
+                CreatedAt = request.CreatedAt
+            };
+        }
+
+        public async Task<GroupDto> RespondToMentorRequestAsync(int teacherUserId, int requestId, bool accept)
+        {
+            var request = await _mentorRequestRepository.GetRequestWithDetailsAsync(requestId)
+                ?? throw new InvalidOperationException("Mentor request not found.");
+
+            if (request.UserId != teacherUserId)
+                throw new InvalidOperationException("You are not authorized to respond to this mentor request.");
+
+            if (request.StatusId != MentorRequestStatusPending)
+                throw new InvalidOperationException("This mentor request has already been processed.");
+
+            if (!accept)
+            {
+                request.StatusId = MentorRequestStatusRejected;
+                await _mentorRequestRepository.UpdateAsync(request);
+                await _mentorRequestRepository.SaveChangesAsync();
+
+                await _notificationService.CreateNotificationAsync(request.Group.LeaderId, new DTOs.Notification.CreateNotificationRequest
+                {
+                    Title = "Mentor Request Declined",
+                    Content = $"Your mentor invitation for group '{request.Group.GroupName}' has been declined by the teacher."
+                });
+
+                var rejectedGroup = await _groupRepository.GetGroupWithDetailsAsync(request.GroupId);
+                return MapGroupToDto(rejectedGroup!, teacherUserId);
+            }
+
+            var group = request.Group;
+
+            if (group.MentorId != null)
+                throw new InvalidOperationException("This group already has a mentor assigned.");
+
+            group.MentorId = teacherUserId;
+            await _groupRepository.UpdateAsync(group);
+
+            request.StatusId = MentorRequestStatusAccepted;
+            await _mentorRequestRepository.UpdateAsync(request);
+            await _mentorRequestRepository.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(group.LeaderId, new DTOs.Notification.CreateNotificationRequest
+            {
+                Title = "Mentor Request Accepted",
+                Content = $"Your mentor invitation has been accepted! Group '{group.GroupName}' now has a mentor assigned."
+            });
+
+            var updatedGroup = await _groupRepository.GetGroupWithDetailsAsync(request.GroupId);
+            return MapGroupToDto(updatedGroup!, teacherUserId);
         }
 
         private static GroupDto MapGroupToDto(Group group, int currentUserId)

@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
 import InviteMemberModal from '../../components/student/InviteMemberModal';
+import InviteMentorModal from '../../components/student/InviteMentorModal';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
     CREATED: { label: 'Vừa tạo', color: 'bg-blue-100 text-blue-700' },
@@ -24,8 +25,10 @@ const [groupName, setGroupName] = useState('');
 const [nameError, setNameError] = useState('');
 const [creating, setCreating] = useState(false);
 const [showInviteModal, setShowInviteModal] = useState(false);
+const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
 
 const isForming = !!group && group.statusId >= 2;
+const canInviteMentor = !!group && group.isLeader && group.statusName === 'FORMING' && !group.mentorId;
 
     const handleOpenModal = () => {
         setGroupName('');
@@ -163,10 +166,24 @@ const isForming = !!group && group.statusId >= 2;
                         <ActionButton
                             icon={<GraduationCap size={24} />}
                             label="Mentor"
-                            description="Yêu cầu giảng viên hướng dẫn"
-                            locked={!isForming}
-                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
-                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
+                            description={
+                                group!.mentorId
+                                    ? `Đã có mentor: ${group!.mentorName || 'Assigned'}`
+                                    : canInviteMentor
+                                    ? 'Mời giảng viên hướng dẫn'
+                                    : !group!.isLeader
+                                    ? 'Chỉ trưởng nhóm thực hiện được'
+                                    : 'Mở khi nhóm đạt 4–5 thành viên'
+                            }
+                            locked={!canInviteMentor}
+                            lockReason={
+                                group!.mentorId
+                                    ? 'Nhóm đã có mentor'
+                                    : !group!.isLeader
+                                    ? 'Chỉ trưởng nhóm thực hiện được'
+                                    : 'Mở khi nhóm đạt 4–5 thành viên (FORMING)'
+                            }
+                            onClick={() => setShowInviteMentorModal(true)}
                         />
                     </div>
 
@@ -267,6 +284,18 @@ const isForming = !!group && group.statusId >= 2;
                     groupId={group.groupId}
                     onClose={() => setShowInviteModal(false)}
                     onSuccess={refetchGroup}
+                />
+            )}
+
+            {/* ───── MODAL MỜI MENTOR ───── */}
+            {showInviteMentorModal && group && (
+                <InviteMentorModal
+                    groupId={group.groupId}
+                    onClose={() => setShowInviteMentorModal(false)}
+                    onSuccess={() => {
+                        setShowInviteMentorModal(false);
+                        refetchGroup();
+                    }}
                 />
             )}
         </div>

@@ -232,6 +232,116 @@ namespace PIMS_BE.Controllers
             }
         }
 
+        // ??? Mentor Request Endpoints ???????????????????????????????????????????
+
+        [HttpPost("{groupId}/invite-mentor")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<MentorRequestDto>>> InviteMentor(int groupId, [FromBody] InviteMentorRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequestResponse<MentorRequestDto>("Invalid data.");
+
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<MentorRequestDto>("User information not found.");
+
+                var result = await _groupService.SendMentorInvitationAsync(userId.Value, groupId, request.MentorUserId, request.Message);
+                return OkResponse(result, $"Mentor invitation sent to teacher ID {request.MentorUserId} successfully.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<MentorRequestDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<MentorRequestDto>(ex.Message);
+            }
+        }
+
+        [HttpGet("mentor-requests/pending")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<List<MentorRequestDto>>>> GetPendingMentorRequests()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<List<MentorRequestDto>>("User information not found.");
+
+                var requests = await _groupService.GetPendingMentorRequestsAsync(userId.Value);
+                return OkResponse(requests, "Get pending mentor requests successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<MentorRequestDto>>(ex.Message);
+            }
+        }
+
+        [HttpGet("mentor-requests/{requestId}/detail")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<MentorRequestDetailDto>>> GetMentorRequestDetail(int requestId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<MentorRequestDetailDto>("User information not found.");
+
+                var detail = await _groupService.GetMentorRequestDetailAsync(userId.Value, requestId);
+                if (detail == null)
+                    return NotFoundResponse<MentorRequestDetailDto>("Mentor request not found or you don't have permission to view it.");
+
+                return OkResponse(detail, "Get mentor request detail successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<MentorRequestDetailDto>(ex.Message);
+            }
+        }
+
+        [HttpPost("mentor-requests/{requestId}/accept")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<GroupDto>>> AcceptMentorRequest(int requestId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
+
+                var group = await _groupService.RespondToMentorRequestAsync(userId.Value, requestId, accept: true);
+                return OkResponse(group, "You have accepted to be the mentor of this group.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<GroupDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDto>(ex.Message);
+            }
+        }
+
+        [HttpPost("mentor-requests/{requestId}/reject")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<string>>> RejectMentorRequest(int requestId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<string>("User information not found.");
+
+                await _groupService.RespondToMentorRequestAsync(userId.Value, requestId, accept: false);
+                return OkResponse("Rejected", "Mentor request rejected.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<string>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<string>(ex.Message);
+            }
+        }
+
         private int? GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

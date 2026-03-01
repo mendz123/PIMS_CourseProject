@@ -51,6 +51,32 @@ export interface InvitationDetailDto {
     status: string;
 }
 
+export interface MentorRequestDto {
+    requestId: number;
+    groupId: number;
+    groupName: string;
+    leaderId: number;
+    leaderName: string;
+    mentorUserId: number;
+    mentorUserName: string;
+    message?: string | null;
+    status: string;
+    createdAt?: string | null;
+}
+
+export interface MentorRequestDetailDto {
+    requestId: number;
+    groupId: number;
+    groupName: string;
+    leaderId: number;
+    leaderName: string;
+    memberCount: number;
+    members: GroupMemberDto[];
+    message?: string | null;
+    status: string;
+    createdAt?: string | null;
+}
+
 export interface PaginatedResponse<T> {
     items: T[];
     totalCount: number;

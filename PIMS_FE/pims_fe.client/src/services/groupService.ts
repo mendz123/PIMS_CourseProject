@@ -1,6 +1,6 @@
 import api from './api';
 import type { ApiResponse } from '../types';
-import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, PaginatedResponse } from '../types/group.types';
+import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, MentorRequestDto, MentorRequestDetailDto, PaginatedResponse } from '../types/group.types';
 
 export const groupService = {
     async getMyGroup(): Promise<ApiResponse<GroupDto | null>> {
@@ -49,6 +49,33 @@ export const groupService = {
 
     async getInvitationDetail(invitationId: number): Promise<ApiResponse<InvitationDetailDto>> {
         const response = await api.get<ApiResponse<InvitationDetailDto>>(`/api/group/invitations/${invitationId}/detail`);
+        return response.data;
+    },
+
+    // ??? Mentor Request ??????????????????????????????????????????????????????
+
+    async inviteMentor(groupId: number, mentorUserId: number, message?: string): Promise<ApiResponse<MentorRequestDto>> {
+        const response = await api.post<ApiResponse<MentorRequestDto>>(`/api/group/${groupId}/invite-mentor`, { mentorUserId, message });
+        return response.data;
+    },
+
+    async getPendingMentorRequests(): Promise<ApiResponse<MentorRequestDto[]>> {
+        const response = await api.get<ApiResponse<MentorRequestDto[]>>('/api/group/mentor-requests/pending');
+        return response.data;
+    },
+
+    async getMentorRequestDetail(requestId: number): Promise<ApiResponse<MentorRequestDetailDto>> {
+        const response = await api.get<ApiResponse<MentorRequestDetailDto>>(`/api/group/mentor-requests/${requestId}/detail`);
+        return response.data;
+    },
+
+    async acceptMentorRequest(requestId: number): Promise<ApiResponse<GroupDto>> {
+        const response = await api.post<ApiResponse<GroupDto>>(`/api/group/mentor-requests/${requestId}/accept`);
+        return response.data;
+    },
+
+    async rejectMentorRequest(requestId: number): Promise<ApiResponse<string>> {
+        const response = await api.post<ApiResponse<string>>(`/api/group/mentor-requests/${requestId}/reject`);
         return response.data;
     },
 };
