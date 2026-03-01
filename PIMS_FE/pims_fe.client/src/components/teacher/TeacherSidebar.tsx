@@ -17,6 +17,7 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ currentPath = "/teacher
         { icon: "trending_up", label: "Group Progress", path: "/teacher/progress", active: currentPath === "/teacher/progress" },
         { icon: "grade", label: "Grading", path: "/teacher/grading", active: currentPath === "/teacher/grading" },
         { icon: "group", label: "Student List", path: "/teacher/students", active: currentPath === "/teacher/students" },
+        { icon: "notifications", label: "Notifications", path: "/teacher/notifications", active: currentPath === "/teacher/notifications" },
     ];
 
     return (
@@ -47,10 +48,6 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ currentPath = "/teacher
                     ))}
                 </nav>
                 <div className="mt-auto pt-6 space-y-3">
-                    <button className="w-full flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold shadow-sm hover:bg-blue-700 transition-all">
-                        <span className="material-symbols-outlined text-[18px]">campaign</span>
-                        <span className="truncate">New Announcement</span>
-                    </button>
                     <button
                         onClick={() => {
                             logout();
