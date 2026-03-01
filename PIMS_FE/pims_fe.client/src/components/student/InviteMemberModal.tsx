@@ -18,7 +18,7 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
     const handleInvite = async () => {
         const parsed = parseInt(userId.trim(), 10);
         if (!userId.trim() || isNaN(parsed) || parsed <= 0) {
-            setError('Vui lòng nh?p ID sinh viên h?p l?.');
+            setError('Please enter a valid student ID.');
             return;
         }
         setError('');
@@ -27,16 +27,16 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
         try {
             const res = await groupService.inviteMember(groupId, parsed);
             if (res.success) {
-                setSuccessMsg(`?ã g?i l?i m?i ??n sinh viên ID ${parsed} thành công!`);
+                setSuccessMsg(`Invitation sent to student ID ${parsed} successfully!`);
                 setUserId('');
                 onSuccess();
             } else {
-                setError(res.message || 'G?i l?i m?i th?t b?i.');
+                setError(res.message || 'Failed to send invitation.');
             }
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
-                ? err.response?.data?.message ?? '?ã x?y ra l?i. Vui lòng th? l?i.'
-                : '?ã x?y ra l?i. Vui lòng th? l?i.';
+                ? err.response?.data?.message ?? 'An error occurred. Please try again.'
+                : 'An error occurred. Please try again.';
             setError(msg);
         } finally {
             setLoading(false);
@@ -64,14 +64,14 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                         <UserPlus size={22} className="text-primary" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900">M?i Thành Viên</h3>
-                        <p className="text-xs text-gray-500">Nh?p ID c?a sinh viên b?n mu?n m?i</p>
+                        <h3 className="text-xl font-bold text-gray-900">Invite Member</h3>
+                        <p className="text-xs text-gray-500">Enter the ID of the student you want to invite</p>
                     </div>
                 </div>
 
                 <div className="mb-5">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        ID Sinh Viên <span className="text-red-500">*</span>
+                        Student ID <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="number"
@@ -79,7 +79,7 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                         value={userId}
                         onChange={(e) => { setUserId(e.target.value); setError(''); setSuccessMsg(''); }}
                         onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-                        placeholder="Nh?p ID sinh viên..."
+                        placeholder="Enter student ID..."
                         disabled={loading}
                         autoFocus
                         className={`w-full px-4 py-3 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-primary/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
@@ -95,12 +95,12 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                 </div>
 
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5 text-xs text-amber-700 space-y-1">
-                    <p className="font-semibold">?i?u ki?n m?i thành viên:</p>
+                    <p className="font-semibold">Invitation requirements:</p>
                     <ul className="space-y-0.5 text-amber-600 list-disc list-inside">
-                        <li>Sinh viên ph?i t?n t?i trong h? th?ng</li>
-                        <li>Tài kho?n ?ang ho?t ??ng</li>
-                        <li>Ch?a thu?c nhóm nào trong h?c k? hi?n t?i</li>
-                        <li>Nhóm ch?a ?? 5 thành viên</li>
+                        <li>Student must exist in the system</li>
+                        <li>Account must be active</li>
+                        <li>Not already in a group in the current semester</li>
+                        <li>Group must have fewer than 5 members</li>
                     </ul>
                 </div>
 
@@ -110,7 +110,7 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                         disabled={loading}
                         className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
                     >
-                        ?óng
+                        Cancel
                     </button>
                     <button
                         onClick={handleInvite}
@@ -118,7 +118,7 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                         className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 disabled:opacity-70"
                     >
                         {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        {loading ? '?ang g?i...' : 'G?i L?i M?i'}
+                        {loading ? 'Sending...' : 'Send Invitation'}
                     </button>
                 </div>
             </div>

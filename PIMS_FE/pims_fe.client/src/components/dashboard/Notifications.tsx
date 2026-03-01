@@ -1,15 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
-import { Check, Bell, BellOff, Users, Eye } from "lucide-react";
+import { enUS } from "date-fns/locale";
+import { Check, Bell, BellOff, Users, Eye, X, Crown, Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { notificationService } from "../../services/notificationService";
 import { groupService } from "../../services/groupService";
 import type { NotificationDto } from "../../types/notification.types";
+import type { InvitationDto } from "../../types/group.types";
 import InvitationDetailModal from "../student/InvitationDetailModal";
 import { useGroup } from "../../hooks/useGroup";
-
-const INVITATION_TITLE = "L?i m?i tham gia nhóm";
 
 function parseInvitationId(content: string | null): number | null {
     if (!content) return null;
@@ -21,7 +20,7 @@ const Notifications: React.FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [onlyUnread, setOnlyUnread] = useState(false);
-    const [pendingInvitationIds, setPendingInvitationIds] = useState<Set<number>>(new Set());
+    const [pendingInvitations, setPendingInvitations] = useState<Map<number, InvitationDto>>(new Map());
     const [selectedInvitationId, setSelectedInvitationId] = useState<number | null>(null);
     const { refetchGroup } = useGroup();
 
@@ -29,10 +28,12 @@ const Notifications: React.FC = () => {
         try {
             const res = await groupService.getPendingInvitations();
             if (res.success && res.data) {
-                setPendingInvitationIds(new Set(res.data.map((i) => i.invitationId)));
+                const map = new Map<number, InvitationDto>();
+                res.data.forEach((i) => map.set(i.invitationId, i));
+                setPendingInvitations(map);
             }
         } catch {
-            // not a student or no invitations – ignore silently
+            // not a student or no invitations — ignore silently
         }
     }, []);
 
@@ -69,7 +70,7 @@ const Notifications: React.FC = () => {
 
     const handleInvitationAccepted = async () => {
         setSelectedInvitationId(null);
-        toast.success("B?n ?ã tham gia nhóm thành công!");
+        toast.success("You have successfully joined the group!");
         await refetchGroup();
         await fetchNotifications();
         await fetchPendingInvitations();
@@ -77,7 +78,7 @@ const Notifications: React.FC = () => {
 
     const handleInvitationRejected = () => {
         setSelectedInvitationId(null);
-        toast.success("?ã t? ch?i l?i m?i.");
+        toast.success("Invitation rejected.");
         fetchPendingInvitations();
         fetchNotifications();
     };
@@ -131,18 +132,29 @@ const Notifications: React.FC = () => {
 
                     {!loading &&
                         notifications.map((notif) => {
-                            const isInvite = notif.title === INVITATION_TITLE;
-                            const invitationId = isInvite ? parseInvitationId(notif.content) : null;
-                            const isPending = invitationId !== null && pendingInvitationIds.has(invitationId);
+                            const invitationId = parseInvitationId(notif.content);
+                            const isInvite = invitationId !== null;
+                            const invitationData = invitationId !== null ? pendingInvitations.get(invitationId) : undefined;
+                            const isPending = invitationId !== null && pendingInvitations.has(invitationId);
 
-                            if (isInvite && invitationId !== null) {
+                            if (isInvite) {
                                 return (
                                     <InvitationNotificationCard
                                         key={notif.notificationId}
                                         notif={notif}
-                                        invitationId={invitationId}
+                                        invitationId={invitationId!}
+                                        invitationData={invitationData}
                                         isPending={isPending}
-                                        onViewDetail={() => setSelectedInvitationId(invitationId)}
+                                        onAccepted={async () => {
+                                            await refetchGroup();
+                                            await fetchNotifications();
+                                            await fetchPendingInvitations();
+                                        }}
+                                        onRejected={() => {
+                                            fetchPendingInvitations();
+                                            fetchNotifications();
+                                        }}
+                                        onViewDetail={() => setSelectedInvitationId(invitationId!)}
                                         onMarkRead={() => handleMarkRead(notif.notificationId)}
                                     />
                                 );
@@ -174,7 +186,7 @@ const Notifications: React.FC = () => {
                                             </div>
                                             <span className="text-[10px] text-gray-400 text-right shrink-0">
                                                 {notif.createdAt
-                                                    ? formatDistanceToNow(new Date(notif.createdAt), { locale: vi, addSuffix: true })
+                                                    ? formatDistanceToNow(new Date(notif.createdAt), { locale: enUS, addSuffix: true })
                                                     : "Just now"}
                                             </span>
                                         </div>
@@ -210,70 +222,155 @@ const Notifications: React.FC = () => {
 interface InvitationCardProps {
     notif: NotificationDto;
     invitationId: number;
+    invitationData: InvitationDto | undefined;
     isPending: boolean;
+    onAccepted: () => void;
+    onRejected: () => void;
     onViewDetail: () => void;
     onMarkRead: () => void;
 }
 
 const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
     notif,
+    invitationId,
+    invitationData,
     isPending,
+    onAccepted,
+    onRejected,
     onViewDetail,
     onMarkRead,
-}) => (
-    <div className={`p-5 transition-colors ${notif.isRead ? "bg-white" : "bg-blue-50/40"}`}>
-        <div className="flex items-start gap-4">
-            <div className="size-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                <Users size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                    <div>
+}) => {
+    const [responding, setResponding] = useState<"accept" | "reject" | null>(null);
+    const { refetchGroup } = useGroup();
+
+    const handleAccept = async () => {
+        setResponding("accept");
+        try {
+            const res = await groupService.acceptInvitation(invitationId);
+            if (res.success) {
+                toast.success("You have successfully joined the group!");
+                await refetchGroup();
+                onAccepted();
+            } else {
+                toast.error(res.message || "Failed to accept invitation.");
+            }
+        } catch {
+            toast.error("An error occurred. Please try again.");
+        } finally {
+            setResponding(null);
+        }
+    };
+
+    const handleReject = async () => {
+        setResponding("reject");
+        try {
+            const res = await groupService.rejectInvitation(invitationId);
+            if (res.success) {
+                toast.success("Invitation rejected.");
+                onRejected();
+            } else {
+                toast.error(res.message || "Failed to reject invitation.");
+            }
+        } catch {
+            toast.error("An error occurred. Please try again.");
+        } finally {
+            setResponding(null);
+        }
+    };
+
+    return (
+        <div className={`p-5 transition-colors ${notif.isRead ? "bg-white" : "bg-blue-50/40"}`}>
+            <div className="flex items-start gap-4">
+                <div className="size-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                    <Users size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-bold text-gray-900">{notif.title}</p>
                             {isPending ? (
                                 <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                                    Ch? ph?n h?i
+                                    Pending
                                 </span>
                             ) : (
                                 <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                                    ?ã x? lý
+                                    Processed
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                            {notif.content}
-                        </p>
+                        <span className="text-[10px] text-gray-400 text-right shrink-0">
+                            {notif.createdAt
+                                ? formatDistanceToNow(new Date(notif.createdAt), { locale: enUS, addSuffix: true })
+                                : "Just now"}
+                        </span>
                     </div>
-                    <span className="text-[10px] text-gray-400 text-right shrink-0">
-                        {notif.createdAt
-                            ? formatDistanceToNow(new Date(notif.createdAt), { locale: vi, addSuffix: true })
-                            : "Just now"}
-                    </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={onViewDetail}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
-                    >
-                        <Eye size={13} />
-                        Xem chi ti?t nhóm
-                    </button>
-                    {!notif.isRead && (
-                        <button
-                            onClick={onMarkRead}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-blue-700 transition-colors"
-                        >
-                            <Check size={13} />
-                            Mark Read
-                        </button>
+                    {/* Group info */}
+                    {invitationData ? (
+                        <div className="bg-amber-50/60 rounded-xl p-3 mb-3 space-y-1">
+                            <div className="flex items-center gap-2">
+                                <Users size={13} className="text-amber-600 shrink-0" />
+                                <span className="text-xs font-bold text-gray-800">
+                                    {invitationData.groupName}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Crown size={13} className="text-amber-500 shrink-0" />
+                                <span className="text-xs text-gray-600">
+                                    Leader: <span className="font-semibold text-gray-800">{invitationData.invitedByUserName}</span>
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-gray-500 mb-3">{notif.content}</p>
                     )}
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {isPending && (
+                            <>
+                                <button
+                                    onClick={handleReject}
+                                    disabled={!!responding}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                >
+                                    {responding === "reject" ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={handleAccept}
+                                    disabled={!!responding}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-70"
+                                >
+                                    {responding === "accept" ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                    Accept
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={onViewDetail}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+                        >
+                            <Eye size={12} />
+                            View Members
+                        </button>
+                        {!notif.isRead && (
+                            <button
+                                onClick={onMarkRead}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-blue-700 transition-colors"
+                            >
+                                <Check size={12} />
+                                Mark Read
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default Notifications;
+
 

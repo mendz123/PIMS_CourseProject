@@ -23,7 +23,7 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
                 const res = await groupService.getInvitationDetail(invitationId);
                 if (res.success) setDetail(res.data);
             } catch {
-                setError('Không th? t?i thông tin l?i m?i.');
+                setError('Could not load invitation details.');
             } finally {
                 setLoading(false);
             }
@@ -39,12 +39,12 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
             if (res.success) {
                 onAccepted();
             } else {
-                setError(res.message || 'Ch?p nh?n th?t b?i.');
+                setError(res.message || 'Failed to accept invitation.');
             }
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
-                ? err.response?.data?.message ?? '?ã x?y ra l?i.'
-                : '?ã x?y ra l?i.';
+                ? err.response?.data?.message ?? 'An error occurred.'
+                : 'An error occurred.';
             setError(msg);
         } finally {
             setResponding(null);
@@ -59,12 +59,12 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
             if (res.success) {
                 onRejected();
             } else {
-                setError(res.message || 'T? ch?i th?t b?i.');
+                setError(res.message || 'Failed to reject invitation.');
             }
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
-                ? err.response?.data?.message ?? '?ã x?y ra l?i.'
-                : '?ã x?y ra l?i.';
+                ? err.response?.data?.message ?? 'An error occurred.'
+                : 'An error occurred.';
             setError(msg);
         } finally {
             setResponding(null);
@@ -81,8 +81,8 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
                             <Users size={20} className="text-primary" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">Chi ti?t l?i m?i</h3>
-                            <p className="text-xs text-gray-500">Xem thông tin nhóm tr??c khi quy?t ??nh</p>
+                            <h3 className="text-lg font-bold text-gray-900">Invitation Details</h3>
+                            <p className="text-xs text-gray-500">Review group info before deciding</p>
                         </div>
                     </div>
                     <button
@@ -99,29 +99,29 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
                     {loading ? (
                         <div className="flex items-center justify-center py-12 gap-2 text-gray-400">
                             <Loader2 size={20} className="animate-spin" />
-                            <span className="text-sm">?ang t?i...</span>
+                            <span className="text-sm">Loading...</span>
                         </div>
                     ) : !detail ? (
                         <div className="text-center py-10 text-gray-400 text-sm">
-                            Không th? t?i thông tin l?i m?i.
+                            Could not load invitation details.
                         </div>
                     ) : (
                         <div className="space-y-5">
                             {/* Group Info */}
                             <div className="bg-blue-50 rounded-xl p-4">
-                                <p className="text-xs text-gray-500 mb-1">Tên nhóm</p>
+                                <p className="text-xs text-gray-500 mb-1">Group Name</p>
                                 <p className="text-xl font-bold text-gray-900">{detail.groupName}</p>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    ???c m?i b?i <span className="font-semibold text-gray-700">{detail.invitedByUserName}</span>
+                                    Invited by <span className="font-semibold text-gray-700">{detail.invitedByUserName}</span>
                                 </p>
                             </div>
 
                             {/* Members */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="text-sm font-bold text-gray-800">
-                                        Thành viên hi?n t?i
-                                    </p>
+                                <p className="text-sm font-bold text-gray-800">
+                                    Current Members
+                                </p>
                                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                                         {detail.memberCount}/5
                                     </span>
@@ -176,7 +176,7 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
                             className="flex-1 py-3 flex items-center justify-center gap-2 border border-red-200 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
                         >
                             {responding === 'reject' ? <Loader2 size={15} className="animate-spin" /> : <X size={15} />}
-                            T? ch?i
+                            Reject
                         </button>
                         <button
                             onClick={handleAccept}
@@ -184,7 +184,7 @@ const InvitationDetailModal: React.FC<Props> = ({ invitationId, onClose, onAccep
                             className="flex-1 py-3 flex items-center justify-center gap-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 disabled:opacity-70"
                         >
                             {responding === 'accept' ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                            Tham gia nhóm
+                            Join Group
                         </button>
                     </div>
                 )}

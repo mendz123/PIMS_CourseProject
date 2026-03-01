@@ -40,15 +40,15 @@ namespace PIMS_BE.Services
         public async Task<GroupDto> CreateGroupAsync(int userId, string groupName)
         {
             if (string.IsNullOrWhiteSpace(groupName))
-                throw new InvalidOperationException("Tên nhóm không ???c ?? tr?ng.");
+                throw new InvalidOperationException("Group name cannot be empty.");
 
             var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
             var activeSemester = semesters.FirstOrDefault()
-                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+                ?? throw new InvalidOperationException("No active semester found.");
 
             var alreadyInGroup = await _memberRepository.HasActiveMemberInSemesterAsync(userId, activeSemester.SemesterId);
             if (alreadyInGroup)
-                throw new InvalidOperationException("B?n ?ã là thành viên c?a m?t nhóm trong h?c k? hi?n t?i.");
+                throw new InvalidOperationException("You are already a member of a group in the current semester.");
 
             var group = new Group
             {
@@ -115,7 +115,7 @@ namespace PIMS_BE.Services
         {
             var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
             var activeSemester = semesters.FirstOrDefault()
-                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+                ?? throw new InvalidOperationException("No active semester found.");
 
             var (groups, totalCount) = await _groupRepository.GetGroupsInActiveSemesterAsync(
                 activeSemester.SemesterId, search, filterByMentorId, pageNumber, pageSize);
@@ -174,38 +174,38 @@ namespace PIMS_BE.Services
         public async Task<InvitationDto> InviteMemberAsync(int leaderId, int groupId, int invitedUserId)
         {
             var group = await _groupRepository.GetGroupWithDetailsAsync(groupId)
-                ?? throw new InvalidOperationException("Nhóm không t?n t?i.");
+                ?? throw new InvalidOperationException("Group not found.");
 
             if (group.LeaderId != leaderId)
-                throw new InvalidOperationException("Ch? tr??ng nhóm m?i có th? m?i thành viên.");
+                throw new InvalidOperationException("Only the group leader can invite members.");
 
             var invitedUser = await _userRepository.GetByIdWithDetailsAsync(invitedUserId)
-                ?? throw new InvalidOperationException($"Không tìm th?y ng??i dùng v?i ID {invitedUserId}.");
+                ?? throw new InvalidOperationException($"User with ID {invitedUserId} not found.");
 
             if (invitedUser.StatusId != UserStatusActive)
-                throw new InvalidOperationException("Tài kho?n ng??i dùng này không ho?t ??ng.");
+                throw new InvalidOperationException("This user account is inactive.");
 
             if (invitedUser.Role?.RoleName != "STUDENT")
-                throw new InvalidOperationException("Ch? có th? m?i sinh viên vào nhóm.");
+                throw new InvalidOperationException("Only students can be invited to join a group.");
 
             if (invitedUserId == leaderId)
-                throw new InvalidOperationException("B?n không th? m?i chính mình.");
+                throw new InvalidOperationException("You cannot invite yourself.");
 
             var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
             var activeSemester = semesters.FirstOrDefault()
-                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+                ?? throw new InvalidOperationException("No active semester found.");
 
             var alreadyInGroup = await _memberRepository.HasActiveMemberInSemesterAsync(invitedUserId, activeSemester.SemesterId);
             if (alreadyInGroup)
-                throw new InvalidOperationException("Ng??i dùng này ?ã là thành viên c?a m?t nhóm trong h?c k? hi?n t?i.");
+                throw new InvalidOperationException("This user is already a member of a group in the current semester.");
 
             var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
             if (currentMemberCount >= MaxGroupMembers)
-                throw new InvalidOperationException($"Nhóm ?ã ?? {MaxGroupMembers} thành viên, không th? m?i thêm.");
+                throw new InvalidOperationException($"The group already has {MaxGroupMembers} members.");
 
             var existingInvitation = await _invitationRepository.GetPendingInvitationByGroupAndUserAsync(groupId, invitedUserId);
             if (existingInvitation != null)
-                throw new InvalidOperationException("Ng??i dùng này ?ã có l?i m?i ?ang ch? x? lý t? nhóm c?a b?n.");
+                throw new InvalidOperationException("This user already has a pending invitation from your group.");
 
             var invitation = new GroupInvitation
             {
@@ -221,8 +221,8 @@ namespace PIMS_BE.Services
 
             await _notificationService.CreateNotificationAsync(invitedUserId, new DTOs.Notification.CreateNotificationRequest
             {
-                Title = "L?i m?i tham gia nhóm",
-                Content = $"B?n ???c m?i tham gia nhóm '{group.GroupName}'. Mã l?i m?i: #{invitation.InvitationId}. Hãy vào m?c l?i m?i ?? ch?p nh?n ho?c t? ch?i."
+                Title = "Group Invitation",
+                Content = $"You have been invited to join group '{group.GroupName}'. Invitation ID: #{invitation.InvitationId}."
             });
 
             var leader = group.Leader;
@@ -243,13 +243,13 @@ namespace PIMS_BE.Services
         public async Task<GroupDto> RespondToInvitationAsync(int userId, int invitationId, bool accept)
         {
             var invitation = await _invitationRepository.GetInvitationWithDetailsAsync(invitationId)
-                ?? throw new InvalidOperationException("L?i m?i không t?n t?i.");
+                ?? throw new InvalidOperationException("Invitation not found.");
 
             if (invitation.InvitedUserId != userId)
-                throw new InvalidOperationException("B?n không có quy?n ph?n h?i l?i m?i này.");
+                throw new InvalidOperationException("You are not authorized to respond to this invitation.");
 
             if (invitation.Status != InvitationStatus.Pending)
-                throw new InvalidOperationException("L?i m?i này ?ã ???c x? lý tr??c ?ó.");
+                throw new InvalidOperationException("This invitation has already been processed.");
 
             if (!accept)
             {
@@ -263,16 +263,16 @@ namespace PIMS_BE.Services
 
             var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
             var activeSemester = semesters.FirstOrDefault()
-                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+                ?? throw new InvalidOperationException("No active semester found.");
 
             var alreadyInGroup = await _memberRepository.HasActiveMemberInSemesterAsync(userId, activeSemester.SemesterId);
             if (alreadyInGroup)
-                throw new InvalidOperationException("B?n ?ã là thành viên c?a m?t nhóm trong h?c k? hi?n t?i.");
+                throw new InvalidOperationException("You are already a member of a group in the current semester.");
 
             var group = invitation.Group;
             var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
             if (currentMemberCount >= MaxGroupMembers)
-                throw new InvalidOperationException($"Nhóm ?ã ?? {MaxGroupMembers} thành viên.");
+                throw new InvalidOperationException($"The group already has {MaxGroupMembers} members.");
 
             var newMember = new GroupMember
             {

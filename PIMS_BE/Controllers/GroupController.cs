@@ -137,7 +137,7 @@ namespace PIMS_BE.Controllers
                 if (userId == null) return UnauthorizedResponse<InvitationDto>("User information not found.");
 
                 var invitation = await _groupService.InviteMemberAsync(userId.Value, groupId, request.InvitedUserId);
-                return OkResponse(invitation, $"?ã g?i l?i m?i ??n ng??i dùng ID {request.InvitedUserId} thành công.");
+                return OkResponse(invitation, $"Invitation sent to user ID {request.InvitedUserId} successfully.");
             }
             catch (InvalidOperationException ex)
             {
@@ -159,7 +159,7 @@ namespace PIMS_BE.Controllers
                 if (userId == null) return UnauthorizedResponse<List<InvitationDto>>("User information not found.");
 
                 var invitations = await _groupService.GetPendingInvitationsAsync(userId.Value);
-                return OkResponse(invitations, "L?y danh sách l?i m?i thành công.");
+                return OkResponse(invitations, "Get pending invitations successfully.");
             }
             catch (Exception ex)
             {
@@ -178,9 +178,9 @@ namespace PIMS_BE.Controllers
 
                 var detail = await _groupService.GetInvitationDetailAsync(userId.Value, invitationId);
                 if (detail == null)
-                    return NotFoundResponse<InvitationDetailDto>("L?i m?i không t?n t?i ho?c b?n không có quy?n xem.");
+                    return NotFoundResponse<InvitationDetailDto>("Invitation not found or you don't have permission to view it.");
 
-                return OkResponse(detail, "L?y chi ti?t l?i m?i thành công.");
+                return OkResponse(detail, "Get invitation detail successfully.");
             }
             catch (Exception ex)
             {
@@ -198,7 +198,7 @@ namespace PIMS_BE.Controllers
                 if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
 
                 var group = await _groupService.RespondToInvitationAsync(userId.Value, invitationId, accept: true);
-                return OkResponse(group, "B?n ?ã ch?p nh?n l?i m?i và tham gia nhóm thành công.");
+                return OkResponse(group, "You have successfully joined the group.");
             }
             catch (InvalidOperationException ex)
             {
@@ -220,7 +220,7 @@ namespace PIMS_BE.Controllers
                 if (userId == null) return UnauthorizedResponse<string>("User information not found.");
 
                 await _groupService.RespondToInvitationAsync(userId.Value, invitationId, accept: false);
-                return OkResponse("Rejected", "B?n ?ã t? ch?i l?i m?i.");
+                return OkResponse("Rejected", "Invitation rejected.");
             }
             catch (InvalidOperationException ex)
             {
