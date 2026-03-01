@@ -4,6 +4,7 @@ import { Users, UserPlus, BookOpen, GraduationCap, Lock, CheckCircle2, Info, Loa
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
+import InviteMemberModal from '../../components/student/InviteMemberModal';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
     CREATED: { label: 'Vừa tạo', color: 'bg-blue-100 text-blue-700' },
@@ -16,12 +17,15 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 };
 
 const StudentGroup: React.FC = () => {
-    const { group, hasGroup, groupLoading, refetchGroup } = useGroup();
+const { group, hasGroup, groupLoading, refetchGroup } = useGroup();
 
-    const [showModal, setShowModal] = useState(false);
-    const [groupName, setGroupName] = useState('');
-    const [nameError, setNameError] = useState('');
-    const [creating, setCreating] = useState(false);
+const [showModal, setShowModal] = useState(false);
+const [groupName, setGroupName] = useState('');
+const [nameError, setNameError] = useState('');
+const [creating, setCreating] = useState(false);
+const [showInviteModal, setShowInviteModal] = useState(false);
+
+const isForming = !!group && group.statusId >= 2;
 
     const handleOpenModal = () => {
         setGroupName('');
@@ -132,7 +136,7 @@ const StudentGroup: React.FC = () => {
                                         )}
                                     </div>
                                     <p className="text-gray-500 text-sm mt-1">
-                                        {group!.semesterName} &bull; {group!.memberCount} thành viên
+                                        {group!.semesterName} &bull; {group!.memberCount}/5 thành viên
                                     </p>
                                 </div>
                             </div>
@@ -144,22 +148,25 @@ const StudentGroup: React.FC = () => {
                             icon={<BookOpen size={24} />}
                             label="Đề Tài"
                             description="Chọn & đăng ký đề tài"
-                            locked
-                            lockReason="Mở sau khi nhóm đủ thành viên"
+                            locked={!isForming}
+                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
+                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
                         />
                         <ActionButton
                             icon={<UserPlus size={24} />}
                             label="Mời Thành Viên"
-                            description="Thêm thành viên vào nhóm"
-                            locked={false}
-                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
+                            description={group!.isLeader ? 'Thêm thành viên vào nhóm' : 'Chỉ trưởng nhóm mới mời được'}
+                            locked={!group!.isLeader}
+                            lockReason="Chỉ trưởng nhóm thực hiện được"
+                            onClick={() => setShowInviteModal(true)}
                         />
                         <ActionButton
                             icon={<GraduationCap size={24} />}
                             label="Mentor"
                             description="Yêu cầu giảng viên hướng dẫn"
-                            locked
-                            lockReason="Mở sau khi nhóm có đề tài"
+                            locked={!isForming}
+                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
+                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
                         />
                     </div>
 
@@ -174,8 +181,11 @@ const StudentGroup: React.FC = () => {
                                 <span>Nhóm đã được tạo thành công.</span>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                <span>Mời thêm thành viên để nhóm đủ số lượng.</span>
+                                {isForming
+                                    ? <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
+                                    : <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
+                                }
+                                <span>Mời thêm thành viên để nhóm đạt từ 4–5 người.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
@@ -249,6 +259,15 @@ const StudentGroup: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ───── MODAL MỜI THÀNH VIÊN ───── */}
+            {showInviteModal && group && (
+                <InviteMemberModal
+                    groupId={group.groupId}
+                    onClose={() => setShowInviteModal(false)}
+                    onSuccess={refetchGroup}
+                />
             )}
         </div>
     );

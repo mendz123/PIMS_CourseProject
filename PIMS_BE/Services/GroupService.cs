@@ -10,15 +10,31 @@ namespace PIMS_BE.Services
         private readonly IGroupRepository _groupRepository;
         private readonly IMemberRepository _memberRepository;
         private readonly ISemesterRepository _semesterRepository;
+        private readonly IGroupInvitationRepository _invitationRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly INotificationService _notificationService;
+
+        private const int StatusCreated = 1;
+        private const int StatusForming = 2;
+        private const int MemberStatusActive = 1;
+        private const int UserStatusActive = 1;
+        private const int MinMembersForForming = 4;
+        private const int MaxGroupMembers = 5;
 
         public GroupService(
             IGroupRepository groupRepository,
             IMemberRepository memberRepository,
-            ISemesterRepository semesterRepository)
+            ISemesterRepository semesterRepository,
+            IGroupInvitationRepository invitationRepository,
+            IUserRepository userRepository,
+            INotificationService notificationService)
         {
             _groupRepository = groupRepository;
             _memberRepository = memberRepository;
             _semesterRepository = semesterRepository;
+            _invitationRepository = invitationRepository;
+            _userRepository = userRepository;
+            _notificationService = notificationService;
         }
 
         public async Task<GroupDto> CreateGroupAsync(int userId, string groupName)
@@ -152,6 +168,204 @@ namespace PIMS_BE.Services
                     StatusId = m.StatusId,
                     StatusName = m.Status?.StatusName ?? ""
                 }).ToList()
+            };
+        }
+
+        public async Task<InvitationDto> InviteMemberAsync(int leaderId, int groupId, int invitedUserId)
+        {
+            var group = await _groupRepository.GetGroupWithDetailsAsync(groupId)
+                ?? throw new InvalidOperationException("Nhóm không t?n t?i.");
+
+            if (group.LeaderId != leaderId)
+                throw new InvalidOperationException("Ch? tr??ng nhóm m?i có th? m?i thành viên.");
+
+            var invitedUser = await _userRepository.GetByIdWithDetailsAsync(invitedUserId)
+                ?? throw new InvalidOperationException($"Không tìm th?y ng??i dùng v?i ID {invitedUserId}.");
+
+            if (invitedUser.StatusId != UserStatusActive)
+                throw new InvalidOperationException("Tài kho?n ng??i dùng này không ho?t ??ng.");
+
+            if (invitedUser.Role?.RoleName != "STUDENT")
+                throw new InvalidOperationException("Ch? có th? m?i sinh viên vào nhóm.");
+
+            if (invitedUserId == leaderId)
+                throw new InvalidOperationException("B?n không th? m?i chính mình.");
+
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault()
+                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+
+            var alreadyInGroup = await _memberRepository.HasActiveMemberInSemesterAsync(invitedUserId, activeSemester.SemesterId);
+            if (alreadyInGroup)
+                throw new InvalidOperationException("Ng??i dùng này ?ã là thành viên c?a m?t nhóm trong h?c k? hi?n t?i.");
+
+            var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
+            if (currentMemberCount >= MaxGroupMembers)
+                throw new InvalidOperationException($"Nhóm ?ã ?? {MaxGroupMembers} thành viên, không th? m?i thêm.");
+
+            var existingInvitation = await _invitationRepository.GetPendingInvitationByGroupAndUserAsync(groupId, invitedUserId);
+            if (existingInvitation != null)
+                throw new InvalidOperationException("Ng??i dùng này ?ã có l?i m?i ?ang ch? x? lý t? nhóm c?a b?n.");
+
+            var invitation = new GroupInvitation
+            {
+                GroupId = groupId,
+                InvitedUserId = invitedUserId,
+                InvitedByUserId = leaderId,
+                Status = InvitationStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _invitationRepository.AddAsync(invitation);
+            await _invitationRepository.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(invitedUserId, new DTOs.Notification.CreateNotificationRequest
+            {
+                Title = "L?i m?i tham gia nhóm",
+                Content = $"B?n ???c m?i tham gia nhóm '{group.GroupName}'. Mã l?i m?i: #{invitation.InvitationId}. Hãy vào m?c l?i m?i ?? ch?p nh?n ho?c t? ch?i."
+            });
+
+            var leader = group.Leader;
+            return new InvitationDto
+            {
+                InvitationId = invitation.InvitationId,
+                GroupId = groupId,
+                GroupName = group.GroupName ?? "",
+                InvitedUserId = invitedUserId,
+                InvitedUserName = invitedUser.FullName ?? "",
+                InvitedByUserId = leaderId,
+                InvitedByUserName = leader?.FullName ?? "",
+                Status = InvitationStatus.Pending.ToString(),
+                CreatedAt = invitation.CreatedAt
+            };
+        }
+
+        public async Task<GroupDto> RespondToInvitationAsync(int userId, int invitationId, bool accept)
+        {
+            var invitation = await _invitationRepository.GetInvitationWithDetailsAsync(invitationId)
+                ?? throw new InvalidOperationException("L?i m?i không t?n t?i.");
+
+            if (invitation.InvitedUserId != userId)
+                throw new InvalidOperationException("B?n không có quy?n ph?n h?i l?i m?i này.");
+
+            if (invitation.Status != InvitationStatus.Pending)
+                throw new InvalidOperationException("L?i m?i này ?ã ???c x? lý tr??c ?ó.");
+
+            if (!accept)
+            {
+                invitation.Status = InvitationStatus.Rejected;
+                await _invitationRepository.UpdateAsync(invitation);
+                await _invitationRepository.SaveChangesAsync();
+
+                var rejectedGroup = await _groupRepository.GetGroupWithDetailsAsync(invitation.GroupId)!;
+                return MapGroupToDto(rejectedGroup!, userId);
+            }
+
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault()
+                ?? throw new InvalidOperationException("Không có h?c k? nào ?ang ho?t ??ng.");
+
+            var alreadyInGroup = await _memberRepository.HasActiveMemberInSemesterAsync(userId, activeSemester.SemesterId);
+            if (alreadyInGroup)
+                throw new InvalidOperationException("B?n ?ã là thành viên c?a m?t nhóm trong h?c k? hi?n t?i.");
+
+            var group = invitation.Group;
+            var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
+            if (currentMemberCount >= MaxGroupMembers)
+                throw new InvalidOperationException($"Nhóm ?ã ?? {MaxGroupMembers} thành viên.");
+
+            var newMember = new GroupMember
+            {
+                GroupId = invitation.GroupId,
+                UserId = userId,
+                StatusId = MemberStatusActive
+            };
+
+            await _memberRepository.AddAsync(newMember);
+
+            invitation.Status = InvitationStatus.Accepted;
+            await _invitationRepository.UpdateAsync(invitation);
+
+            var newMemberCount = currentMemberCount + 1;
+            if (group.StatusId == StatusCreated && newMemberCount >= MinMembersForForming)
+            {
+                group.StatusId = StatusForming;
+                await _groupRepository.UpdateAsync(group);
+            }
+
+            await _memberRepository.SaveChangesAsync();
+
+            var updatedGroup = await _groupRepository.GetGroupWithDetailsAsync(invitation.GroupId)!;
+            return MapGroupToDto(updatedGroup!, userId);
+        }
+
+        public async Task<List<InvitationDto>> GetPendingInvitationsAsync(int userId)
+        {
+            var invitations = await _invitationRepository.GetPendingInvitationsForUserAsync(userId);
+            return invitations.Select(i => new InvitationDto
+            {
+                InvitationId = i.InvitationId,
+                GroupId = i.GroupId,
+                GroupName = i.Group?.GroupName ?? "",
+                InvitedUserId = i.InvitedUserId,
+                InvitedUserName = "",
+                InvitedByUserId = i.InvitedByUserId,
+                InvitedByUserName = i.InvitedByUser?.FullName ?? "",
+                Status = i.Status.ToString(),
+                CreatedAt = i.CreatedAt
+            }).ToList();
+        }
+
+        public async Task<InvitationDetailDto?> GetInvitationDetailAsync(int userId, int invitationId)
+        {
+            var invitation = await _invitationRepository.GetInvitationWithDetailsAsync(invitationId);
+            if (invitation == null || invitation.InvitedUserId != userId)
+                return null;
+
+            var group = await _groupRepository.GetGroupWithDetailsAsync(invitation.GroupId);
+            if (group == null) return null;
+
+            return new InvitationDetailDto
+            {
+                InvitationId = invitation.InvitationId,
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
+                Members = group.GroupMembers
+                    .Where(m => m.StatusId == MemberStatusActive)
+                    .Select(m => new GroupMemberDto
+                    {
+                        GroupMemberId = m.GroupMemberId,
+                        UserId = m.UserId,
+                        FullName = m.User?.FullName ?? "",
+                        Email = m.User?.Email ?? "",
+                        AvatarUrl = m.User?.AvatarUrl,
+                        StatusId = m.StatusId,
+                        StatusName = m.Status?.StatusName ?? ""
+                    }).ToList(),
+                InvitedByUserName = invitation.InvitedByUser?.FullName ?? "",
+                Status = invitation.Status.ToString()
+            };
+        }
+
+        private static GroupDto MapGroupToDto(Group group, int currentUserId)
+        {
+            return new GroupDto
+            {
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                SemesterId = group.SemesterId,
+                SemesterName = group.Semester?.SemesterName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MentorId = group.MentorId,
+                MentorName = group.Mentor?.FullName,
+                StatusId = group.StatusId,
+                StatusName = group.Status?.StatusName ?? "",
+                IsLeader = group.LeaderId == currentUserId,
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == 1)
             };
         }
     }

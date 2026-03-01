@@ -27,6 +27,30 @@ export interface GroupDetailDto extends GroupDto {
     members: GroupMemberDto[];
 }
 
+export interface InvitationDto {
+    invitationId: number;
+    groupId: number;
+    groupName: string;
+    invitedUserId: number;
+    invitedUserName: string;
+    invitedByUserId: number;
+    invitedByUserName: string;
+    status: string;
+    createdAt: string;
+}
+
+export interface InvitationDetailDto {
+    invitationId: number;
+    groupId: number;
+    groupName: string;
+    leaderId: number;
+    leaderName: string;
+    memberCount: number;
+    members: GroupMemberDto[];
+    invitedByUserName: string;
+    status: string;
+}
+
 export interface PaginatedResponse<T> {
     items: T[];
     totalCount: number;

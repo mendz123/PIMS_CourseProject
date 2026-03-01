@@ -124,6 +124,114 @@ namespace PIMS_BE.Controllers
             }
         }
 
+        [HttpPost("{groupId}/invite")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<InvitationDto>>> InviteMember(int groupId, [FromBody] InviteMemberRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequestResponse<InvitationDto>("Invalid data.");
+
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<InvitationDto>("User information not found.");
+
+                var invitation = await _groupService.InviteMemberAsync(userId.Value, groupId, request.InvitedUserId);
+                return OkResponse(invitation, $"?ã g?i l?i m?i ??n ng??i dùng ID {request.InvitedUserId} thành công.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<InvitationDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<InvitationDto>(ex.Message);
+            }
+        }
+
+        [HttpGet("invitations/pending")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<List<InvitationDto>>>> GetPendingInvitations()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<List<InvitationDto>>("User information not found.");
+
+                var invitations = await _groupService.GetPendingInvitationsAsync(userId.Value);
+                return OkResponse(invitations, "L?y danh sách l?i m?i thành công.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<InvitationDto>>(ex.Message);
+            }
+        }
+
+        [HttpGet("invitations/{invitationId}/detail")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<InvitationDetailDto>>> GetInvitationDetail(int invitationId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<InvitationDetailDto>("User information not found.");
+
+                var detail = await _groupService.GetInvitationDetailAsync(userId.Value, invitationId);
+                if (detail == null)
+                    return NotFoundResponse<InvitationDetailDto>("L?i m?i không t?n t?i ho?c b?n không có quy?n xem.");
+
+                return OkResponse(detail, "L?y chi ti?t l?i m?i thành công.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<InvitationDetailDto>(ex.Message);
+            }
+        }
+
+        [HttpPost("invitations/{invitationId}/accept")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<GroupDto>>> AcceptInvitation(int invitationId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
+
+                var group = await _groupService.RespondToInvitationAsync(userId.Value, invitationId, accept: true);
+                return OkResponse(group, "B?n ?ã ch?p nh?n l?i m?i và tham gia nhóm thành công.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<GroupDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDto>(ex.Message);
+            }
+        }
+
+        [HttpPost("invitations/{invitationId}/reject")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<string>>> RejectInvitation(int invitationId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<string>("User information not found.");
+
+                await _groupService.RespondToInvitationAsync(userId.Value, invitationId, accept: false);
+                return OkResponse("Rejected", "B?n ?ã t? ch?i l?i m?i.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<string>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<string>(ex.Message);
+            }
+        }
+
         private int? GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
