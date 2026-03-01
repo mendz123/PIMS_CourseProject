@@ -32,7 +32,7 @@ public partial class PimsDbContext : DbContext
     public virtual DbSet<DefenseSchedule> DefenseSchedules { get; set; }
 
     public virtual DbSet<Group> Groups { get; set; }
-
+    public virtual DbSet<GroupInvitation> GroupInvitations { get; set; }
     public virtual DbSet<GroupMember> GroupMembers { get; set; }
 
     public virtual DbSet<GroupMemberStatus> GroupMemberStatuses { get; set; }
