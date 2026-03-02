@@ -3,7 +3,12 @@ import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { GroupProvider } from "../context/GroupContext";
 import { StudentDashboard } from "../pages/Student";
-import { TeacherDashboard, GradingPage, GroupListPage, TeacherNotifications } from "../pages/Teacher";
+import {
+  TeacherDashboard,
+  GradingPage,
+  GroupListPage,
+  TeacherNotifications,
+} from "../pages/Teacher";
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -11,6 +16,8 @@ import {
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 import StudentGroup from "../pages/Student/StudentGroup";
+import SettingsPage from "../pages/Student/SettingsPage";
+import TeacherSettingsPage from "../pages/Teacher/TeacherSettingsPage";
 import MainLayout from "../components/student/MainLayout";
 import ProgressReports from "../pages/Student/ProgressReports";
 import Notifications from "../pages/Student/Notifications";
@@ -58,11 +65,19 @@ export const router = createBrowserRouter([
             path: "assessment",
             element: <AssessmentPage />,
           },
+          {
+            path: "settings",
+            element: <SettingsPage />,
+          },
         ],
       },
       {
         path: "admin/dashboard",
-        element: <GroupProvider><AdminDashboard /></GroupProvider>,
+        element: (
+          <GroupProvider>
+            <AdminDashboard />
+          </GroupProvider>
+        ),
       },
       {
         path: "teacher/dashboard",
@@ -79,6 +94,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/notifications",
         element: <TeacherNotifications />,
+      },
+      {
+        path: "teacher/settings",
+        element: <TeacherSettingsPage />,
       },
       {
         path: "subject-head/dashboard",
