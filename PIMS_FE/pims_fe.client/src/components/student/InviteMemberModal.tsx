@@ -10,25 +10,25 @@ interface Props {
 }
 
 const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => {
-    const [userId, setUserId] = useState('');
+    const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
 
     const handleInvite = async () => {
-        const parsed = parseInt(userId.trim(), 10);
-        if (!userId.trim() || isNaN(parsed) || parsed <= 0) {
-            setError('Please enter a valid student ID.');
+        const trimmed = email.trim();
+        if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+            setError('Please enter a valid email address.');
             return;
         }
         setError('');
         setSuccessMsg('');
         setLoading(true);
         try {
-            const res = await groupService.inviteMember(groupId, parsed);
+            const res = await groupService.inviteMember(groupId, trimmed);
             if (res.success) {
-                setSuccessMsg(`Invitation sent to student ID ${parsed} successfully!`);
-                setUserId('');
+                setSuccessMsg(`Invitation sent to ${trimmed} successfully!`);
+                setEmail('');
                 onSuccess();
             } else {
                 setError(res.message || 'Failed to send invitation.');
@@ -65,24 +65,23 @@ const InviteMemberModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Invite Member</h3>
-                        <p className="text-xs text-gray-500">Enter the ID of the student you want to invite</p>
+                        <p className="text-xs text-gray-500">Enter the email of the student you want to invite</p>
                     </div>
                 </div>
 
                 <div className="mb-5">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Student ID <span className="text-red-500">*</span>
+                        Student Email <span className="text-red-500">*</span>
                     </label>
                     <input
-                        type="number"
-                        min={1}
-                        value={userId}
-                        onChange={(e) => { setUserId(e.target.value); setError(''); setSuccessMsg(''); }}
+                        type="email"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setError(''); setSuccessMsg(''); }}
                         onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-                        placeholder="Enter student ID..."
+                        placeholder="Enter student email..."
                         disabled={loading}
                         autoFocus
-                        className={`w-full px-4 py-3 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-primary/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        className={`w-full px-4 py-3 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-primary/30 ${
                             error ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary'
                         }`}
                     />

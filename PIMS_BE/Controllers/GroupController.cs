@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
 using PIMS_BE.DTOs.Group;
+using PIMS_BE.DTOs.Project;
 using PIMS_BE.Services.Interfaces;
 using System.Security.Claims;
 
@@ -158,8 +159,8 @@ namespace PIMS_BE.Controllers
                 var userId = GetCurrentUserId();
                 if (userId == null) return UnauthorizedResponse<InvitationDto>("User information not found.");
 
-                var invitation = await _groupService.InviteMemberAsync(userId.Value, groupId, request.InvitedUserId);
-                return OkResponse(invitation, $"Invitation sent to user ID {request.InvitedUserId} successfully.");
+                var invitation = await _groupService.InviteMemberAsync(userId.Value, groupId, request.InvitedEmail);
+                return OkResponse(invitation, $"Invitation sent to {request.InvitedEmail} successfully.");
             }
             catch (InvalidOperationException ex)
             {
@@ -268,8 +269,8 @@ namespace PIMS_BE.Controllers
                 var userId = GetCurrentUserId();
                 if (userId == null) return UnauthorizedResponse<MentorRequestDto>("User information not found.");
 
-                var result = await _groupService.SendMentorInvitationAsync(userId.Value, groupId, request.MentorUserId, request.Message);
-                return OkResponse(result, $"Mentor invitation sent to teacher ID {request.MentorUserId} successfully.");
+                var result = await _groupService.SendMentorInvitationAsync(userId.Value, groupId, request.MentorEmail, request.Message);
+                return OkResponse(result, $"Mentor invitation sent to {request.MentorEmail} successfully.");
             }
             catch (InvalidOperationException ex)
             {
@@ -361,6 +362,95 @@ namespace PIMS_BE.Controllers
             catch (Exception ex)
             {
                 return InternalErrorResponse<string>(ex.Message);
+            }
+        }
+
+        // ??? Topic Registration Endpoints ????????????????????????????????????????
+
+        [HttpPost("{groupId}/register-topic")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<ProjectDto>>> RegisterTopic(int groupId, [FromBody] RegisterTopicRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequestResponse<ProjectDto>("Invalid data.");
+
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<ProjectDto>("User information not found.");
+
+                var result = await _groupService.RegisterTopicAsync(userId.Value, groupId, request);
+                return CreatedResponse(result, "Topic registered successfully. Awaiting mentor approval.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<ProjectDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<ProjectDto>(ex.Message);
+            }
+        }
+
+        [HttpGet("topic-requests/pending")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<List<TopicReviewDto>>>> GetPendingTopicRequests()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<List<TopicReviewDto>>("User information not found.");
+
+                var result = await _groupService.GetPendingTopicRequestsAsync(userId.Value);
+                return OkResponse(result, "Get pending topic requests successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<TopicReviewDto>>(ex.Message);
+            }
+        }
+
+        [HttpPost("topic-requests/{groupId}/approve")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<GroupDto>>> ApproveTopicRequest(int groupId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
+
+                var group = await _groupService.ReviewTopicAsync(userId.Value, groupId, approve: true);
+                return OkResponse(group, "Topic approved. Group status updated to APPROVED.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<GroupDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDto>(ex.Message);
+            }
+        }
+
+        [HttpPost("topic-requests/{groupId}/reject")]
+        [Authorize(Roles = "TEACHER")]
+        public async Task<ActionResult<ApiResponse<GroupDto>>> RejectTopicRequest(int groupId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
+
+                var group = await _groupService.ReviewTopicAsync(userId.Value, groupId, approve: false);
+                return OkResponse(group, "Topic rejected. Group leader has been notified.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<GroupDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDto>(ex.Message);
             }
         }
 

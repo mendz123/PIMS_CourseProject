@@ -1,6 +1,6 @@
 import api from './api';
 import type { ApiResponse } from '../types';
-import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, MentorRequestDto, MentorRequestDetailDto, PaginatedResponse } from '../types/group.types';
+import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, MentorRequestDto, MentorRequestDetailDto, PaginatedResponse, RegisterTopicRequestDto, TopicReviewDto, ProjectDto } from '../types/group.types';
 
 export const groupService = {
     async getMyGroup(): Promise<ApiResponse<GroupDto | null>> {
@@ -32,8 +32,8 @@ export const groupService = {
         return response.data;
     },
 
-    async inviteMember(groupId: number, invitedUserId: number): Promise<ApiResponse<InvitationDto>> {
-        const response = await api.post<ApiResponse<InvitationDto>>(`/api/group/${groupId}/invite`, { invitedUserId });
+    async inviteMember(groupId: number, invitedEmail: string): Promise<ApiResponse<InvitationDto>> {
+        const response = await api.post<ApiResponse<InvitationDto>>(`/api/group/${groupId}/invite`, { invitedEmail });
         return response.data;
     },
 
@@ -59,8 +59,8 @@ export const groupService = {
 
     // ??? Mentor Request ??????????????????????????????????????????????????????
 
-    async inviteMentor(groupId: number, mentorUserId: number, message?: string): Promise<ApiResponse<MentorRequestDto>> {
-        const response = await api.post<ApiResponse<MentorRequestDto>>(`/api/group/${groupId}/invite-mentor`, { mentorUserId, message });
+    async inviteMentor(groupId: number, mentorEmail: string, message?: string): Promise<ApiResponse<MentorRequestDto>> {
+        const response = await api.post<ApiResponse<MentorRequestDto>>(`/api/group/${groupId}/invite-mentor`, { mentorEmail, message });
         return response.data;
     },
 
@@ -81,6 +81,28 @@ export const groupService = {
 
     async rejectMentorRequest(requestId: number): Promise<ApiResponse<string>> {
         const response = await api.post<ApiResponse<string>>(`/api/group/mentor-requests/${requestId}/reject`);
+        return response.data;
+    },
+
+    // ??? Topic Registration ???????????????????????????????????????????????????
+
+    async registerTopic(groupId: number, dto: RegisterTopicRequestDto): Promise<ApiResponse<ProjectDto>> {
+        const response = await api.post<ApiResponse<ProjectDto>>(`/api/group/${groupId}/register-topic`, dto);
+        return response.data;
+    },
+
+    async getPendingTopicRequests(): Promise<ApiResponse<TopicReviewDto[]>> {
+        const response = await api.get<ApiResponse<TopicReviewDto[]>>('/api/group/topic-requests/pending');
+        return response.data;
+    },
+
+    async approveTopicRequest(groupId: number): Promise<ApiResponse<GroupDto>> {
+        const response = await api.post<ApiResponse<GroupDto>>(`/api/group/topic-requests/${groupId}/approve`);
+        return response.data;
+    },
+
+    async rejectTopicRequest(groupId: number): Promise<ApiResponse<GroupDto>> {
+        const response = await api.post<ApiResponse<GroupDto>>(`/api/group/topic-requests/${groupId}/reject`);
         return response.data;
     },
 };

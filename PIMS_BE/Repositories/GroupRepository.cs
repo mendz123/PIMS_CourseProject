@@ -7,6 +7,7 @@ public interface IGroupRepository : IGenericRepository<Group>
 {
     Task<Group?> GetGroupWithDetailsAsync(int groupId);
     Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int? mentorId, int pageNumber, int pageSize);
+    Task<List<Group>> GetSubmittedGroupsByMentorAsync(int semesterId, int mentorUserId);
 }
 
 public class GroupRepository : GenericRepository<Group>, IGroupRepository
@@ -24,6 +25,7 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.Mentor)
             .Include(g => g.GroupMembers).ThenInclude(m => m.User)
             .Include(g => g.GroupMembers).ThenInclude(m => m.Status)
+            .Include(g => g.Projects)
             .FirstOrDefaultAsync(g => g.GroupId == groupId);
     }
 
@@ -51,5 +53,16 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    public async Task<List<Group>> GetSubmittedGroupsByMentorAsync(int semesterId, int mentorUserId)
+    {
+        return await _dbSet
+            .Include(g => g.Status)
+            .Include(g => g.Semester)
+            .Include(g => g.Leader)
+            .Include(g => g.Projects)
+            .Where(g => g.SemesterId == semesterId && g.MentorId == mentorUserId && g.StatusId == 3)
+            .ToListAsync();
     }
 }

@@ -87,3 +87,27 @@ export interface PaginatedResponse<T> {
     hasNext: boolean;
 }
 
+export interface RegisterTopicRequestDto {
+    topicName: string;
+    description: string;
+}
+
+export interface TopicReviewDto {
+    projectId: number;
+    groupId: number;
+    groupName: string;
+    leaderName: string;
+    topicName: string;
+    description: string;
+}
+
+export interface ProjectDto {
+    projectId: number;
+    groupId: number;
+    title?: string | null;
+    description?: string | null;
+    statusId: number;
+    statusName?: string | null;
+}
+
+

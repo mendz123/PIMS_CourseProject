@@ -7,6 +7,7 @@ import { groupService } from '../../services/groupService';
 import type { GroupMemberDto } from '../../types/group.types';
 import InviteMemberModal from '../../components/student/InviteMemberModal';
 import InviteMentorModal from '../../components/student/InviteMentorModal';
+import RegisterTopicModal from '../../components/student/RegisterTopicModal';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
     CREATED:     { label: 'CREATED',     color: 'bg-blue-100 text-blue-700' },
@@ -27,10 +28,12 @@ const [nameError, setNameError] = useState('');
 const [creating, setCreating] = useState(false);
 const [showInviteModal, setShowInviteModal] = useState(false);
 const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
+const [showRegisterTopicModal, setShowRegisterTopicModal] = useState(false);
 const [members, setMembers] = useState<GroupMemberDto[]>([]);
 const [membersLoading, setMembersLoading] = useState(false);
 
 const isForming = !!group && group.statusId >= 2;
+const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId;
 const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
 
 useEffect(() => {
@@ -162,10 +165,28 @@ useEffect(() => {
                         <ActionButton
                             icon={<BookOpen size={24} />}
                             label="Đề Tài"
-                            description="Chọn & đăng ký đề tài"
-                            locked={!isForming}
-                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
-                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
+                            description={
+                                canRegisterTopic
+                                    ? 'Đăng ký đề tài cho nhóm'
+                                    : !group!.isLeader
+                                    ? 'Chỉ trưởng nhóm mới đăng ký được'
+                                    : !group!.mentorId
+                                    ? 'Mời mentor trước khi đăng ký đề tài'
+                                    : group!.statusId > 2
+                                    ? `Đề tài: ${group!.statusName}`
+                                    : 'Mở khi nhóm có mentor'
+                            }
+                            locked={!canRegisterTopic}
+                            lockReason={
+                                !group!.isLeader
+                                    ? 'Chỉ trưởng nhóm thực hiện được'
+                                    : !group!.mentorId
+                                    ? 'Nhóm chưa có mentor'
+                                    : group!.statusId > 2
+                                    ? `Trạng thái: ${group!.statusName}`
+                                    : 'Mở khi nhóm đạt FORMING + có mentor'
+                            }
+                            onClick={() => setShowRegisterTopicModal(true)}
                         />
                         <ActionButton
                             icon={<UserPlus size={24} />}
@@ -312,6 +333,19 @@ useEffect(() => {
                     onClose={() => setShowInviteMentorModal(false)}
                     onSuccess={() => {
                         setShowInviteMentorModal(false);
+                        refetchGroup();
+                    }}
+                />
+            )}
+
+            {/* ───── MODAL ĐĂNG KÝ ĐỀ TÀI ───── */}
+            {showRegisterTopicModal && group && (
+                <RegisterTopicModal
+                    groupId={group.groupId}
+                    onClose={() => setShowRegisterTopicModal(false)}
+                    onSuccess={() => {
+                        setShowRegisterTopicModal(false);
+                        toast.success('Đăng ký đề tài thành công! Đang chờ mentor xét duyệt.');
                         refetchGroup();
                     }}
                 />
