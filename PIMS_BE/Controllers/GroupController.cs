@@ -21,7 +21,7 @@ namespace PIMS_BE.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "TEACHER,SUBJECT_HEAD")]
+        [Authorize(Roles = "TEACHER,SUBJECT_HEAD,ADMIN")]
         public async Task<ActionResult<ApiResponse<PaginatedResponse<GroupDto>>>> GetGroups(
             [FromQuery] string? search,
             [FromQuery] int pageNumber = 1,

@@ -6,6 +6,12 @@ import UserManagement from "../../components/admin/UserManagement";
 import SemesterManagement from "../../components/admin/SemesterManagement";
 import NotificationNavbar from "../../components/dashboard/NotificationNavbar";
 import Notifications from "../../components/dashboard/Notifications";
+import { userService } from "../../services/userService";
+import { semesterService } from "../../services/semesterService";
+import { groupService } from "../../services/groupService";
+import { notificationService } from "../../services/notificationService";
+import type { NotificationDto } from "../../types/notification.types";
+import { formatDistanceToNow } from "date-fns";
 import "./Dashboard.css";
 
 const AdminDashboard: React.FC = () => {
@@ -20,6 +26,40 @@ const AdminDashboard: React.FC = () => {
     setSearchParams({ tab: tabId });
   };
 
+  const [totalUsers, setTotalUsers] = React.useState<number | string>("...");
+  const [totalGroups, setTotalGroups] = React.useState<number | string>("...");
+  const [activeSemester, setActiveSemester] = React.useState<string>("None");
+  const [notifications, setNotifications] = React.useState<NotificationDto[]>(
+    [],
+  );
+
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [usersRes, groupsRes, semesterRes, notificationsRes] =
+          await Promise.all([
+            userService.getUsers(1, 1, ""),
+            groupService.getGroups({ pageNumber: 1, pageSize: 1 }),
+            semesterService.getActiveSemester(),
+            notificationService.getMyNotifications(),
+          ]);
+
+        if (usersRes.success) setTotalUsers(usersRes.data.totalCount);
+        if (groupsRes.success) setTotalGroups(groupsRes.data.totalCount);
+        if (semesterRes.success && semesterRes.data) {
+          setActiveSemester(semesterRes.data.semesterName || "Unnamed");
+        }
+        if (notificationsRes.success) {
+          setNotifications(notificationsRes.data.slice(0, 5)); // Show latest 5
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const sidebarItems = [
     { id: "overview", icon: "dashboard", label: "Overview" },
     { id: "users", icon: "group", label: "Users Management" },
@@ -31,7 +71,7 @@ const AdminDashboard: React.FC = () => {
   const stats = [
     {
       title: "Total Users",
-      value: "1,234",
+      value: totalUsers.toString(),
       icon: "group",
       bgColor: "bg-blue-50",
       iconColor: "text-blue-600",
@@ -39,66 +79,22 @@ const AdminDashboard: React.FC = () => {
       trendUp: true,
     },
     {
-      title: "Active Courses",
-      value: "42",
-      icon: "book",
+      title: "Semester",
+      value: activeSemester,
+      icon: "calendar_month",
       bgColor: "bg-purple-50",
       iconColor: "text-purple-600",
-      trend: "+5%",
+      trend: "Active",
       trendUp: true,
     },
     {
-      title: "New Signups",
-      value: "128",
-      icon: "person_add",
+      title: "Total Groups",
+      value: totalGroups.toString(),
+      icon: "groups",
       bgColor: "bg-green-50",
       iconColor: "text-green-600",
       trend: "+18%",
       trendUp: true,
-    },
-    {
-      title: "Revenue",
-      value: "$12,450",
-      icon: "payments",
-      bgColor: "bg-amber-50",
-      iconColor: "text-amber-600",
-      trend: "+8%",
-      trendUp: true,
-    },
-  ];
-
-  const recentActivities = [
-    {
-      user: "John Doe",
-      action: "Created a new course",
-      time: "2 hours ago",
-      icon: "add_circle",
-      initials: "JD",
-      color: "bg-blue-100 text-blue-600",
-    },
-    {
-      user: "Jane Smith",
-      action: "Updated profile",
-      time: "4 hours ago",
-      icon: "edit",
-      initials: "JS",
-      color: "bg-purple-100 text-purple-600",
-    },
-    {
-      user: "Mike Johnson",
-      action: "Registered for React 101",
-      time: "5 hours ago",
-      icon: "how_to_reg",
-      initials: "MJ",
-      color: "bg-green-100 text-green-600",
-    },
-    {
-      user: "Sarah Williams",
-      action: "Posted a new announcement",
-      time: "1 day ago",
-      icon: "campaign",
-      initials: "SW",
-      color: "bg-orange-100 text-orange-600",
     },
   ];
 
@@ -125,10 +121,11 @@ const AdminDashboard: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${activeTab === item.id
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                activeTab === item.id
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-[#616f89] hover:bg-[#f6f6f8]"
-                }`}
+              }`}
             >
               <span className="material-symbols-outlined text-[22px]">
                 {item.icon}
@@ -223,10 +220,11 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${stat.trendUp
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          stat.trendUp
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-700"
-                          }`}
+                        }`}
                       >
                         {stat.trend}
                       </span>
@@ -254,34 +252,61 @@ const AdminDashboard: React.FC = () => {
                     </button>
                   </div>
                   <div className="divide-y divide-[#dbdfe6]">
-                    {recentActivities.map((activity, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-4 p-4 hover:bg-[#f6f6f8] transition-colors"
-                      >
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${activity.color}`}
+                          key={notification.notificationId}
+                          className="flex items-center gap-4 p-4 hover:bg-[#f6f6f8] transition-colors"
                         >
-                          {activity.initials}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[#111318] font-medium text-sm">
-                            {activity.user}{" "}
-                            <span className="text-[#616f89] font-normal">
-                              {activity.action}
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
+                              !notification.isRead
+                                ? "bg-primary/20 text-primary"
+                                : "bg-gray-100 text-gray-400"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              {notification.isRead
+                                ? "notifications"
+                                : "notifications_active"}
                             </span>
-                          </p>
-                          <p className="text-[#616f89] text-xs mt-1">
-                            {activity.time}
-                          </p>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[#111318] font-medium text-sm">
+                              {notification.content ||
+                                notification.title ||
+                                "No message"}
+                            </p>
+                            <p className="text-[#616f89] text-xs mt-1">
+                              {notification.createdAt
+                                ? formatDistanceToNow(
+                                    new Date(notification.createdAt),
+                                    { addSuffix: true },
+                                  )
+                                : "Recently"}
+                            </p>
+                          </div>
+                          <button
+                            className="text-[#616f89] hover:text-primary transition-colors"
+                            onClick={() =>
+                              notificationService.markAsRead(
+                                notification.notificationId,
+                              )
+                            }
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              {notification.isRead
+                                ? "check_circle"
+                                : "radio_button_unchecked"}
+                            </span>
+                          </button>
                         </div>
-                        <button className="text-[#616f89] hover:text-primary transition-colors">
-                          <span className="material-symbols-outlined text-lg">
-                            more_horiz
-                          </span>
-                        </button>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-[#616f89]">
+                        <p className="text-sm">No recent activity found.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
