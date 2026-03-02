@@ -76,12 +76,10 @@ const AssessmentManagementContent: React.FC = () => {
   const loadSemesters = async () => {
     try {
       const response = await semesterService.getAllSemesters();
-      setSemesters(response.data);
-      const activeSemester = response.data.find((s) => s.isActive);
-      if (activeSemester) {
-        setSelectedSemesterId(activeSemester.semesterId);
-      } else if (response.data.length > 0) {
-        setSelectedSemesterId(response.data[0].semesterId);
+      const activeSemesters = response.data.filter((s) => s.isActive);
+      setSemesters(activeSemesters);
+      if (activeSemesters.length > 0) {
+        setSelectedSemesterId(activeSemesters[0].semesterId);
       }
     } catch (err: any) {
       console.error("Failed to load semesters:", err);
