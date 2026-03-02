@@ -149,12 +149,12 @@ useEffect(() => {
                                         )}
                                         {group!.isLeader && (
                                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
-                                                Trưởng nhóm
+                                                Leader
                                             </span>
                                         )}
                                     </div>
                                     <p className="text-gray-500 text-sm mt-1">
-                                        {group!.semesterName} &bull; {group!.memberCount}/5 thành viên
+                                        {group!.semesterName} &bull; {group!.memberCount}/5 members
                                     </p>
                                 </div>
                             </div>
@@ -190,8 +190,8 @@ useEffect(() => {
                         />
                         <ActionButton
                             icon={<UserPlus size={24} />}
-                            label="Mời Thành Viên"
-                            description={group!.isLeader ? 'Thêm thành viên vào nhóm' : 'Chỉ trưởng nhóm mới mời được'}
+                            label="Invite Member"
+                            description={group!.isLeader ? 'Add member to group' : 'Only the leader can invite'}
                             locked={!group!.isLeader}
                             lockReason="Chỉ trưởng nhóm thực hiện được"
                             onClick={() => setShowInviteModal(true)}

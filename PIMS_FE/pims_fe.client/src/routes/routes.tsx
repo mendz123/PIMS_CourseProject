@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
+import { GroupProvider } from "../context/GroupContext";
 import { StudentDashboard } from "../pages/Student";
 import { TeacherDashboard, GradingPage, GroupListPage, TeacherNotifications } from "../pages/Teacher";
 import {
@@ -61,7 +62,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "admin/dashboard",
-        element: <AdminDashboard />,
+        element: <GroupProvider><AdminDashboard /></GroupProvider>,
       },
       {
         path: "teacher/dashboard",
