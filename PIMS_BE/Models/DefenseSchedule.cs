@@ -19,9 +19,13 @@ public partial class DefenseSchedule
 
     public string? Location { get; set; }
 
+    public int? RoomId { get; set; }
+
     public string? Status { get; set; }
 
     public virtual Council Council { get; set; } = null!;
 
     public virtual Group Group { get; set; } = null!;
+
+    public virtual Room? Room { get; set; }
 }
