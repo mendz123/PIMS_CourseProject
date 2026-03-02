@@ -1,8 +1,9 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
+import { GroupProvider } from "../context/GroupContext";
 import { StudentDashboard } from "../pages/Student";
-import { TeacherDashboard, GradingPage, GroupListPage } from "../pages/Teacher";
+import { TeacherDashboard, GradingPage, GroupListPage, TeacherNotifications } from "../pages/Teacher";
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -61,7 +62,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "admin/dashboard",
-        element: <AdminDashboard />,
+        element: <GroupProvider><AdminDashboard /></GroupProvider>,
       },
       {
         path: "teacher/dashboard",
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/grading",
         element: <GradingPage />,
+      },
+      {
+        path: "teacher/notifications",
+        element: <TeacherNotifications />,
       },
       {
         path: "subject-head/dashboard",

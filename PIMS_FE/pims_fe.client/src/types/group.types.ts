@@ -51,6 +51,32 @@ export interface InvitationDetailDto {
     status: string;
 }
 
+export interface MentorRequestDto {
+    requestId: number;
+    groupId: number;
+    groupName: string;
+    leaderId: number;
+    leaderName: string;
+    mentorUserId: number;
+    mentorUserName: string;
+    message?: string | null;
+    status: string;
+    createdAt?: string | null;
+}
+
+export interface MentorRequestDetailDto {
+    requestId: number;
+    groupId: number;
+    groupName: string;
+    leaderId: number;
+    leaderName: string;
+    memberCount: number;
+    members: GroupMemberDto[];
+    message?: string | null;
+    status: string;
+    createdAt?: string | null;
+}
+
 export interface PaginatedResponse<T> {
     items: T[];
     totalCount: number;
@@ -60,4 +86,28 @@ export interface PaginatedResponse<T> {
     hasPrevious: boolean;
     hasNext: boolean;
 }
+
+export interface RegisterTopicRequestDto {
+    topicName: string;
+    description: string;
+}
+
+export interface TopicReviewDto {
+    projectId: number;
+    groupId: number;
+    groupName: string;
+    leaderName: string;
+    topicName: string;
+    description: string;
+}
+
+export interface ProjectDto {
+    projectId: number;
+    groupId: number;
+    title?: string | null;
+    description?: string | null;
+    statusId: number;
+    statusName?: string | null;
+}
+
 

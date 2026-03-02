@@ -1,39 +1,61 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Check, Bell, BellOff, Users, Eye, X, Crown, Loader2 } from "lucide-react";
+import { Check, Bell, BellOff, GraduationCap, BookOpen, Eye, X, Loader2, Users, Crown } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { notificationService } from "../../services/notificationService";
 import { groupService } from "../../services/groupService";
 import type { NotificationDto } from "../../types/notification.types";
-import type { InvitationDto } from "../../types/group.types";
-import InvitationDetailModal from "../student/InvitationDetailModal";
-import { useGroup } from "../../hooks/useGroup";
+import type { MentorRequestDto } from "../../types/group.types";
+import MentorRequestDetailModal from "./MentorRequestDetailModal";
+import TopicReviewModal from "./TopicReviewModal";
 
-function parseInvitationId(content: string | null): number | null {
+function parseMentorRequestId(content: string | null): number | null {
     if (!content) return null;
-    const match = content.match(/Invitation ID: #(\d+)/);
+    const match = content.match(/MentorRequest ID: #(\d+)/);
     return match ? parseInt(match[1], 10) : null;
 }
 
-const Notifications: React.FC = () => {
+function parseTopicGroupId(content: string | null): number | null {
+    if (!content) return null;
+    const match = content.match(/Group ID: #(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+function isTopicNotification(notif: NotificationDto): boolean {
+    return notif.title === "Topic Registration";
+}
+
+const TeacherNotificationsContent: React.FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [onlyUnread, setOnlyUnread] = useState(false);
-    const [pendingInvitations, setPendingInvitations] = useState<Map<number, InvitationDto>>(new Map());
-    const [selectedInvitationId, setSelectedInvitationId] = useState<number | null>(null);
-    const { refetchGroup } = useGroup();
+    const [pendingRequests, setPendingRequests] = useState<Map<number, MentorRequestDto>>(new Map());
+    const [pendingTopicGroupIds, setPendingTopicGroupIds] = useState<Set<number>>(new Set());
+    const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+    const [selectedTopicGroupId, setSelectedTopicGroupId] = useState<number | null>(null);
 
-    const fetchPendingInvitations = useCallback(async () => {
+    const fetchPendingRequests = useCallback(async () => {
         try {
-            const res = await groupService.getPendingInvitations();
+            const res = await groupService.getPendingMentorRequests();
             if (res.success && res.data) {
-                const map = new Map<number, InvitationDto>();
-                res.data.forEach((i) => map.set(i.invitationId, i));
-                setPendingInvitations(map);
+                const map = new Map<number, MentorRequestDto>();
+                res.data.forEach((r) => map.set(r.requestId, r));
+                setPendingRequests(map);
             }
         } catch {
-            // not a student or no invitations — ignore silently
+            // silently ignore
+        }
+    }, []);
+
+    const fetchPendingTopics = useCallback(async () => {
+        try {
+            const res = await groupService.getPendingTopicRequests();
+            if (res.success && res.data) {
+                setPendingTopicGroupIds(new Set(res.data.map((t) => t.groupId)));
+            }
+        } catch {
+            // silently ignore
         }
     }, []);
 
@@ -55,8 +77,9 @@ const Notifications: React.FC = () => {
 
     useEffect(() => {
         fetchNotifications();
-        fetchPendingInvitations();
-    }, [fetchNotifications, fetchPendingInvitations]);
+        fetchPendingRequests();
+        fetchPendingTopics();
+    }, [fetchNotifications, fetchPendingRequests, fetchPendingTopics]);
 
     const handleMarkAll = async () => {
         await notificationService.markAllAsRead();
@@ -68,19 +91,32 @@ const Notifications: React.FC = () => {
         fetchNotifications();
     };
 
-    const handleInvitationAccepted = async () => {
-        setSelectedInvitationId(null);
-        toast.success("You have successfully joined the group!");
-        await refetchGroup();
+    const handleRequestAccepted = async () => {
+        setSelectedRequestId(null);
+        toast.success("You have accepted to be the mentor of this group!");
         await fetchNotifications();
-        await fetchPendingInvitations();
+        await fetchPendingRequests();
     };
 
-    const handleInvitationRejected = () => {
-        setSelectedInvitationId(null);
-        toast.success("Invitation rejected.");
-        fetchPendingInvitations();
+    const handleRequestRejected = () => {
+        setSelectedRequestId(null);
+        toast.success("Mentor request declined.");
+        fetchPendingRequests();
         fetchNotifications();
+    };
+
+    const handleTopicApproved = async () => {
+        setSelectedTopicGroupId(null);
+        toast.success("Topic approved! The group has been notified.");
+        await fetchNotifications();
+        await fetchPendingTopics();
+    };
+
+    const handleTopicRejected = async () => {
+        setSelectedTopicGroupId(null);
+        toast.success("Topic rejected. The group leader has been notified.");
+        await fetchNotifications();
+        await fetchPendingTopics();
     };
 
     return (
@@ -92,7 +128,7 @@ const Notifications: React.FC = () => {
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-[#0f172a]">Notifications</h2>
-                        <p className="text-xs text-gray-500">Your latest updates</p>
+                        <p className="text-xs text-gray-500">Your latest updates & mentor requests</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -132,29 +168,34 @@ const Notifications: React.FC = () => {
 
                     {!loading &&
                         notifications.map((notif) => {
-                            const invitationId = parseInvitationId(notif.content);
-                            const isInvite = invitationId !== null;
-                            const invitationData = invitationId !== null ? pendingInvitations.get(invitationId) : undefined;
-                            const isPending = invitationId !== null && pendingInvitations.has(invitationId);
+                            const requestId = parseMentorRequestId(notif.content);
+                            const topicGroupId = isTopicNotification(notif) ? parseTopicGroupId(notif.content) : null;
 
-                            if (isInvite) {
+                            if (topicGroupId !== null) {
                                 return (
-                                    <InvitationNotificationCard
+                                    <TopicNotificationCard
                                         key={notif.notificationId}
                                         notif={notif}
-                                        invitationId={invitationId!}
-                                        invitationData={invitationData}
+                                        isPending={pendingTopicGroupIds.has(topicGroupId)}
+                                        onReview={() => setSelectedTopicGroupId(topicGroupId)}
+                                        onMarkRead={() => handleMarkRead(notif.notificationId)}
+                                    />
+                                );
+                            }
+
+                            if (requestId !== null) {
+                                const requestData = pendingRequests.get(requestId);
+                                const isPending = pendingRequests.has(requestId);
+                                return (
+                                    <MentorRequestNotificationCard
+                                        key={notif.notificationId}
+                                        notif={notif}
+                                        requestId={requestId}
+                                        requestData={requestData}
                                         isPending={isPending}
-                                        onAccepted={async () => {
-                                            await refetchGroup();
-                                            await fetchNotifications();
-                                            await fetchPendingInvitations();
-                                        }}
-                                        onRejected={() => {
-                                            fetchPendingInvitations();
-                                            fetchNotifications();
-                                        }}
-                                        onViewDetail={() => setSelectedInvitationId(invitationId!)}
+                                        onAccepted={handleRequestAccepted}
+                                        onRejected={handleRequestRejected}
+                                        onViewDetail={() => setSelectedRequestId(requestId)}
                                         onMarkRead={() => handleMarkRead(notif.notificationId)}
                                     />
                                 );
@@ -206,23 +247,92 @@ const Notifications: React.FC = () => {
                 </div>
             </section>
 
-            {selectedInvitationId !== null && (
-                <InvitationDetailModal
-                    invitationId={selectedInvitationId}
-                    onClose={() => setSelectedInvitationId(null)}
-                    onAccepted={handleInvitationAccepted}
-                    onRejected={handleInvitationRejected}
+            {selectedRequestId !== null && (
+                <MentorRequestDetailModal
+                    requestId={selectedRequestId}
+                    onClose={() => setSelectedRequestId(null)}
+                    onAccepted={handleRequestAccepted}
+                    onRejected={handleRequestRejected}
+                />
+            )}
+
+            {selectedTopicGroupId !== null && (
+                <TopicReviewModal
+                    groupId={selectedTopicGroupId}
+                    onClose={() => setSelectedTopicGroupId(null)}
+                    onApproved={handleTopicApproved}
+                    onRejected={handleTopicRejected}
                 />
             )}
         </div>
     );
 };
 
-/* ??? Invitation notification card ??? */
-interface InvitationCardProps {
+/* ??? Topic Notification Card ?????????????????????????????????????????????? */
+interface TopicCardProps {
     notif: NotificationDto;
-    invitationId: number;
-    invitationData: InvitationDto | undefined;
+    isPending: boolean;
+    onReview: () => void;
+    onMarkRead: () => void;
+}
+
+const TopicNotificationCard: React.FC<TopicCardProps> = ({ notif, isPending, onReview, onMarkRead }) => (
+    <div className={`p-5 transition-colors ${notif.isRead ? "bg-white" : "bg-purple-50/40"}`}>
+        <div className="flex items-start gap-4">
+            <div className="size-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <BookOpen size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-gray-900">Topic Registration</p>
+                        {isPending ? (
+                            <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                Pending Review
+                            </span>
+                        ) : (
+                            <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                Reviewed
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[10px] text-gray-400 shrink-0">
+                        {notif.createdAt
+                            ? formatDistanceToNow(new Date(notif.createdAt), { locale: enUS, addSuffix: true })
+                            : "Just now"}
+                    </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">{notif.content}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {isPending && (
+                        <button
+                            onClick={onReview}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                        >
+                            <Eye size={12} />
+                            Review Topic
+                        </button>
+                    )}
+                    {!notif.isRead && (
+                        <button
+                            onClick={onMarkRead}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                        >
+                            <Check size={12} />
+                            Mark Read
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+/* ??? Mentor Request Notification Card ????????????????????????????????????? */
+interface MentorRequestCardProps {
+    notif: NotificationDto;
+    requestId: number;
+    requestData: MentorRequestDto | undefined;
     isPending: boolean;
     onAccepted: () => void;
     onRejected: () => void;
@@ -230,10 +340,10 @@ interface InvitationCardProps {
     onMarkRead: () => void;
 }
 
-const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
+const MentorRequestNotificationCard: React.FC<MentorRequestCardProps> = ({
     notif,
-    invitationId,
-    invitationData,
+    requestId,
+    requestData,
     isPending,
     onAccepted,
     onRejected,
@@ -241,18 +351,16 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
     onMarkRead,
 }) => {
     const [responding, setResponding] = useState<"accept" | "reject" | null>(null);
-    const { refetchGroup } = useGroup();
 
     const handleAccept = async () => {
         setResponding("accept");
         try {
-            const res = await groupService.acceptInvitation(invitationId);
+            const res = await groupService.acceptMentorRequest(requestId);
             if (res.success) {
-                toast.success("You have successfully joined the group!");
-                await refetchGroup();
+                toast.success("You have accepted to be the mentor of this group!");
                 onAccepted();
             } else {
-                toast.error(res.message || "Failed to accept invitation.");
+                toast.error(res.message || "Failed to accept mentor request.");
             }
         } catch {
             toast.error("An error occurred. Please try again.");
@@ -264,12 +372,12 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
     const handleReject = async () => {
         setResponding("reject");
         try {
-            const res = await groupService.rejectInvitation(invitationId);
+            const res = await groupService.rejectMentorRequest(requestId);
             if (res.success) {
-                toast.success("Invitation rejected.");
+                toast.success("Mentor request declined.");
                 onRejected();
             } else {
-                toast.error(res.message || "Failed to reject invitation.");
+                toast.error(res.message || "Failed to reject mentor request.");
             }
         } catch {
             toast.error("An error occurred. Please try again.");
@@ -281,14 +389,14 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
     return (
         <div className={`p-5 transition-colors ${notif.isRead ? "bg-white" : "bg-blue-50/40"}`}>
             <div className="flex items-start gap-4">
-                <div className="size-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                    <Users size={18} />
+                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <GraduationCap size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-gray-900">Group Invitation</p>
+                            <p className="text-sm font-bold text-gray-900">Mentor Request</p>
                             {isPending ? (
                                 <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                                     Pending
@@ -307,18 +415,17 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
                     </div>
 
                     {/* Group info */}
-                    {invitationData ? (
-                        <div className="bg-amber-50/60 rounded-xl p-3 mb-3 space-y-1">
+                    {requestData ? (
+                        <div className="bg-primary/5 rounded-xl p-3 mb-3 space-y-1">
                             <div className="flex items-center gap-2">
-                                <Users size={13} className="text-amber-600 shrink-0" />
-                                <span className="text-xs font-bold text-gray-800">
-                                    {invitationData.groupName}
-                                </span>
+                                <Users size={13} className="text-primary shrink-0" />
+                                <span className="text-xs font-bold text-gray-800">{requestData.groupName}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Crown size={13} className="text-amber-500 shrink-0" />
                                 <span className="text-xs text-gray-600">
-                                    Leader: <span className="font-semibold text-gray-800">{invitationData.invitedByUserName}</span>
+                                    Leader:{" "}
+                                    <span className="font-semibold text-gray-800">{requestData.leaderName}</span>
                                 </span>
                             </div>
                         </div>
@@ -336,12 +443,12 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                                 >
                                     {responding === "reject" ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-                                    Reject
+                                    Decline
                                 </button>
                                 <button
                                     onClick={handleAccept}
                                     disabled={!!responding}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-70"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-blue-700 transition-colors disabled:opacity-70"
                                 >
                                     {responding === "accept" ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                                     Accept
@@ -353,12 +460,12 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors"
                         >
                             <Eye size={12} />
-                            View Members
+                            View Group
                         </button>
                         {!notif.isRead && (
                             <button
                                 onClick={onMarkRead}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-blue-700 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                             >
                                 <Check size={12} />
                                 Mark Read
@@ -371,6 +478,4 @@ const InvitationNotificationCard: React.FC<InvitationCardProps> = ({
     );
 };
 
-export default Notifications;
-
-
+export default TeacherNotificationsContent;

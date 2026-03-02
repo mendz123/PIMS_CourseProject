@@ -1,19 +1,22 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Users, UserPlus, BookOpen, GraduationCap, Lock, CheckCircle2, Info, Loader2, X } from 'lucide-react';
+import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock, XCircle, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
+import type { GroupMemberDto, ProjectDto } from '../../types/group.types';
 import InviteMemberModal from '../../components/student/InviteMemberModal';
+import InviteMentorModal from '../../components/student/InviteMentorModal';
+import RegisterTopicModal from '../../components/student/RegisterTopicModal';
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    CREATED: { label: 'Vừa tạo', color: 'bg-blue-100 text-blue-700' },
-    FORMING: { label: 'Đang tuyển thành viên', color: 'bg-yellow-100 text-yellow-700' },
-    SUBMITTED: { label: 'Đã nộp đề tài', color: 'bg-purple-100 text-purple-700' },
-    APPROVED: { label: 'Mentor đã duyệt', color: 'bg-green-100 text-green-700' },
-    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-cyan-100 text-cyan-700' },
-    COMPLETED: { label: 'Hoàn thành', color: 'bg-emerald-100 text-emerald-700' },
-    CANCELLED: { label: 'Đã huỷ', color: 'bg-red-100 text-red-700' },
+    CREATED:     { label: 'CREATED',     color: 'bg-blue-100 text-blue-700' },
+    FORMING:     { label: 'FORMING',     color: 'bg-yellow-100 text-yellow-700' },
+    SUBMITTED:   { label: 'SUBMITTED',   color: 'bg-purple-100 text-purple-700' },
+    APPROVED:    { label: 'APPROVED',    color: 'bg-green-100 text-green-700' },
+    IN_PROGRESS: { label: 'IN_PROGRESS', color: 'bg-cyan-100 text-cyan-700' },
+    COMPLETED:   { label: 'COMPLETED',   color: 'bg-emerald-100 text-emerald-700' },
+    CANCELLED:   { label: 'CANCELLED',   color: 'bg-red-100 text-red-700' },
 };
 
 const StudentGroup: React.FC = () => {
@@ -24,8 +27,36 @@ const [groupName, setGroupName] = useState('');
 const [nameError, setNameError] = useState('');
 const [creating, setCreating] = useState(false);
 const [showInviteModal, setShowInviteModal] = useState(false);
+const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
+const [showRegisterTopicModal, setShowRegisterTopicModal] = useState(false);
+const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+const [leaving, setLeaving] = useState(false);
+const [members, setMembers] = useState<GroupMemberDto[]>([]);
+const [project, setProject] = useState<ProjectDto | null>(null);
+const [membersLoading, setMembersLoading] = useState(false);
 
+const isTopicApproved = !!group && group.statusId >= 4;
 const isForming = !!group && group.statusId >= 2;
+const hasRejectedTopic = !!project && project.statusId === 3;
+const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && !hasRejectedTopic;
+const canUpdateTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && hasRejectedTopic;
+const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
+const canInviteMember = !!group && group.isLeader && !isTopicApproved;
+const canLeaveGroup = !!group && !group.isLeader && !isTopicApproved;
+
+useEffect(() => {
+    if (!hasGroup) { setMembers([]); setProject(null); return; }
+    setMembersLoading(true);
+    groupService.getMyGroupDetail()
+        .then(res => {
+            if (res.success && res.data) {
+                setMembers(res.data.members ?? []);
+                setProject(res.data.project ?? null);
+            }
+        })
+        .catch(() => {})
+        .finally(() => setMembersLoading(false));
+}, [hasGroup, group?.memberCount, group?.statusId]);
 
     const handleOpenModal = () => {
         setGroupName('');
@@ -67,6 +98,27 @@ const isForming = !!group && group.statusId >= 2;
     const statusInfo = group
         ? (STATUS_LABEL[group.statusName] ?? { label: group.statusName, color: 'bg-gray-100 text-gray-700' })
         : null;
+
+    const handleLeaveGroup = async () => {
+        setLeaving(true);
+        try {
+            const res = await groupService.leaveGroup();
+            if (res.success) {
+                setShowLeaveConfirm(false);
+                toast.success('You have left the group.');
+                await refetchGroup();
+            } else {
+                toast.error(res.message || 'Failed to leave the group.');
+            }
+        } catch (err: unknown) {
+            const msg = axios.isAxiosError(err)
+                ? err.response?.data?.message ?? 'An error occurred. Please try again.'
+                : 'An error occurred. Please try again.';
+            toast.error(msg);
+        } finally {
+            setLeaving(false);
+        }
+    };
 
     if (groupLoading) {
         return (
@@ -131,71 +183,171 @@ const isForming = !!group && group.statusId >= 2;
                                         )}
                                         {group!.isLeader && (
                                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
-                                                Trưởng nhóm
+                                                Leader
                                             </span>
                                         )}
                                     </div>
                                     <p className="text-gray-500 text-sm mt-1">
-                                        {group!.semesterName} &bull; {group!.memberCount}/5 thành viên
+                                        {group!.semesterName} &bull; {group!.memberCount}/5 members
                                     </p>
                                 </div>
                             </div>
+                            {!group!.isLeader && (
+                                <button
+                                    onClick={() => canLeaveGroup && setShowLeaveConfirm(true)}
+                                    disabled={!canLeaveGroup}
+                                    title={isTopicApproved ? 'Cannot leave after topic is approved' : undefined}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                                        canLeaveGroup
+                                            ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+                                            : 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
+                                    }`}
+                                >
+                                    <LogOut size={15} />
+                                    Out Group
+                                    {isTopicApproved && <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">Locked</span>}
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <ActionButton
                             icon={<BookOpen size={24} />}
-                            label="Đề Tài"
-                            description="Chọn & đăng ký đề tài"
-                            locked={!isForming}
-                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
-                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
+                            label="Topic"
+                            description={
+                                canRegisterTopic
+                                    ? 'Register a topic for your group'
+                                    : canUpdateTopic
+                                    ? 'Update rejected topic'
+                                    : !group!.isLeader
+                                    ? 'Only the leader can register a topic'
+                                    : !group!.mentorId
+                                    ? 'Invite a mentor before registering a topic'
+                                    : group!.statusId > 2
+                                    ? `Topic: ${group!.statusName}`
+                                    : 'Available when group has a mentor'
+                            }
+                            locked={!canRegisterTopic && !canUpdateTopic}
+                            lockReason={
+                                !group!.isLeader
+                                    ? 'Only the leader can perform this action'
+                                    : !group!.mentorId
+                                    ? 'Group has no mentor yet'
+                                    : group!.statusId > 2
+                                    ? `Status: ${group!.statusName}`
+                                    : 'Available when group is FORMING + has a mentor'
+                            }
+                            onClick={() => setShowRegisterTopicModal(true)}
                         />
                         <ActionButton
                             icon={<UserPlus size={24} />}
-                            label="Mời Thành Viên"
-                            description={group!.isLeader ? 'Thêm thành viên vào nhóm' : 'Chỉ trưởng nhóm mới mời được'}
-                            locked={!group!.isLeader}
-                            lockReason="Chỉ trưởng nhóm thực hiện được"
+                            label="Invite Member"
+                            description={
+                                isTopicApproved
+                                    ? 'Locked after topic approval'
+                                    : group!.isLeader
+                                    ? 'Add member to group'
+                                    : 'Only the leader can invite'
+                            }
+                            locked={!canInviteMember}
+                            lockReason={
+                                isTopicApproved
+                                    ? 'Group topic has been approved'
+                                    : 'Only the leader can do this'
+                            }
                             onClick={() => setShowInviteModal(true)}
                         />
                         <ActionButton
                             icon={<GraduationCap size={24} />}
                             label="Mentor"
-                            description="Yêu cầu giảng viên hướng dẫn"
-                            locked={!isForming}
-                            lockReason="Mở khi nhóm đạt 4–5 thành viên"
-                            onClick={() => toast('Tính năng đang phát triển...', { icon: '🚧' })}
+                            description={
+                                group!.mentorId
+                                    ? `Assigned: ${group!.mentorName || 'Mentor'}`
+                                    : canInviteMentor
+                                    ? 'Invite a supervisor'
+                                    : !group!.isLeader
+                                    ? 'Leader only'
+                                    : 'Unlocks at 4–5 members (FORMING)'
+                            }
+                            locked={!canInviteMentor && !group!.mentorId}
+                            lockReason={
+                                !group!.isLeader
+                                    ? 'Leader only'
+                                    : 'Unlocks at FORMING status'
+                            }
+                            onClick={() => setShowInviteMentorModal(true)}
                         />
                     </div>
 
-                    <div className="bg-slate-900 p-6 rounded-2xl text-white">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Info size={16} className="text-primary" />
-                            <h4 className="text-sm font-bold">Các bước tiếp theo</h4>
+                    {/* ───── REGISTERED TOPIC CARD ───── */}
+                    {project && (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+                                <BookOpen size={16} className="text-primary" />
+                                <h4 className="text-sm font-bold text-gray-900">Registered Topic</h4>
+                                <span className={`ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    project.statusId === 2
+                                        ? 'bg-green-100 text-green-700'
+                                        : project.statusId === 3
+                                        ? 'bg-red-100 text-red-700'
+                                        : 'bg-purple-100 text-purple-700'
+                                }`}>
+                                    {project.statusId === 2
+                                        ? <><CheckCircle size={11} /> APPROVED</>
+                                        : project.statusId === 3
+                                        ? <><XCircle size={11} /> REJECTED</>
+                                        : <><Clock size={11} /> PENDING REVIEW</>
+                                    }
+                                </span>
+                            </div>
+                            <div className="p-5 space-y-3">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">Topic Name</p>
+                                    <p className="text-sm font-bold text-gray-900">{project.title}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">Description</p>
+                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{project.description}</p>
+                                </div>
+                            </div>
                         </div>
-                        <ol className="space-y-2 text-xs text-slate-400 leading-relaxed list-none">
-                            <li className="flex items-start gap-2">
-                                <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                <span>Nhóm đã được tạo thành công.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                {isForming
-                                    ? <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                    : <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                }
-                                <span>Mời thêm thành viên để nhóm đạt từ 4–5 người.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                <span>Đăng ký đề tài sau khi nhóm ổn định.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="w-3.5 h-3.5 rounded-full border border-slate-500 shrink-0 mt-0.5" />
-                                <span>Gửi yêu cầu Mentor khi đã có đề tài.</span>
-                            </li>
-                        </ol>
+                    )}
+
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+                            <Users size={16} className="text-primary" />
+                            <h4 className="text-sm font-bold text-gray-900">Members</h4>
+                            <span className="ml-auto text-xs text-gray-400">{group!.memberCount}/5</span>
+                        </div>
+                        {membersLoading ? (
+                            <div className="p-6 flex justify-center">
+                                <Loader2 size={20} className="animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-50">
+                                {members.map(m => (
+                                    <div key={m.userId} className="flex items-center gap-3 px-5 py-3">
+                                        <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">
+                                            {m.fullName.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-gray-900 truncate">{m.fullName}</p>
+                                            <p className="text-xs text-gray-400">ID: {m.userId} &bull; {m.email}</p>
+                                        </div>
+                                        {m.userId === group!.leaderId ? (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                                                <Crown size={10} /> Leader
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                                <User size={10} /> Member
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -261,12 +413,76 @@ const isForming = !!group && group.statusId >= 2;
                 </div>
             )}
 
+            {/* ───── MODAL XÁC NHẬN OUT GROUP ───── */}
+            {showLeaveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-7 relative">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-red-100 rounded-lg">
+                                <LogOut size={20} className="text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Leave Group</h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to leave <span className="font-semibold text-gray-900">{group!.groupName}</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => !leaving && setShowLeaveConfirm(false)}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLeaveGroup}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {leaving ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                                {leaving ? 'Leaving...' : 'Leave Group'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ───── MODAL MỜI THÀNH VIÊN ───── */}
             {showInviteModal && group && (
                 <InviteMemberModal
                     groupId={group.groupId}
                     onClose={() => setShowInviteModal(false)}
                     onSuccess={refetchGroup}
+                />
+            )}
+
+            {/* ───── MODAL MỜI MENTOR ───── */}
+            {showInviteMentorModal && group && (
+                <InviteMentorModal
+                    groupId={group.groupId}
+                    onClose={() => setShowInviteMentorModal(false)}
+                    onSuccess={() => {
+                        setShowInviteMentorModal(false);
+                        refetchGroup();
+                    }}
+                />
+            )}
+
+            {/* ───── MODAL ĐĂNG KÝ ĐỀ TÀI ───── */}
+            {showRegisterTopicModal && group && (
+                <RegisterTopicModal
+                    groupId={group.groupId}
+                    existingProject={hasRejectedTopic && project ? { title: project.title ?? '', description: project.description ?? '' } : null}
+                    onClose={() => setShowRegisterTopicModal(false)}
+                    onSuccess={() => {
+                        setShowRegisterTopicModal(false);
+                        toast.success(
+                            hasRejectedTopic
+                                ? 'Cập nhật đề tài thành công! Đang chờ mentor xét duyệt.'
+                                : 'Đăng ký đề tài thành công! Đang chờ mentor xét duyệt.'
+                        );
+                        refetchGroup();
+                    }}
                 />
             )}
         </div>
