@@ -55,6 +55,8 @@ public partial class PimsDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<Room> Rooms { get; set; }
+
     public virtual DbSet<Semester> Semesters { get; set; }
 
     public virtual DbSet<StudentFinalResult> StudentFinalResults { get; set; }
@@ -246,6 +248,11 @@ public partial class PimsDbContext : DbContext
                 .HasForeignKey(d => d.GroupId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DS_Group");
+
+            entity.HasOne(d => d.Room).WithMany(p => p.DefenseSchedules)
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_DS_Room");
         });
 
         modelBuilder.Entity<GroupInvitation>(entity =>
