@@ -110,5 +110,10 @@ export const groupService = {
         const response = await api.post<ApiResponse<GroupDto>>(`/api/group/topic-requests/${groupId}/reject`);
         return response.data;
     },
+
+    async leaveGroup(): Promise<ApiResponse<string>> {
+        const response = await api.post<ApiResponse<string>>('/api/group/leave');
+        return response.data;
+    },
 };
 

@@ -479,6 +479,28 @@ namespace PIMS_BE.Controllers
             }
         }
 
+        [HttpPost("leave")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<string>>> LeaveGroup()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<string>("User information not found.");
+
+                await _groupService.LeaveGroupAsync(userId.Value);
+                return OkResponse("Left", "You have successfully left the group.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<string>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<string>(ex.Message);
+            }
+        }
+
         private int? GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

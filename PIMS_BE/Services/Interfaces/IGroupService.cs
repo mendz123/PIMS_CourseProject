@@ -26,6 +26,9 @@ namespace PIMS_BE.Services.Interfaces
         Task<ProjectDto> UpdateTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto);
         Task<List<TopicReviewDto>> GetPendingTopicRequestsAsync(int teacherUserId);
         Task<GroupDto> ReviewTopicAsync(int teacherUserId, int groupId, bool approve);
+
+        // Leave group
+        Task LeaveGroupAsync(int userId);
     }
 }
 

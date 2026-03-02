@@ -22,6 +22,7 @@ namespace PIMS_BE.Services
         private const int StatusSubmitted = 3;
         private const int StatusApproved = 4;
         private const int MemberStatusActive = 1;
+        private const int MemberStatusLeft = 2;
         private const int UserStatusActive = 1;
         private const int MinMembersForForming = 4;
         private const int MaxGroupMembers = 5;
@@ -775,6 +776,43 @@ namespace PIMS_BE.Services
 
             var updatedGroup = await _groupRepository.GetGroupWithDetailsAsync(groupId);
             return MapGroupToDto(updatedGroup!, teacherUserId);
+        }
+
+        public async Task LeaveGroupAsync(int userId)
+        {
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault()
+                ?? throw new InvalidOperationException("No active semester found.");
+
+            var memberInfo = await _memberRepository.GetActiveMemberWithGroupInSemesterAsync(userId, activeSemester.SemesterId);
+            if (memberInfo == null)
+                throw new InvalidOperationException("You are not a member of any group in the current semester.");
+
+            var group = memberInfo.Group;
+
+            if (group.LeaderId == userId)
+                throw new InvalidOperationException("The group leader cannot leave the group.");
+
+            if (group.StatusId >= StatusApproved)
+                throw new InvalidOperationException("You cannot leave the group after the topic has been approved.");
+
+            memberInfo.StatusId = MemberStatusLeft;
+            await _memberRepository.UpdateAsync(memberInfo);
+
+            var remainingCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive && m.UserId != userId);
+            if (remainingCount < MinMembersForForming && group.StatusId > StatusCreated)
+            {
+                group.StatusId = StatusCreated;
+                await _groupRepository.UpdateAsync(group);
+            }
+
+            await _memberRepository.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(group.LeaderId, new DTOs.Notification.CreateNotificationRequest
+            {
+                Title = "Member Left Group",
+                Content = $"A member has left your group '{group.GroupName}'."
+            });
         }
 
         private static GroupDto MapGroupToDto(Group group, int currentUserId)

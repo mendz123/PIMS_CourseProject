@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock, XCircle, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
@@ -29,15 +29,20 @@ const [creating, setCreating] = useState(false);
 const [showInviteModal, setShowInviteModal] = useState(false);
 const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
 const [showRegisterTopicModal, setShowRegisterTopicModal] = useState(false);
+const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+const [leaving, setLeaving] = useState(false);
 const [members, setMembers] = useState<GroupMemberDto[]>([]);
 const [project, setProject] = useState<ProjectDto | null>(null);
 const [membersLoading, setMembersLoading] = useState(false);
 
+const isTopicApproved = !!group && group.statusId >= 4;
 const isForming = !!group && group.statusId >= 2;
 const hasRejectedTopic = !!project && project.statusId === 3;
 const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && !hasRejectedTopic;
 const canUpdateTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && hasRejectedTopic;
 const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
+const canInviteMember = !!group && group.isLeader && !isTopicApproved;
+const canLeaveGroup = !!group && !group.isLeader && !isTopicApproved;
 
 useEffect(() => {
     if (!hasGroup) { setMembers([]); setProject(null); return; }
@@ -93,6 +98,27 @@ useEffect(() => {
     const statusInfo = group
         ? (STATUS_LABEL[group.statusName] ?? { label: group.statusName, color: 'bg-gray-100 text-gray-700' })
         : null;
+
+    const handleLeaveGroup = async () => {
+        setLeaving(true);
+        try {
+            const res = await groupService.leaveGroup();
+            if (res.success) {
+                setShowLeaveConfirm(false);
+                toast.success('You have left the group.');
+                await refetchGroup();
+            } else {
+                toast.error(res.message || 'Failed to leave the group.');
+            }
+        } catch (err: unknown) {
+            const msg = axios.isAxiosError(err)
+                ? err.response?.data?.message ?? 'An error occurred. Please try again.'
+                : 'An error occurred. Please try again.';
+            toast.error(msg);
+        } finally {
+            setLeaving(false);
+        }
+    };
 
     if (groupLoading) {
         return (
@@ -166,6 +192,22 @@ useEffect(() => {
                                     </p>
                                 </div>
                             </div>
+                            {!group!.isLeader && (
+                                <button
+                                    onClick={() => canLeaveGroup && setShowLeaveConfirm(true)}
+                                    disabled={!canLeaveGroup}
+                                    title={isTopicApproved ? 'Cannot leave after topic is approved' : undefined}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                                        canLeaveGroup
+                                            ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+                                            : 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
+                                    }`}
+                                >
+                                    <LogOut size={15} />
+                                    Out Group
+                                    {isTopicApproved && <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">Locked</span>}
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -201,9 +243,19 @@ useEffect(() => {
                         <ActionButton
                             icon={<UserPlus size={24} />}
                             label="Invite Member"
-                            description={group!.isLeader ? 'Add member to group' : 'Only the leader can invite'}
-                            locked={!group!.isLeader}
-                            lockReason="Chỉ trưởng nhóm thực hiện được"
+                            description={
+                                isTopicApproved
+                                    ? 'Locked after topic approval'
+                                    : group!.isLeader
+                                    ? 'Add member to group'
+                                    : 'Only the leader can invite'
+                            }
+                            locked={!canInviteMember}
+                            lockReason={
+                                isTopicApproved
+                                    ? 'Group topic has been approved'
+                                    : 'Only the leader can do this'
+                            }
                             onClick={() => setShowInviteModal(true)}
                         />
                         <ActionButton
@@ -355,6 +407,40 @@ useEffect(() => {
                             >
                                 {creating ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
                                 {creating ? 'Đang tạo...' : 'Tạo Nhóm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ───── MODAL XÁC NHẬN OUT GROUP ───── */}
+            {showLeaveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-7 relative">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-red-100 rounded-lg">
+                                <LogOut size={20} className="text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Leave Group</h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-6">
+                            Are you sure you want to leave <span className="font-semibold text-gray-900">{group!.groupName}</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => !leaving && setShowLeaveConfirm(false)}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLeaveGroup}
+                                disabled={leaving}
+                                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {leaving ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                                {leaving ? 'Leaving...' : 'Leave Group'}
                             </button>
                         </div>
                     </div>
