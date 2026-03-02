@@ -107,4 +107,28 @@ public class SemesterController : ControllerBase
             return StatusCode(500, ApiResponse<SemesterDto>.InternalError(ex.Message));
         }
     }
+
+    // UC — Delete Semester
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult> Delete(int id)
+    {
+        try
+        {
+            await _semesterService.DeleteSemesterAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.BadRequest(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
+        }
+    }
 }

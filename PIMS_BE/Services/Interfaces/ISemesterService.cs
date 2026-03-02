@@ -9,4 +9,5 @@ public interface ISemesterService
     Task<SemesterDto?> GetActiveSemesterAsync();
     Task<SemesterDto> CreateSemesterAsync(CreateSemesterDto dto);
     Task<SemesterDto> UpdateSemesterAsync(int id, UpdateSemesterDto dto);
+    Task DeleteSemesterAsync(int id);
 }

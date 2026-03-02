@@ -108,6 +108,41 @@ public class SemesterService : ISemesterService
         return MapToDto(semester);
     }
 
+    public async Task DeleteSemesterAsync(int id)
+    {
+        // Load with all child collections to check FK constraints
+        var semester = await _semesterRepository.GetWithDetailsAsync(id)
+            ?? throw new KeyNotFoundException($"Semester {id} not found");
+
+        if (semester.IsActive == true)
+            throw new InvalidOperationException(
+                "Cannot delete the active semester. Please deactivate it first.");
+
+        // Check all FK relationships before attempting delete
+        if (semester.Assessments.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete: this semester has {semester.Assessments.Count} assessment(s) linked to it.");
+
+        if (semester.Groups.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete: this semester has {semester.Groups.Count} group(s) linked to it.");
+
+        if (semester.Councils.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete: this semester has {semester.Councils.Count} council(s) linked to it.");
+
+        if (semester.ProjectTemplates.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete: this semester has {semester.ProjectTemplates.Count} project template(s) linked to it.");
+
+        if (semester.StudentFinalResults.Count > 0)
+            throw new InvalidOperationException(
+                $"Cannot delete: this semester has {semester.StudentFinalResults.Count} student result(s) linked to it.");
+
+        _semesterRepository.Remove(semester);
+        await _semesterRepository.SaveChangesAsync();
+    }
+
     private static SemesterDto MapToDto(Semester s) => new()
     {
         SemesterId   = s.SemesterId,
