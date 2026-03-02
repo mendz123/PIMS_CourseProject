@@ -91,6 +91,11 @@ export const groupService = {
         return response.data;
     },
 
+    async updateTopic(groupId: number, dto: RegisterTopicRequestDto): Promise<ApiResponse<ProjectDto>> {
+        const response = await api.put<ApiResponse<ProjectDto>>(`/api/group/${groupId}/update-topic`, dto);
+        return response.data;
+    },
+
     async getPendingTopicRequests(): Promise<ApiResponse<TopicReviewDto[]>> {
         const response = await api.get<ApiResponse<TopicReviewDto[]>>('/api/group/topic-requests/pending');
         return response.data;

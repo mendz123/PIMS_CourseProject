@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock } from 'lucide-react';
+import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock, XCircle } from 'lucide-react';
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
@@ -34,7 +34,9 @@ const [project, setProject] = useState<ProjectDto | null>(null);
 const [membersLoading, setMembersLoading] = useState(false);
 
 const isForming = !!group && group.statusId >= 2;
-const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId;
+const hasRejectedTopic = !!project && project.statusId === 3;
+const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && !hasRejectedTopic;
+const canUpdateTopic = !!group && group.isLeader && group.statusId === 2 && !!group.mentorId && hasRejectedTopic;
 const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
 
 useEffect(() => {
@@ -170,27 +172,29 @@ useEffect(() => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <ActionButton
                             icon={<BookOpen size={24} />}
-                            label="Đề Tài"
+                            label="Topic"
                             description={
                                 canRegisterTopic
-                                    ? 'Đăng ký đề tài cho nhóm'
+                                    ? 'Register a topic for your group'
+                                    : canUpdateTopic
+                                    ? 'Update rejected topic'
                                     : !group!.isLeader
-                                    ? 'Chỉ trưởng nhóm mới đăng ký được'
+                                    ? 'Only the leader can register a topic'
                                     : !group!.mentorId
-                                    ? 'Mời mentor trước khi đăng ký đề tài'
+                                    ? 'Invite a mentor before registering a topic'
                                     : group!.statusId > 2
-                                    ? `Đề tài: ${group!.statusName}`
-                                    : 'Mở khi nhóm có mentor'
+                                    ? `Topic: ${group!.statusName}`
+                                    : 'Available when group has a mentor'
                             }
-                            locked={!canRegisterTopic}
+                            locked={!canRegisterTopic && !canUpdateTopic}
                             lockReason={
                                 !group!.isLeader
-                                    ? 'Chỉ trưởng nhóm thực hiện được'
+                                    ? 'Only the leader can perform this action'
                                     : !group!.mentorId
-                                    ? 'Nhóm chưa có mentor'
+                                    ? 'Group has no mentor yet'
                                     : group!.statusId > 2
-                                    ? `Trạng thái: ${group!.statusName}`
-                                    : 'Mở khi nhóm đạt FORMING + có mentor'
+                                    ? `Status: ${group!.statusName}`
+                                    : 'Available when group is FORMING + has a mentor'
                             }
                             onClick={() => setShowRegisterTopicModal(true)}
                         />
@@ -233,10 +237,14 @@ useEffect(() => {
                                 <span className={`ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
                                     project.statusId === 2
                                         ? 'bg-green-100 text-green-700'
+                                        : project.statusId === 3
+                                        ? 'bg-red-100 text-red-700'
                                         : 'bg-purple-100 text-purple-700'
                                 }`}>
                                     {project.statusId === 2
                                         ? <><CheckCircle size={11} /> APPROVED</>
+                                        : project.statusId === 3
+                                        ? <><XCircle size={11} /> REJECTED</>
                                         : <><Clock size={11} /> PENDING REVIEW</>
                                     }
                                 </span>
@@ -378,10 +386,15 @@ useEffect(() => {
             {showRegisterTopicModal && group && (
                 <RegisterTopicModal
                     groupId={group.groupId}
+                    existingProject={hasRejectedTopic && project ? { title: project.title ?? '', description: project.description ?? '' } : null}
                     onClose={() => setShowRegisterTopicModal(false)}
                     onSuccess={() => {
                         setShowRegisterTopicModal(false);
-                        toast.success('Đăng ký đề tài thành công! Đang chờ mentor xét duyệt.');
+                        toast.success(
+                            hasRejectedTopic
+                                ? 'Cập nhật đề tài thành công! Đang chờ mentor xét duyệt.'
+                                : 'Đăng ký đề tài thành công! Đang chờ mentor xét duyệt.'
+                        );
                         refetchGroup();
                     }}
                 />

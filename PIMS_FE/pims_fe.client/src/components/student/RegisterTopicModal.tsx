@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { X, BookOpen, Loader2, Send } from 'lucide-react';
+import { X, BookOpen, Loader2, Send, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { groupService } from '../../services/groupService';
 
 interface Props {
     groupId: number;
+    existingProject?: { title: string; description: string } | null;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-const RegisterTopicModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => {
-    const [topicName, setTopicName] = useState('');
-    const [description, setDescription] = useState('');
+const RegisterTopicModal: React.FC<Props> = ({ groupId, existingProject, onClose, onSuccess }) => {
+    const isUpdate = !!existingProject;
+    const [topicName, setTopicName] = useState(existingProject?.title ?? '');
+    const [description, setDescription] = useState(existingProject?.description ?? '');
     const [errors, setErrors] = useState<{ topicName?: string; description?: string }>({});
     const [loading, setLoading] = useState(false);
     const [serverError, setServerError] = useState('');
@@ -29,14 +31,14 @@ const RegisterTopicModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) =>
         setServerError('');
         setLoading(true);
         try {
-            const res = await groupService.registerTopic(groupId, {
-                topicName: topicName.trim(),
-                description: description.trim(),
-            });
+            const payload = { topicName: topicName.trim(), description: description.trim() };
+            const res = isUpdate
+                ? await groupService.updateTopic(groupId, payload)
+                : await groupService.registerTopic(groupId, payload);
             if (res.success) {
                 onSuccess();
             } else {
-                setServerError(res.message || 'Failed to register topic.');
+                setServerError(res.message || (isUpdate ? 'Failed to update topic.' : 'Failed to register topic.'));
             }
         } catch (err: unknown) {
             const msg = axios.isAxiosError(err)
@@ -58,8 +60,12 @@ const RegisterTopicModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) =>
                             <BookOpen size={20} className="text-primary" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">Register Topic</h3>
-                            <p className="text-xs text-gray-500">Fill in the topic information to submit to your mentor for review</p>
+                            <h3 className="text-lg font-bold text-gray-900">{isUpdate ? 'Update Topic' : 'Register Topic'}</h3>
+                            <p className="text-xs text-gray-500">
+                                {isUpdate
+                                    ? 'Edit your topic information and resubmit to your mentor'
+                                    : 'Fill in the topic information to submit to your mentor for review'}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -130,8 +136,12 @@ const RegisterTopicModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) =>
                         disabled={loading}
                         className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 disabled:opacity-70"
                     >
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                        {loading ? 'Sending...' : 'Register'}
+                        {loading
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : isUpdate ? <RefreshCw size={16} /> : <Send size={16} />}
+                        {loading
+                            ? (isUpdate ? 'Updating...' : 'Sending...')
+                            : (isUpdate ? 'Update & Resubmit' : 'Register')}
                     </button>
                 </div>
             </div>

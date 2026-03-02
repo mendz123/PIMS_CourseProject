@@ -161,6 +161,8 @@ namespace PIMS_BE.Services
             activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusPending);
         else if (group.StatusId == StatusApproved)
             activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved);
+        else if (group.StatusId == StatusForming)
+            activeProject = group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault(p => p.StatusId == ProjectStatusRejected);
 
         return new GroupDetailDto
         {
@@ -648,6 +650,52 @@ namespace PIMS_BE.Services
                 Title = project.Title,
                 Description = project.Description,
                 StatusId = project.StatusId,
+                StatusName = "PENDING"
+            };
+        }
+
+        public async Task<ProjectDto> UpdateTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto)
+        {
+            var group = await _groupRepository.GetGroupWithDetailsAsync(groupId)
+                ?? throw new InvalidOperationException("Group not found.");
+
+            if (group.LeaderId != leaderId)
+                throw new InvalidOperationException("Only the group leader can update the topic.");
+
+            if (group.StatusId != StatusForming)
+                throw new InvalidOperationException("Topic can only be updated when the group is in FORMING status.");
+
+            if (group.MentorId == null)
+                throw new InvalidOperationException("Your group must have a mentor before updating the topic.");
+
+            var rejectedProject = group.Projects
+                .OrderByDescending(p => p.ProjectId)
+                .FirstOrDefault(p => p.StatusId == ProjectStatusRejected)
+                ?? throw new InvalidOperationException("No rejected topic found to update.");
+
+            rejectedProject.Title = dto.TopicName.Trim();
+            rejectedProject.Description = dto.Description.Trim();
+            rejectedProject.StatusId = ProjectStatusPending;
+
+            group.StatusId = StatusSubmitted;
+
+            await _projectRepository.UpdateAsync(rejectedProject);
+            await _groupRepository.UpdateAsync(group);
+            await _projectRepository.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(group.MentorId.Value, new DTOs.Notification.CreateNotificationRequest
+            {
+                Title = "Topic Registration",
+                Content = $"Group '{group.GroupName}' has submitted an updated topic for your review. Group ID: #{groupId}."
+            });
+
+            return new ProjectDto
+            {
+                ProjectId = rejectedProject.ProjectId,
+                GroupId = rejectedProject.GroupId,
+                Title = rejectedProject.Title,
+                Description = rejectedProject.Description,
+                StatusId = rejectedProject.StatusId,
                 StatusName = "PENDING"
             };
         }

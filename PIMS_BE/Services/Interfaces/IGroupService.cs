@@ -23,6 +23,7 @@ namespace PIMS_BE.Services.Interfaces
 
         // Topic registration
         Task<ProjectDto> RegisterTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto);
+        Task<ProjectDto> UpdateTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto);
         Task<List<TopicReviewDto>> GetPendingTopicRequestsAsync(int teacherUserId);
         Task<GroupDto> ReviewTopicAsync(int teacherUserId, int groupId, bool approve);
     }

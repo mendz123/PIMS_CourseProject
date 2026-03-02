@@ -392,6 +392,31 @@ namespace PIMS_BE.Controllers
             }
         }
 
+        [HttpPut("{groupId}/update-topic")]
+        [Authorize(Roles = "STUDENT")]
+        public async Task<ActionResult<ApiResponse<ProjectDto>>> UpdateTopic(int groupId, [FromBody] RegisterTopicRequestDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequestResponse<ProjectDto>("Invalid data.");
+
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<ProjectDto>("User information not found.");
+
+                var result = await _groupService.UpdateTopicAsync(userId.Value, groupId, request);
+                return OkResponse(result, "Topic updated successfully. Awaiting mentor approval.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequestResponse<ProjectDto>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<ProjectDto>(ex.Message);
+            }
+        }
+
         [HttpGet("topic-requests/pending")]
         [Authorize(Roles = "TEACHER")]
         public async Task<ActionResult<ApiResponse<List<TopicReviewDto>>>> GetPendingTopicRequests()
