@@ -430,8 +430,18 @@ const AssessmentManagementContent: React.FC = () => {
                   </div>
                   <button
                     onClick={() => handleLockToggle(assessment)}
-                    className={`p-2 rounded-lg transition-colors ${assessment.isLocked ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
-                    disabled={loading}
+                    title={
+                      !assessment.isLocked && getTotalWeight() !== 100
+                        ? `Cannot lock: total assessment weight is ${getTotalWeight().toFixed(2)}%, must be 100%`
+                        : assessment.isLocked
+                          ? "Unlock assessment"
+                          : "Lock assessment"
+                    }
+                    className={`p-2 rounded-lg transition-colors ${assessment.isLocked ? "bg-red-50 text-red-600 hover:bg-red-100" : getTotalWeight() === 100 ? "bg-green-50 text-green-600 hover:bg-green-100" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+                    disabled={
+                      loading ||
+                      (!assessment.isLocked && getTotalWeight() !== 100)
+                    }
                   >
                     <span className="material-symbols-outlined">
                       {assessment.isLocked ? "lock" : "lock_open"}
@@ -555,11 +565,11 @@ const AssessmentManagementContent: React.FC = () => {
                     step="0.01"
                     min="0.01"
                     max="100"
-                    value={assessmentForm.weight}
+                    value={assessmentForm.weight || ""}
                     onChange={(e) =>
                       setAssessmentForm({
                         ...assessmentForm,
-                        weight: Number(e.target.value),
+                        weight: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
@@ -617,7 +627,7 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || getNewTotalWeight() !== 100}
+                  disabled={loading}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading
@@ -664,12 +674,12 @@ const AssessmentManagementContent: React.FC = () => {
                         step="0.01"
                         min="0.01"
                         max="100"
-                        value={criterion.weight}
+                        value={criterion.weight || ""}
                         onChange={(e) =>
                           updateCriterion(
                             index,
                             "weight",
-                            Number(e.target.value),
+                            parseFloat(e.target.value) || 0,
                           )
                         }
                         placeholder="Weight %"
@@ -747,7 +757,7 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || getCriteriaTotalWeight() !== 100}
+                  disabled={loading}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading ? "Saving..." : "Save Criteria"}
