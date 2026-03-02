@@ -69,4 +69,9 @@ export const semesterService = {
     );
     return response.data;
   },
+
+  // Delete semester (Admin only)
+  deleteSemester: async (id: number) => {
+    await api.delete(`/api/semester/${id}`);
+  },
 };

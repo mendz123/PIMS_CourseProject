@@ -151,8 +151,8 @@ const SemesterModal: React.FC<ModalProps> = ({
                             placeholder="e.g. Spring 2025"
                             maxLength={50}
                             className={`w-full px-4 py-2.5 text-sm rounded-xl border transition-all outline-none focus:ring-2 focus:ring-primary/30 ${errors.semesterName
-                                    ? "border-red-400 bg-red-50"
-                                    : "border-[#dbdfe6] bg-white focus:border-primary"
+                                ? "border-red-400 bg-red-50"
+                                : "border-[#dbdfe6] bg-white focus:border-primary"
                                 }`}
                         />
                         {errors.semesterName && (
@@ -175,8 +175,8 @@ const SemesterModal: React.FC<ModalProps> = ({
                                 value={form.startDate}
                                 onChange={change}
                                 className={`w-full px-4 py-2.5 text-sm rounded-xl border transition-all outline-none focus:ring-2 focus:ring-primary/30 ${errors.startDate
-                                        ? "border-red-400 bg-red-50"
-                                        : "border-[#dbdfe6] bg-white focus:border-primary"
+                                    ? "border-red-400 bg-red-50"
+                                    : "border-[#dbdfe6] bg-white focus:border-primary"
                                     }`}
                             />
                             {errors.startDate && (
@@ -193,8 +193,8 @@ const SemesterModal: React.FC<ModalProps> = ({
                                 value={form.endDate}
                                 onChange={change}
                                 className={`w-full px-4 py-2.5 text-sm rounded-xl border transition-all outline-none focus:ring-2 focus:ring-primary/30 ${errors.endDate
-                                        ? "border-red-400 bg-red-50"
-                                        : "border-[#dbdfe6] bg-white focus:border-primary"
+                                    ? "border-red-400 bg-red-50"
+                                    : "border-[#dbdfe6] bg-white focus:border-primary"
                                     }`}
                             />
                             {errors.endDate && (
@@ -218,8 +218,8 @@ const SemesterModal: React.FC<ModalProps> = ({
                                 min={1}
                                 max={20}
                                 className={`w-full px-4 py-2.5 text-sm rounded-xl border transition-all outline-none focus:ring-2 focus:ring-primary/30 ${errors.minGroupSize
-                                        ? "border-red-400 bg-red-50"
-                                        : "border-[#dbdfe6] bg-white focus:border-primary"
+                                    ? "border-red-400 bg-red-50"
+                                    : "border-[#dbdfe6] bg-white focus:border-primary"
                                     }`}
                             />
                             {errors.minGroupSize && (
@@ -241,8 +241,8 @@ const SemesterModal: React.FC<ModalProps> = ({
                                 min={1}
                                 max={20}
                                 className={`w-full px-4 py-2.5 text-sm rounded-xl border transition-all outline-none focus:ring-2 focus:ring-primary/30 ${errors.maxGroupSize
-                                        ? "border-red-400 bg-red-50"
-                                        : "border-[#dbdfe6] bg-white focus:border-primary"
+                                    ? "border-red-400 bg-red-50"
+                                    : "border-[#dbdfe6] bg-white focus:border-primary"
                                     }`}
                             />
                             {errors.maxGroupSize && (
@@ -458,17 +458,20 @@ const SemesterManagement: React.FC = () => {
         }
     };
 
-    // Delete (currently not exposed via API — placeholder handler)
+    // Delete semester
     const handleDelete = async () => {
         if (!deleteTarget) return;
         setDeleteLoading(true);
         try {
-            // When a delete endpoint is added, call it here.
-            // await semesterService.deleteSemester(deleteTarget.semesterId);
-            toast("Delete endpoint not yet implemented on the backend", {
-                icon: "ℹ️",
-            });
+            await semesterService.deleteSemester(deleteTarget.semesterId);
+            toast.success(`"${deleteTarget.semesterName}" deleted successfully`);
             setDeleteTarget(null);
+            await fetchSemesters();
+        } catch (err: unknown) {
+            const msg =
+                (err as { response?: { data?: { message?: string } } })?.response?.data
+                    ?.message ?? "Failed to delete semester";
+            toast.error(msg);
         } finally {
             setDeleteLoading(false);
         }
@@ -625,8 +628,8 @@ const SemesterManagement: React.FC = () => {
                                                 onClick={() => toggleActive(sem)}
                                                 title="Toggle active status"
                                                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all hover:opacity-80 ${sem.isActive
-                                                        ? "bg-green-100 text-green-700"
-                                                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                                                     }`}
                                             >
                                                 <span
