@@ -153,37 +153,52 @@ namespace PIMS_BE.Services
             var memberInfo = await _memberRepository.GetActiveMemberWithGroupInSemesterAsync(userId, activeSemester.SemesterId);
             if (memberInfo == null) return null;
 
-            var group = await _groupRepository.GetGroupWithDetailsAsync(memberInfo.GroupId);
-            if (group == null) return null;
+    var group = await _groupRepository.GetGroupWithDetailsAsync(memberInfo.GroupId);
+        if (group == null) return null;
 
-            return new GroupDetailDto
+        Project? activeProject = null;
+        if (group.StatusId == StatusSubmitted)
+            activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusPending);
+        else if (group.StatusId == StatusApproved)
+            activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved);
+
+        return new GroupDetailDto
+        {
+            GroupId = group.GroupId,
+            GroupName = group.GroupName ?? "",
+            SemesterId = group.SemesterId,
+            SemesterName = group.Semester?.SemesterName ?? "",
+            LeaderId = group.LeaderId,
+            LeaderName = group.Leader?.FullName ?? "",
+            MentorId = group.MentorId,
+            MentorName = group.Mentor?.FullName,
+            StatusId = group.StatusId,
+            StatusName = group.Status?.StatusName ?? "",
+            IsLeader = group.LeaderId == userId,
+            MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
+            Members = group.GroupMembers
+                .Where(m => m.StatusId == MemberStatusActive)
+                .Select(m => new GroupMemberDto
+                {
+                    GroupMemberId = m.GroupMemberId,
+                    UserId = m.UserId,
+                    FullName = m.User?.FullName ?? "",
+                    Email = m.User?.Email ?? "",
+                    AvatarUrl = m.User?.AvatarUrl,
+                    StatusId = m.StatusId,
+                    StatusName = m.Status?.StatusName ?? ""
+                }).ToList(),
+            Project = activeProject != null ? new ProjectDto
             {
-                GroupId = group.GroupId,
-                GroupName = group.GroupName ?? "",
-                SemesterId = group.SemesterId,
-                SemesterName = group.Semester?.SemesterName ?? "",
-                LeaderId = group.LeaderId,
-                LeaderName = group.Leader?.FullName ?? "",
-                MentorId = group.MentorId,
-                MentorName = group.Mentor?.FullName,
-                StatusId = group.StatusId,
-                StatusName = group.Status?.StatusName ?? "",
-                IsLeader = group.LeaderId == userId,
-                MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
-                Members = group.GroupMembers
-                    .Where(m => m.StatusId == MemberStatusActive)
-                    .Select(m => new GroupMemberDto
-                    {
-                        GroupMemberId = m.GroupMemberId,
-                        UserId = m.UserId,
-                        FullName = m.User?.FullName ?? "",
-                        Email = m.User?.Email ?? "",
-                        AvatarUrl = m.User?.AvatarUrl,
-                        StatusId = m.StatusId,
-                        StatusName = m.Status?.StatusName ?? ""
-                    }).ToList()
-            };
-        }
+                ProjectId = activeProject.ProjectId,
+                GroupId = activeProject.GroupId,
+                Title = activeProject.Title,
+                Description = activeProject.Description,
+                StatusId = activeProject.StatusId,
+                StatusName = activeProject.Status?.StatusName
+            } : null
+        };
+    }
 
         public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize, int? filterByMentorId, bool includeMentorInfo)
         {

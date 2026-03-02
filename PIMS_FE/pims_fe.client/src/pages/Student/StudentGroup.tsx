@@ -1,10 +1,10 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
-import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info } from 'lucide-react';
+import { Users, UserPlus, BookOpen, GraduationCap, Lock, Loader2, X, Crown, User, Info, CheckCircle, Clock } from 'lucide-react';
 import axios from 'axios';
 import { useGroup } from '../../hooks/useGroup';
 import { groupService } from '../../services/groupService';
-import type { GroupMemberDto } from '../../types/group.types';
+import type { GroupMemberDto, ProjectDto } from '../../types/group.types';
 import InviteMemberModal from '../../components/student/InviteMemberModal';
 import InviteMentorModal from '../../components/student/InviteMentorModal';
 import RegisterTopicModal from '../../components/student/RegisterTopicModal';
@@ -30,6 +30,7 @@ const [showInviteModal, setShowInviteModal] = useState(false);
 const [showInviteMentorModal, setShowInviteMentorModal] = useState(false);
 const [showRegisterTopicModal, setShowRegisterTopicModal] = useState(false);
 const [members, setMembers] = useState<GroupMemberDto[]>([]);
+const [project, setProject] = useState<ProjectDto | null>(null);
 const [membersLoading, setMembersLoading] = useState(false);
 
 const isForming = !!group && group.statusId >= 2;
@@ -37,13 +38,18 @@ const canRegisterTopic = !!group && group.isLeader && group.statusId === 2 && !!
 const canInviteMentor = !!group && group.isLeader && isForming && !group.mentorId;
 
 useEffect(() => {
-    if (!hasGroup) { setMembers([]); return; }
+    if (!hasGroup) { setMembers([]); setProject(null); return; }
     setMembersLoading(true);
     groupService.getMyGroupDetail()
-        .then(res => { if (res.success && res.data) setMembers(res.data.members ?? []); })
+        .then(res => {
+            if (res.success && res.data) {
+                setMembers(res.data.members ?? []);
+                setProject(res.data.project ?? null);
+            }
+        })
         .catch(() => {})
         .finally(() => setMembersLoading(false));
-}, [hasGroup, group?.memberCount]);
+}, [hasGroup, group?.memberCount, group?.statusId]);
 
     const handleOpenModal = () => {
         setGroupName('');
@@ -217,6 +223,36 @@ useEffect(() => {
                             onClick={() => setShowInviteMentorModal(true)}
                         />
                     </div>
+
+                    {/* ───── REGISTERED TOPIC CARD ───── */}
+                    {project && (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+                                <BookOpen size={16} className="text-primary" />
+                                <h4 className="text-sm font-bold text-gray-900">Registered Topic</h4>
+                                <span className={`ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    project.statusId === 2
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-purple-100 text-purple-700'
+                                }`}>
+                                    {project.statusId === 2
+                                        ? <><CheckCircle size={11} /> APPROVED</>
+                                        : <><Clock size={11} /> PENDING REVIEW</>
+                                    }
+                                </span>
+                            </div>
+                            <div className="p-5 space-y-3">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">Topic Name</p>
+                                    <p className="text-sm font-bold text-gray-900">{project.title}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium mb-1 uppercase tracking-wide">Description</p>
+                                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{project.description}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                         <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
