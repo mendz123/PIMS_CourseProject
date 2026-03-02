@@ -109,7 +109,7 @@ public class DefenseScheduleService : IDefenseScheduleService
                 ?? throw new KeyNotFoundException($"Room {dto.RoomId} not found");
 
             bool roomConflict = await _scheduleRepo.IsRoomTimeConflictAsync(
-                dto.RoomId.Value, schedule.DefenseDate, schedule.StartTime, schedule.EndTime,
+                dto.RoomId.Value, schedule.DefenseDate!.Value, schedule.StartTime!.Value, schedule.EndTime!.Value,
                 excludeScheduleId: scheduleId);
             if (roomConflict)
                 throw new InvalidOperationException(
