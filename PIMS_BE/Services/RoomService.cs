@@ -48,6 +48,26 @@ public class RoomService : IRoomService
         return MapToDto(room);
     }
 
+    public async Task<RoomDto> UpdateAsync(int id, UpdateRoomDto dto)
+    {
+        var room = await _roomRepo.GetByIdAsync(id)
+            ?? throw new KeyNotFoundException($"Room {id} not found");
+
+        if (!string.IsNullOrWhiteSpace(dto.RoomName) && dto.RoomName != room.RoomName)
+        {
+            if (await _roomRepo.IsRoomNameExistsAsync(dto.RoomName))
+                throw new InvalidOperationException($"Room name '{dto.RoomName}' already exists");
+            room.RoomName = dto.RoomName;
+        }
+
+        if (dto.Building != null) room.Building = dto.Building;
+        if (dto.Capacity.HasValue) room.Capacity = dto.Capacity;
+
+        _roomRepo.Update(room);
+        await _roomRepo.SaveChangesAsync();
+        return MapToDto(room);
+    }
+
     public async Task DeleteAsync(int id)
     {
         var room = await _roomRepo.GetByIdAsync(id)
