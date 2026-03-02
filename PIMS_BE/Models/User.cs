@@ -52,6 +52,10 @@ public partial class User
 
     public virtual ICollection<Group> GroupLeaders { get; set; } = new List<Group>();
 
+    public virtual ICollection<GroupInvitation> GroupInvitationInvitedUsers { get; set; } = new List<GroupInvitation>();
+
+    public virtual ICollection<GroupInvitation> GroupInvitationInvitedByUsers { get; set; } = new List<GroupInvitation>();
+
     public virtual ICollection<GroupMember> GroupMembers { get; set; } = new List<GroupMember>();
 
     public virtual ICollection<Group> GroupMentors { get; set; } = new List<Group>();

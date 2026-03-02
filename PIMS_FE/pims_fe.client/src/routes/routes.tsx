@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Login, Home } from "../pages/Home";
 import AdminDashboard from "../pages/Admin/Dashboard";
 import { StudentDashboard } from "../pages/Student";
-import { TeacherDashboard, GradingPage } from "../pages/Teacher";
+import { TeacherDashboard, GradingPage, GroupListPage } from "../pages/Teacher";
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -10,12 +10,11 @@ import {
 import RouterWrapper from "../components/RouterWrapper";
 import AssignTeacherPage from "../pages/AssignTeacherPage";
 import StudentGroup from "../pages/Student/StudentGroup";
-// Import Layout mới của bạn
 import MainLayout from "../components/student/MainLayout";
 import ProgressReports from "../pages/Student/ProgressReports";
 import Notifications from "../pages/Student/Notifications";
-
-const NotFound = () => <div>404 - Page Not Found</div>;
+import NotFound from "../pages/NotFound";
+import AssessmentPage from "../pages/Student/AssessmentPage";
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +34,10 @@ export const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           {
+            index: true,
+            element: <Navigate to="/student/group" replace />,
+          },
+          {
             path: "dashboard",
             element: <StudentDashboard />,
           },
@@ -46,6 +49,14 @@ export const router = createBrowserRouter([
             path: "reports",
             element: <ProgressReports />,
           },
+          {
+            path: "notifications",
+            element: <Notifications />,
+          },
+          {
+            path: "assessment",
+            element: <AssessmentPage />,
+          },
         ],
       },
       {
@@ -55,6 +66,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/dashboard",
         element: <TeacherDashboard />,
+      },
+      {
+        path: "teacher/groups",
+        element: <GroupListPage />,
       },
       {
         path: "teacher/grading",

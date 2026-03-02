@@ -1,19 +1,20 @@
 ﻿import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useGroup } from "../../hooks/useGroup";
 
 const Sidebar: React.FC = () => {
     const { logout, user } = useAuth();
+    const { hasGroup, groupLoading } = useGroup();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Cập nhật path có tiền tố /student để khớp với routes.tsx
     const menuItems = [
-        { name: "Dashboard", icon: "dashboard", path: "/student/dashboard" },
-        { name: "My Group", icon: "group", path: "/student/group" },
-        { name: "Progress Reports", icon: "assignment", path: "/student/reports" },
-        { name: "Assessment", icon: "task", path: "/student/assessment" },
-        { name: "Notifications", icon: "notifications", path: "/student/notifications" },
+        { name: "Dashboard", icon: "dashboard", path: "/student/dashboard", requiresGroup: true },
+        { name: "My Group", icon: "group", path: "/student/group", requiresGroup: false },
+        { name: "Progress Reports", icon: "assignment", path: "/student/reports", requiresGroup: true },
+        { name: "Assessment", icon: "task", path: "/student/assessment", requiresGroup: true },
+        { name: "Notifications", icon: "notifications", path: "/student/notifications", requiresGroup: false },
     ];
 
     return (
@@ -30,22 +31,26 @@ const Sidebar: React.FC = () => {
 
             <nav className="flex-1 px-4 flex flex-col gap-1">
                 {menuItems.map((item) => {
-                    // Kiểm tra xem đường dẫn hiện tại có khớp với item.path không
                     const isActive = location.pathname === item.path;
+                    const isLocked = !groupLoading && item.requiresGroup && !hasGroup;
 
                     return (
                         <div
                             key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 ${isActive
-                                ? "bg-primary/10 text-primary border-r-4 border-primary rounded-r-none"
-                                : "text-gray-600 hover:bg-gray-100"
-                                }`}
+                            onClick={() => !isLocked && navigate(item.path)}
+                            title={isLocked ? "Bạn cần có nhóm để truy cập mục này" : undefined}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                                isLocked
+                                    ? "text-gray-300 cursor-not-allowed"
+                                    : isActive
+                                        ? "bg-primary/10 text-primary border-r-4 border-primary rounded-r-none cursor-pointer"
+                                        : "text-gray-600 hover:bg-gray-100 cursor-pointer"
+                            }`}
                         >
-                            <span className={`material-symbols-outlined ${isActive ? "fill-1" : ""}`}>
-                                {item.icon}
+                            <span className={`material-symbols-outlined ${isActive && !isLocked ? "fill-1" : ""}`}>
+                                {isLocked ? "lock" : item.icon}
                             </span>
-                            <p className={`text-sm ${isActive ? "font-bold" : "font-medium"}`}>
+                            <p className={`text-sm ${isActive && !isLocked ? "font-bold" : "font-medium"}`}>
                                 {item.name}
                             </p>
                         </div>

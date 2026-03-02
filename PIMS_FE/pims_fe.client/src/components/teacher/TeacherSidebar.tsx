@@ -13,6 +13,7 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ currentPath = "/teacher
     const navItems = [
         { icon: "dashboard", label: "Dashboard", path: "/teacher", active: currentPath === "/teacher" },
         { icon: "fact_check", label: "Project Approvals", path: "/teacher/approvals", active: currentPath === "/teacher/approvals" },
+        { icon: "groups", label: "Group Management", path: "/teacher/groups", active: currentPath === "/teacher/groups" },
         { icon: "trending_up", label: "Group Progress", path: "/teacher/progress", active: currentPath === "/teacher/progress" },
         { icon: "grade", label: "Grading", path: "/teacher/grading", active: currentPath === "/teacher/grading" },
         { icon: "group", label: "Student List", path: "/teacher/students", active: currentPath === "/teacher/students" },
