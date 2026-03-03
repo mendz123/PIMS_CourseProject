@@ -25,12 +25,14 @@ export interface UpdateCouncilDto {
     memberUserIds?: number[];
 }
 
-// Teacher info for member picker
+// Teacher/UserInfo for member picker (matches BE UserInfo)
 export interface TeacherInfo {
     userId: number;
     email: string;
     fullName: string | null;
+    avatarUrl: string | null;
     role: string | null;
+    status: string | null;
 }
 
 export const councilService = {
@@ -82,4 +84,3 @@ export const councilService = {
         await api.delete(`/api/council/${id}`);
     },
 };
-

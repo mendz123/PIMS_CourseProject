@@ -92,7 +92,7 @@ public class CouncilController : ControllerBase
         }
     }
 
-    // Delete defense council (HeadOfSubject only)
+    // UC — Delete defense council (HeadOfSubject only)
     [HttpDelete("{id}")]
     [Authorize(Roles = "SUBJECT_HEAD")]
     public async Task<ActionResult> Delete(int id)

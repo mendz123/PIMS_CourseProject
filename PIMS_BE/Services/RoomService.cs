@@ -53,7 +53,7 @@ public class RoomService : IRoomService
         var room = await _roomRepo.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Room {id} not found");
 
-        if (!string.IsNullOrWhiteSpace(dto.RoomName) && dto.RoomName != room.RoomName)
+        if (dto.RoomName != null && dto.RoomName != room.RoomName)
         {
             if (await _roomRepo.IsRoomNameExistsAsync(dto.RoomName))
                 throw new InvalidOperationException($"Room name '{dto.RoomName}' already exists");

@@ -71,7 +71,7 @@ public class RoomController : ControllerBase
         }
     }
 
-    // UC — Cập nhật phòng
+    // UC — Update room
     [HttpPut("{id}")]
     [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<RoomDto>>> Update(int id, [FromBody] UpdateRoomDto dto)

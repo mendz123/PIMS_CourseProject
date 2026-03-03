@@ -22,22 +22,26 @@ export interface UpdateRoomDto {
 
 export const roomService = {
     getAllRooms: async () => {
-        const res = await api.get<ApiResponse<RoomDto[]>>("/api/room");
-        return res.data;
+        const response = await api.get<ApiResponse<RoomDto[]>>("/api/room");
+        return response.data;
+    },
+
+    getRoomById: async (id: number) => {
+        const response = await api.get<ApiResponse<RoomDto>>(`/api/room/${id}`);
+        return response.data;
     },
 
     createRoom: async (dto: CreateRoomDto) => {
-        const res = await api.post<ApiResponse<RoomDto>>("/api/room", dto);
-        return res.data;
+        const response = await api.post<ApiResponse<RoomDto>>("/api/room", dto);
+        return response.data;
     },
 
     updateRoom: async (id: number, dto: UpdateRoomDto) => {
-        const res = await api.put<ApiResponse<RoomDto>>(`/api/room/${id}`, dto);
-        return res.data;
+        const response = await api.put<ApiResponse<RoomDto>>(`/api/room/${id}`, dto);
+        return response.data;
     },
 
     deleteRoom: async (id: number) => {
-        const res = await api.delete<ApiResponse<string>>(`/api/room/${id}`);
-        return res.data;
+        await api.delete(`/api/room/${id}`);
     },
 };
