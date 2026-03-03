@@ -19,6 +19,8 @@ public partial class ProjectSubmission
 
     public DateTime? SubmittedAt { get; set; }
 
+    public string? TeacherComment { get; set; }
+
     public int AssessmentId { get; set; }
 
     public int GroupId { get; set; }

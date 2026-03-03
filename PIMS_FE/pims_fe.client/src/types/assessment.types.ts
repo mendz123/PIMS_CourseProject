@@ -70,6 +70,18 @@ export interface AssessmentWithCriteriaDto {
   isValid: boolean;
 }
 
+export interface StudentScoreDto {
+  userId: number;
+  score: number;
+}
+
+export interface SaveGradesDto {
+  assessmentId: number;
+  groupId: number;
+  teacherComment?: string;
+  studentScores: StudentScoreDto[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   statusCode: number;

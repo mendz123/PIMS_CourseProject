@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
 using PIMS_BE.DTOs.Group;
@@ -14,10 +14,14 @@ namespace PIMS_BE.Controllers
     public class GroupController : BaseApiController
     {
         private readonly IGroupService _groupService;
+        private readonly IAssessmentService _assessmentService;
+        private readonly ISemesterService _semesterService;
 
-        public GroupController(IGroupService groupService)
+        public GroupController(IGroupService groupService, IAssessmentService assessmentService, ISemesterService semesterService)
         {
             _groupService = groupService;
+            _assessmentService = assessmentService;
+            _semesterService = semesterService;
         }
 
         [HttpGet]
@@ -76,6 +80,40 @@ namespace PIMS_BE.Controllers
             catch (Exception ex)
             {
                 return InternalErrorResponse<GroupDetailDto>(ex.Message);
+            }
+        }
+
+        [HttpGet("my-group-as-teacher")]
+        public async Task<ActionResult<ApiResponse<List<TeacherGroupDto>>>> GetMyGroupsAsTeacher([FromQuery] int? semesterId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == null) return UnauthorizedResponse<List<TeacherGroupDto>>("User information not found.");
+
+                var groups = await _groupService.GetGroupsByTeacherAsync(userId.Value, semesterId);
+                return OkResponse(groups, "Get assigned groups for teacher successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<TeacherGroupDto>>(ex.Message);
+            }
+        }
+        [HttpGet("active-assessment")]
+        public async Task<ActionResult<ApiResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>>> GetActiveAssessments()
+        {
+            try
+            {
+                var activeSemester = await _semesterService.GetActiveSemesterAsync();
+                if (activeSemester == null)
+                    return BadRequestResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>("No active semester found.");
+
+                var result = await _assessmentService.GetAssessmentsBySemesterAsync(activeSemester.SemesterId);
+                return OkResponse(result, "Get active assessments successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>(ex.Message);
             }
         }
 

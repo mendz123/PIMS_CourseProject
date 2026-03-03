@@ -8,6 +8,7 @@ namespace PIMS_BE.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SemesterController : ControllerBase
 {
     private readonly ISemesterService _semesterService;

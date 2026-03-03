@@ -18,4 +18,6 @@ public interface IAssessmentService
 
     /// <summary>Sinh viên xem tất cả assessment của bản thân (chứa điểm, deadline, lịch thi cuối kỳ nếu có)</summary>
     Task<StudentMyAssessmentsDto?> GetMyAssessmentsAsync(int userId);
+
+    Task<bool> SaveGradesAsync(SaveGradesDto dto, int teacherId);
 }
