@@ -91,24 +91,4 @@ public class CouncilController : ControllerBase
             return StatusCode(500, ApiResponse<CouncilDto>.InternalError(ex.Message));
         }
     }
-
-    // Delete defense council (HeadOfSubject only)
-    [HttpDelete("{id}")]
-    [Authorize(Roles = "SUBJECT_HEAD")]
-    public async Task<ActionResult> Delete(int id)
-    {
-        try
-        {
-            await _councilService.DeleteAsync(id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.NotFound(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
-        }
-    }
 }
