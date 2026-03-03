@@ -41,13 +41,16 @@ public class AssessmentService : IAssessmentService
 
         var assessment = new Assessment
         {
-            SemesterId = dto.SemesterId,
-            Title = dto.Title,
-            Weight = dto.Weight,
-            IsFinal = dto.IsFinal,
-            IsLocked = false,
-            CreatedBy = userId,
-            CreatedAt = DateTime.UtcNow
+            SemesterId  = dto.SemesterId,
+            Title       = dto.Title,
+            Weight      = dto.Weight,
+            IsFinal     = dto.IsFinal,
+            IsLocked    = false,
+            CreatedBy   = userId,
+            CreatedAt   = DateTime.UtcNow,
+            StartDate   = dto.StartDate,
+            Deadline    = dto.Deadline,
+            Description = dto.Description
         };
 
         await _assessmentRepository.AddAsync(assessment);
@@ -100,6 +103,21 @@ public class AssessmentService : IAssessmentService
             assessment.IsLocked = dto.IsLocked.Value;
         }
 
+        if (dto.StartDate.HasValue)
+        {
+            assessment.StartDate = dto.StartDate.Value;
+        }
+
+        if (dto.Deadline.HasValue)
+        {
+            assessment.Deadline = dto.Deadline.Value;
+        }
+
+        if (dto.Description != null)
+        {
+            assessment.Description = dto.Description;
+        }
+
         _assessmentRepository.Update(assessment);
         await _assessmentRepository.SaveChangesAsync();
 
@@ -119,6 +137,13 @@ public class AssessmentService : IAssessmentService
         if (hasScores)
         {
             throw new InvalidOperationException("Cannot delete assessment with existing scores");
+        }
+
+        // Check if has submissions
+        var hasSubmissions = await _assessmentRepository.HasSubmissionsAsync(assessmentId);
+        if (hasSubmissions)
+        {
+            throw new InvalidOperationException("Cannot delete assessment because students have already submitted for it");
         }
 
         // Delete all criteria first
@@ -215,21 +240,24 @@ public class AssessmentService : IAssessmentService
     {
         return Task.FromResult(new AssessmentDto
         {
-            AssessmentId = assessment.AssessmentId,
-            SemesterId = assessment.SemesterId,
-            Title = assessment.Title ?? string.Empty,
-            Weight = assessment.Weight ?? 0,
-            IsFinal = assessment.IsFinal ?? false,
-            IsLocked = assessment.IsLocked ?? false,
-            CreatedBy = assessment.CreatedBy,
-            CreatedAt = assessment.CreatedAt ?? DateTime.UtcNow,
+            AssessmentId  = assessment.AssessmentId,
+            SemesterId    = assessment.SemesterId,
+            Title         = assessment.Title ?? string.Empty,
+            Weight        = assessment.Weight ?? 0,
+            IsFinal       = assessment.IsFinal ?? false,
+            IsLocked      = assessment.IsLocked ?? false,
+            CreatedBy     = assessment.CreatedBy,
+            CreatedAt     = assessment.CreatedAt ?? DateTime.UtcNow,
             CreatedByName = assessment.CreatedByNavigation?.FullName ?? "Unknown",
+            StartDate     = assessment.StartDate,
+            Deadline      = assessment.Deadline,
+            Description   = assessment.Description,
             Criteria = assessment.AssessmentCriteria?.Select(c => new AssessmentCriterionDto
             {
-                CriteriaId = c.CriteriaId,
+                CriteriaId   = c.CriteriaId,
                 AssessmentId = c.AssessmentId,
                 CriteriaName = c.CriteriaName ?? string.Empty,
-                Weight = c.Weight ?? 0
+                Weight       = c.Weight ?? 0
             }).ToList()
         });
     }
@@ -246,12 +274,17 @@ public class AssessmentService : IAssessmentService
 
         return new AssessmentWithCriteriaDto
         {
-            AssessmentId = assessment.AssessmentId,
-            Title = assessment.Title ?? string.Empty,
-            Weight = assessment.Weight ?? 0,
-            IsFinal = assessment.IsFinal ?? false,
-            IsLocked = assessment.IsLocked ?? false,
-            Criteria = criteria,
+            AssessmentId        = assessment.AssessmentId,
+            Title               = assessment.Title ?? string.Empty,
+            Weight              = assessment.Weight ?? 0,
+            IsFinal             = assessment.IsFinal ?? false,
+            IsLocked            = assessment.IsLocked ?? false,
+            StartDate           = assessment.StartDate,
+            Deadline            = assessment.Deadline,
+            Description         = assessment.Description,
+            HasSubmissions      = assessment.ProjectSubmissions?.Count > 0,
+            HasScores           = assessment.AssessmentScores?.Count > 0,
+            Criteria            = criteria,
             TotalCriteriaWeight = criteria.Sum(c => c.Weight)
         };
     }
@@ -269,5 +302,58 @@ public class AssessmentService : IAssessmentService
         });
     }
 
-   
+    public async Task<StudentMyAssessmentsDto?> GetMyAssessmentsAsync(int userId)
+    {
+        var raw = await _assessmentRepository.GetStudentAssessmentDataAsync(userId);
+        if (raw == null) return null;
+
+        // Map điểm theo assessmentId để tra cứu nhanh
+        var scoreMap = raw.Scores.ToDictionary(s => s.AssessmentId, s => s);
+
+        var items = raw.Assessments.Select(a =>
+        {
+            scoreMap.TryGetValue(a.AssessmentId, out var scoreEntry);
+
+            var item = new StudentAssessmentItemDto
+            {
+                AssessmentId = a.AssessmentId,
+                Title        = a.Title ?? string.Empty,
+                Weight       = a.Weight ?? 0,
+                IsFinal      = a.IsFinal ?? false,
+                StartDate    = a.StartDate,
+                Deadline     = a.Deadline,
+                Description  = a.Description,
+                Score        = scoreEntry?.Score,
+                IsPassed     = scoreEntry?.IsPassed,
+            };
+
+            // Nếu là final: gắn thêm thông tin lịch bảo vệ
+            if (item.IsFinal && raw.DefenseSchedule != null)
+            {
+                var ds = raw.DefenseSchedule;
+                item.DefenseDate      = ds.DefenseDate;
+                item.DefenseStartTime = ds.StartTime;
+                item.DefenseEndTime   = ds.EndTime;
+                item.RoomId           = ds.RoomId;
+                item.RoomName         = ds.Room?.RoomName;
+                item.RoomLocation     = ds.Location ?? ds.Room?.Building;
+                item.DefenseStatus    = ds.Status;
+            }
+
+            return item;
+        }).ToList();
+
+        return new StudentMyAssessmentsDto
+        {
+            ProjectId          = raw.Project?.ProjectId,
+            ProjectTitle       = raw.Project?.Title,
+            ProjectDescription = raw.Project?.Description,
+            GroupId            = raw.Group.GroupId,
+            GroupName          = raw.Group.GroupName ?? string.Empty,
+            SemesterId         = raw.Semester.SemesterId,
+            SemesterName       = raw.Semester.SemesterName ?? string.Empty,
+            Assessments        = items
+        };
+    }
+
 }

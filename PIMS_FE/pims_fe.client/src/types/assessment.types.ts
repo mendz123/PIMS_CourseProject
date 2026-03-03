@@ -17,6 +17,9 @@ export interface CreateAssessmentDto {
   title: string;
   weight: number;
   isFinal: boolean;
+  startDate?: string;
+  deadline?: string;
+  description?: string;
 }
 
 export interface UpdateAssessmentDto {
@@ -24,6 +27,9 @@ export interface UpdateAssessmentDto {
   weight?: number;
   isFinal?: boolean;
   isLocked?: boolean;
+  startDate?: string;
+  deadline?: string;
+  description?: string;
 }
 
 export interface AssessmentCriterionDto {
@@ -54,6 +60,11 @@ export interface AssessmentWithCriteriaDto {
   weight: number;
   isFinal: boolean;
   isLocked: boolean;
+  startDate?: string;
+  deadline?: string;
+  description?: string;
+  hasSubmissions?: boolean;
+  hasScores?: boolean;
   criteria: AssessmentCriterionDto[];
   totalCriteriaWeight: number;
   isValid: boolean;
@@ -66,4 +77,36 @@ export interface ApiResponse<T> {
   data: T;
   errors?: string[];
   timestamp: string;
+}
+
+// ---- Student view: assessment của bản thân ----
+export interface StudentAssessmentItemDto {
+  assessmentId: number;
+  title: string;
+  weight: number;
+  isFinal: boolean;
+  startDate?: string;
+  deadline?: string;
+  description?: string;
+  score?: number;
+  isPassed?: boolean;
+  // Chỉ có khi isFinal == true
+  defenseDate?: string; // DateOnly -> "YYYY-MM-DD"
+  defenseStartTime?: string; // TimeOnly -> "HH:mm:ss"
+  defenseEndTime?: string;
+  roomId?: number;
+  roomName?: string;
+  roomLocation?: string;
+  defenseStatus?: string;
+}
+
+export interface StudentMyAssessmentsDto {
+  projectId?: number;
+  projectTitle?: string;
+  projectDescription?: string;
+  groupId: number;
+  groupName: string;
+  semesterId: number;
+  semesterName: string;
+  assessments: StudentAssessmentItemDto[];
 }

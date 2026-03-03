@@ -9,6 +9,7 @@ import type {
   BatchCreateCriteriaDto,
   AssessmentWithCriteriaDto,
   ApiResponse,
+  StudentMyAssessmentsDto,
 } from "../types/assessment.types";
 
 // Assessment APIs
@@ -91,6 +92,14 @@ export const assessmentService = {
   validateAssessmentWeights: async (semesterId: number) => {
     const response = await api.get<ApiResponse<{ isValid: boolean }>>(
       `/api/assessment/semester/${semesterId}/validate-weights`,
+    );
+    return response.data;
+  },
+
+  // Student: xem assessment + điểm của bản thân
+  getMyAssessments: async () => {
+    const response = await api.get<ApiResponse<StudentMyAssessmentsDto>>(
+      "/api/student/assessments/me",
     );
     return response.data;
   },

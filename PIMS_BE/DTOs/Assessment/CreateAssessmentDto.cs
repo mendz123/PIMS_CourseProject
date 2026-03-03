@@ -16,4 +16,10 @@ public class CreateAssessmentDto
     public decimal Weight { get; set; }
 
     public bool IsFinal { get; set; } = false;
+
+    public DateTime? StartDate { get; set; }
+
+    public DateTime? Deadline { get; set; }
+
+    public string? Description { get; set; }
 }
