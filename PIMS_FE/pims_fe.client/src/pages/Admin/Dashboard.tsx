@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import UserManagement from "../../components/admin/UserManagement";
 import SemesterManagement from "../../components/admin/SemesterManagement";
+import RoomManagement from "../../components/admin/RoomManagement";
 import NotificationNavbar from "../../components/dashboard/NotificationNavbar";
 import Notifications from "../../components/dashboard/Notifications";
 import { userService } from "../../services/userService";
@@ -64,6 +65,7 @@ const AdminDashboard: React.FC = () => {
     { id: "overview", icon: "dashboard", label: "Overview" },
     { id: "users", icon: "group", label: "Users Management" },
     { id: "semesters", icon: "calendar_month", label: "Semester Management" },
+    { id: "rooms", icon: "meeting_room", label: "Room Management" },
     { id: "notifications", icon: "notifications", label: "Notifications" },
     { id: "settings", icon: "settings", label: "Settings" },
   ];
@@ -121,11 +123,10 @@ const AdminDashboard: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                activeTab === item.id
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${activeTab === item.id
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-[#616f89] hover:bg-[#f6f6f8]"
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-[22px]">
                 {item.icon}
@@ -220,11 +221,10 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                          stat.trendUp
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${stat.trendUp
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-700"
-                        }`}
+                          }`}
                       >
                         {stat.trend}
                       </span>
@@ -259,11 +259,10 @@ const AdminDashboard: React.FC = () => {
                           className="flex items-center gap-4 p-4 hover:bg-[#f6f6f8] transition-colors"
                         >
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
-                              !notification.isRead
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${!notification.isRead
                                 ? "bg-primary/20 text-primary"
                                 : "bg-gray-100 text-gray-400"
-                            }`}
+                              }`}
                           >
                             <span className="material-symbols-outlined text-lg">
                               {notification.isRead
@@ -280,9 +279,9 @@ const AdminDashboard: React.FC = () => {
                             <p className="text-[#616f89] text-xs mt-1">
                               {notification.createdAt
                                 ? formatDistanceToNow(
-                                    new Date(notification.createdAt),
-                                    { addSuffix: true },
-                                  )
+                                  new Date(notification.createdAt),
+                                  { addSuffix: true },
+                                )
                                 : "Recently"}
                             </p>
                           </div>
@@ -389,6 +388,8 @@ const AdminDashboard: React.FC = () => {
             <UserManagement />
           ) : activeTab === "semesters" ? (
             <SemesterManagement />
+          ) : activeTab === "rooms" ? (
+            <RoomManagement />
           ) : (
             <div className="bg-white border border-[#dbdfe6] rounded-xl p-12 text-center">
               <span className="material-symbols-outlined text-6xl text-[#616f89] mb-4">

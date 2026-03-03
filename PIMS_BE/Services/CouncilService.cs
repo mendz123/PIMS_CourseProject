@@ -25,7 +25,7 @@ public class CouncilService : ICouncilService
     {
         IEnumerable<Council> councils = semesterId.HasValue
             ? await _councilRepo.GetBySemesterAsync(semesterId.Value)
-            : await _councilRepo.GetAllAsync();
+            : await _councilRepo.GetAllWithMembersAsync();
 
         return councils.Select(MapToDto);
     }
@@ -116,6 +116,15 @@ public class CouncilService : ICouncilService
 
         var updated = await _councilRepo.GetWithMembersAsync(id);
         return MapToDto(updated!);
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var council = await _councilRepo.GetWithMembersAsync(id)
+            ?? throw new KeyNotFoundException($"Council {id} not found");
+
+        _councilRepo.Remove(council);
+        await _councilRepo.SaveChangesAsync();
     }
 
     private static CouncilDto MapToDto(Council c) => new()

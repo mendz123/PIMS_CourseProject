@@ -5,6 +5,7 @@ namespace PIMS_BE.Repositories;
 
 public interface IDefenseScheduleRepository : IGenericRepository<Models.DefenseSchedule>
 {
+    Task<IEnumerable<Models.DefenseSchedule>> GetAllWithDetailsAsync();
     Task<IEnumerable<Models.DefenseSchedule>> GetByCouncilAsync(int councilId);
     Task<IEnumerable<Models.DefenseSchedule>> GetBySemesterAsync(int semesterId);
     Task<Models.DefenseSchedule?> GetWithDetailsAsync(int scheduleId);
@@ -22,6 +23,15 @@ public class DefenseScheduleRepository
     : GenericRepository<Models.DefenseSchedule>, IDefenseScheduleRepository
 {
     public DefenseScheduleRepository(PimsDbContext context) : base(context) { }
+
+    public async Task<IEnumerable<Models.DefenseSchedule>> GetAllWithDetailsAsync()
+        => await _context.DefenseSchedules
+            .Include(ds => ds.Council)
+            .Include(ds => ds.Group)
+            .Include(ds => ds.Room)
+            .OrderBy(ds => ds.DefenseDate)
+            .ThenBy(ds => ds.StartTime)
+            .ToListAsync();
 
     public async Task<IEnumerable<Models.DefenseSchedule>> GetByCouncilAsync(int councilId)
         => await _context.DefenseSchedules

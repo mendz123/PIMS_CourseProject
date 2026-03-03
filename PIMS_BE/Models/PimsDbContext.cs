@@ -189,7 +189,7 @@ public partial class PimsDbContext : DbContext
 
             entity.HasOne(d => d.Council).WithMany(p => p.CouncilMembers)
                 .HasForeignKey(d => d.CouncilId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_CM_Council");
 
             entity.HasOne(d => d.User).WithMany(p => p.CouncilMembers)
@@ -241,7 +241,7 @@ public partial class PimsDbContext : DbContext
 
             entity.HasOne(d => d.Council).WithMany(p => p.DefenseSchedules)
                 .HasForeignKey(d => d.CouncilId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_DS_Council");
 
             entity.HasOne(d => d.Group).WithMany(p => p.DefenseSchedules)
