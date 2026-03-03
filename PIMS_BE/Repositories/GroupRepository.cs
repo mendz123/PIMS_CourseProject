@@ -8,7 +8,7 @@ public interface IGroupRepository : IGenericRepository<Group>
     Task<Group?> GetGroupWithDetailsAsync(int groupId);
     Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int? mentorId, int pageNumber, int pageSize);
     Task<List<Group>> GetSubmittedGroupsByMentorAsync(int semesterId, int mentorUserId);
-    Task<Group?> GetGroupWithDetailsAsync(int groupId);
+    
     Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int pageNumber, int pageSize);
     Task<List<Group>> GetGroupsByTeacherAsync(int teacherId, int semesterId);
 }
@@ -69,16 +69,7 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .ToListAsync();
     }
 
-    public async Task<Group?> GetGroupWithDetailsAsync(int groupId)
-    {
-        return await _dbSet
-            .Include(g => g.Status)
-            .Include(g => g.Semester)
-            .Include(g => g.Leader)
-            .Include(g => g.GroupMembers)
-            .FirstOrDefaultAsync(g => g.GroupId == groupId);
-    }
-
+  
     public async Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int pageNumber, int pageSize)
     {
         var query = _dbSet

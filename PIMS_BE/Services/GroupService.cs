@@ -154,58 +154,54 @@ namespace PIMS_BE.Services
             var memberInfo = await _memberRepository.GetActiveMemberWithGroupInSemesterAsync(userId, activeSemester.SemesterId);
             if (memberInfo == null) return null;
 
-    var group = await _groupRepository.GetGroupWithDetailsAsync(memberInfo.GroupId);
-        if (group == null) return null;
+            var group = await _groupRepository.GetGroupWithDetailsAsync(memberInfo.GroupId);
+            if (group == null) return null;
 
-        Project? activeProject = null;
-        if (group.StatusId == StatusSubmitted)
-            activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusPending);
-        else if (group.StatusId == StatusApproved)
-            activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved);
-        else if (group.StatusId == StatusForming)
-            activeProject = group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault(p => p.StatusId == ProjectStatusRejected);
+            Project? activeProject = null;
+            if (group.StatusId == StatusSubmitted)
+                activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusPending);
+            else if (group.StatusId == StatusApproved)
+                activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved);
+            else if (group.StatusId == StatusForming)
+                activeProject = group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault(p => p.StatusId == ProjectStatusRejected);
 
-        return new GroupDetailDto
-        {
-                var teacherGroup = new TeacherGroupDto
-                {
-            GroupId = group.GroupId,
-            GroupName = group.GroupName ?? "",
-            SemesterId = group.SemesterId,
-            SemesterName = group.Semester?.SemesterName ?? "",
-            LeaderId = group.LeaderId,
-            LeaderName = group.Leader?.FullName ?? "",
-            MentorId = group.MentorId,
-            MentorName = group.Mentor?.FullName,
-            StatusId = group.StatusId,
-            StatusName = group.Status?.StatusName ?? "",
-            IsLeader = group.LeaderId == userId,
-            MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
-            Members = group.GroupMembers
-                .Where(m => m.StatusId == MemberStatusActive)
-                .Select(m => new GroupMemberDto
-                {
-                    GroupMemberId = m.GroupMemberId,
-                    UserId = m.UserId,
-                    FullName = m.User?.FullName ?? "",
-                    Email = m.User?.Email ?? "",
-                    AvatarUrl = m.User?.AvatarUrl,
-                    StatusId = m.StatusId,
-                    StatusName = m.Status?.StatusName ?? ""
-                }).ToList(),
-            Project = activeProject != null ? new ProjectDto
+            return new GroupDetailDto
             {
-                ProjectId = activeProject.ProjectId,
-                GroupId = activeProject.GroupId,
-                Title = activeProject.Title,
-                Description = activeProject.Description,
-                StatusId = activeProject.StatusId,
-                StatusName = activeProject.Status?.StatusName
-            } : null
-        };
-
-                result.Add(teacherGroup);
-    }
+                GroupId = group.GroupId,
+                GroupName = group.GroupName ?? "",
+                SemesterId = group.SemesterId,
+                SemesterName = group.Semester?.SemesterName ?? "",
+                LeaderId = group.LeaderId,
+                LeaderName = group.Leader?.FullName ?? "",
+                MentorId = group.MentorId,
+                MentorName = group.Mentor?.FullName,
+                StatusId = group.StatusId,
+                StatusName = group.Status?.StatusName ?? "",
+                IsLeader = group.LeaderId == userId,
+                MemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive),
+                Members = group.GroupMembers
+                    .Where(m => m.StatusId == MemberStatusActive)
+                    .Select(m => new GroupMemberDto
+                    {
+                        GroupMemberId = m.GroupMemberId,
+                        UserId = m.UserId,
+                        FullName = m.User?.FullName ?? "",
+                        Email = m.User?.Email ?? "",
+                        AvatarUrl = m.User?.AvatarUrl,
+                        StatusId = m.StatusId,
+                        StatusName = m.Status?.StatusName ?? ""
+                    }).ToList(),
+                Project = activeProject != null ? new ProjectDto
+                {
+                    ProjectId = activeProject.ProjectId,
+                    GroupId = activeProject.GroupId,
+                    Title = activeProject.Title,
+                    Description = activeProject.Description,
+                    StatusId = activeProject.StatusId,
+                    StatusName = activeProject.Status?.StatusName
+                } : null
+            };
+        }
 
         public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize, int? filterByMentorId, bool includeMentorInfo)
         {
@@ -836,6 +832,78 @@ namespace PIMS_BE.Services
                 IsLeader = group.LeaderId == currentUserId,
                 MemberCount = group.GroupMembers.Count(m => m.StatusId == 1)
             };
+        }
+        public async Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize)
+        {
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault()
+                ?? throw new InvalidOperationException("Kh�ng c� h?c k? n�o ?ang ho?t ??ng.");
+
+            var (groups, totalCount) = await _groupRepository.GetGroupsInActiveSemesterAsync(
+                activeSemester.SemesterId, search, pageNumber, pageSize);
+
+            var items = groups.Select(g => new GroupDto
+            {
+                GroupId = g.GroupId,
+                GroupName = g.GroupName ?? "",
+                SemesterId = g.SemesterId,
+                SemesterName = g.Semester?.SemesterName ?? "",
+                LeaderId = g.LeaderId,
+                LeaderName = g.Leader?.FullName ?? "",
+                StatusId = g.StatusId,
+                StatusName = g.Status?.StatusName ?? "",
+                IsLeader = false,
+                MemberCount = g.GroupMembers.Count(m => m.StatusId == 1)
+            }).ToList();
+
+            return (items, totalCount);
+        }
+        public async Task<List<TeacherGroupDto>> GetGroupsByTeacherAsync(int teacherId, int? semesterId = null)
+        {
+            var targetSemesterId = semesterId ?? (await _semesterRepository.FindAsync(s => s.IsActive == true)).FirstOrDefault()?.SemesterId
+                ?? throw new InvalidOperationException("KhÃ´ng cÃ³ há»c ká»³ nÃ o Ä‘ang hoáº¡t Ä‘á»™ng.");
+
+            var groups = await _groupRepository.GetGroupsByTeacherAsync(teacherId, targetSemesterId);
+
+            var result = new List<TeacherGroupDto>();
+
+            foreach (var group in groups)
+            {
+                var teacherGroup = new TeacherGroupDto
+                {
+                    GroupId = group.GroupId,
+                    GroupName = group.GroupName ?? $"NhÃ³m {group.GroupId}",
+                    MemberCount = group.GroupMembers.Count(m => m.StatusId == 1),
+                    Students = group.GroupMembers
+                        .Where(m => m.StatusId == 1)
+                        .Select(m => new TeacherGroupMemberDto
+                        {
+                            UserId = m.UserId,
+                            FullName = m.User?.FullName ?? $"User {m.UserId}",
+                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>()
+                        })
+                        .ToList(),
+                    TeacherComments = group.ProjectSubmissions
+                        .Where(ps => !string.IsNullOrEmpty(ps.TeacherComment))
+                        .GroupBy(ps => ps.AssessmentId)
+                        .ToDictionary(g => g.Key, g => g.OrderByDescending(ps => ps.SubmittedAt).First().TeacherComment!),
+                    SubmittedDocs = group.ProjectSubmissions
+                        .OrderByDescending(s => s.SubmittedAt)
+                        .Select(ps => new GroupSubmissionDto
+                        {
+                            Id = ps.SubmissionId,
+                            Name = ps.FileName,
+                            Url = ps.ReportUrl,
+                            SubmittedAt = ps.SubmittedAt,
+                            AssessmentId = ps.AssessmentId
+                        })
+                        .ToList()
+                };
+
+                result.Add(teacherGroup);
+            }
+
+            return result;
         }
     }
 }

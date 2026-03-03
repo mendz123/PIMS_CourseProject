@@ -68,6 +68,21 @@ namespace PIMS_BE.Controllers
         [HttpGet("{groupId}")]
         [Authorize(Roles = "TEACHER,SUBJECT_HEAD")]
         public async Task<ActionResult<ApiResponse<GroupDetailDto>>> GetGroupDetail(int groupId)
+        {
+            try
+            {
+                var detail = await _groupService.GetGroupDetailAsync(groupId);
+                if (detail == null)
+                    return NotFoundResponse<GroupDetailDto>("Group not found.");
+
+                return OkResponse(detail, "Get group detail successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<GroupDetailDto>(ex.Message);
+            }
+        }
+
         [HttpGet("my-group-as-teacher")]
         public async Task<ActionResult<ApiResponse<List<TeacherGroupDto>>>> GetMyGroupsAsTeacher([FromQuery] int? semesterId)
         {
@@ -75,18 +90,30 @@ namespace PIMS_BE.Controllers
             {
                 var userId = GetCurrentUserId();
                 if (userId == null) return UnauthorizedResponse<List<TeacherGroupDto>>("User information not found.");
-                var detail = await _groupService.GetGroupDetailAsync(groupId);
-                if (detail == null)
-                    return NotFoundResponse<GroupDetailDto>("Group not found.");
 
                 var groups = await _groupService.GetGroupsByTeacherAsync(userId.Value, semesterId);
                 return OkResponse(groups, "Get assigned groups for teacher successfully.");
-                return OkResponse(detail, "Get group detail successfully.");
             }
             catch (Exception ex)
             {
                 return InternalErrorResponse<List<TeacherGroupDto>>(ex.Message);
-                return InternalErrorResponse<GroupDetailDto>(ex.Message);
+            }
+        }
+        [HttpGet("active-assessment")]
+        public async Task<ActionResult<ApiResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>>> GetActiveAssessments()
+        {
+            try
+            {
+                var activeSemester = await _semesterService.GetActiveSemesterAsync();
+                if (activeSemester == null)
+                    return BadRequestResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>("No active semester found.");
+
+                var result = await _assessmentService.GetAssessmentsBySemesterAsync(activeSemester.SemesterId);
+                return OkResponse(result, "Get active assessments successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>(ex.Message);
             }
         }
 
@@ -161,24 +188,17 @@ namespace PIMS_BE.Controllers
         [HttpPost("{groupId}/invite")]
         [Authorize(Roles = "STUDENT")]
         public async Task<ActionResult<ApiResponse<InvitationDto>>> InviteMember(int groupId, [FromBody] InviteMemberRequestDto request)
-        [HttpGet("active-assessment")]
-        public async Task<ActionResult<ApiResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>>> GetActiveAssessments()
         {
             try
             {
                 if (!ModelState.IsValid)
                     return BadRequestResponse<InvitationDto>("Invalid data.");
-                var activeSemester = await _semesterService.GetActiveSemesterAsync();
-                if (activeSemester == null)
-                    return BadRequestResponse<List<PIMS_BE.DTOs.Assessment.AssessmentDto>>("No active semester found.");
 
                 var userId = GetCurrentUserId();
                 if (userId == null) return UnauthorizedResponse<InvitationDto>("User information not found.");
 
                 var invitation = await _groupService.InviteMemberAsync(userId.Value, groupId, request.InvitedEmail);
                 return OkResponse(invitation, $"Invitation sent to {request.InvitedEmail} successfully.");
-                var result = await _assessmentService.GetAssessmentsBySemesterAsync(activeSemester.SemesterId);
-                return OkResponse(result, "Get active assessments successfully.");
             }
             catch (InvalidOperationException ex)
             {

@@ -305,6 +305,60 @@ public class AssessmentService : IAssessmentService
         });
     }
 
+
+    public async Task<bool> SaveGradesAsync(SaveGradesDto dto, int teacherId)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Update ProjectSubmission Comment
+            var submission = await _context.ProjectSubmissions
+                .FirstOrDefaultAsync(ps => ps.GroupId == dto.GroupId && ps.AssessmentId == dto.AssessmentId);
+
+            if (submission != null && !string.IsNullOrEmpty(dto.TeacherComment))
+            {
+                submission.TeacherComment = dto.TeacherComment;
+                _context.ProjectSubmissions.Update(submission);
+            }
+
+            // 2. Update AssessmentScores
+            foreach (var studentScore in dto.StudentScores)
+            {
+                var existingScore = await _context.AssessmentScores
+                    .FirstOrDefaultAsync(s => s.AssessmentId == dto.AssessmentId && s.UserId == studentScore.UserId);
+
+                if (existingScore != null)
+                {
+                    existingScore.Score = studentScore.Score;
+                    existingScore.IsPassed = studentScore.Score >= 5; // Assuming 5 is pass
+                    _context.AssessmentScores.Update(existingScore);
+                }
+                else
+                {
+                    var newScore = new AssessmentScore
+                    {
+                        AssessmentId = dto.AssessmentId,
+                        UserId = studentScore.UserId,
+                        Score = studentScore.Score,
+                        IsPassed = studentScore.Score >= 5
+                    };
+                    await _context.AssessmentScores.AddAsync(newScore);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new Exception("Error saving grades: " + ex.Message);
+        }
+    }
+
+   
+
     public async Task<StudentMyAssessmentsDto?> GetMyAssessmentsAsync(int userId)
     {
         var raw = await _assessmentRepository.GetStudentAssessmentDataAsync(userId);
@@ -343,5 +397,21 @@ public class AssessmentService : IAssessmentService
                 item.DefenseStatus    = ds.Status;
             }
 
-   
+            return item;
+        }).ToList();
+
+        return new StudentMyAssessmentsDto
+        {
+            ProjectId          = raw.Project?.ProjectId,
+            ProjectTitle       = raw.Project?.Title,
+            ProjectDescription = raw.Project?.Description,
+            GroupId            = raw.Group.GroupId,
+            GroupName          = raw.Group.GroupName ?? string.Empty,
+            SemesterId         = raw.Semester.SemesterId,
+            SemesterName       = raw.Semester.SemesterName ?? string.Empty,
+            Assessments        = items
+        };
+    }
+
+
 }
