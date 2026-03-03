@@ -1,6 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useGroup } from "../../hooks/useGroup";
 
 const StudentDashboard: React.FC = () => {
+    const navigate = useNavigate();
+    const { hasGroup, groupLoading } = useGroup();
+
+    useEffect(() => {
+        if (!groupLoading && !hasGroup) {
+            navigate("/student/group", { replace: true });
+        }
+    }, [groupLoading, hasGroup, navigate]);
     return (
         <div className="flex flex-col gap-8">
             {/* Project Overview & Progress Section */}

@@ -1,15 +1,28 @@
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import Notification from "../../components/dashboard/NotificationNavbar";
-import CouncilManagement from "../../components/SubjectHead/CouncilManagement";
-import ScheduleManagement from "../../components/SubjectHead/ScheduleManagement";
+import AssessmentManagementContent from "./AssessmentManagementContent";
+import GroupListContent from "../../components/shared/GroupListContent";
 
 const SubjectHeadDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = React.useState("subject-overview");
+  const location = useLocation();
+  const [activeTab, setActiveTabState] = React.useState(() => {
+    const fromNav = (location.state as { activeTab?: string })?.activeTab;
+    return (
+      fromNav ??
+      localStorage.getItem("subjectHeadActiveTab") ??
+      "subject-overview"
+    );
+  });
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    localStorage.setItem("subjectHeadActiveTab", tab);
+  };
 
   return (
     <div className="flex min-h-screen bg-[#f6f6f8] text-[#111318] font-display">
@@ -31,7 +44,7 @@ const SubjectHeadDashboard: React.FC = () => {
           </div>
           <nav className="flex flex-col gap-1">
             <button
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all w-full ${activeTab === "subject-overview" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-left transition-all w-full ${activeTab === "subject-overview" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("subject-overview")}
             >
               <span className="material-symbols-outlined text-[22px]">
@@ -40,7 +53,7 @@ const SubjectHeadDashboard: React.FC = () => {
               <span className="text-sm">Subject Overview</span>
             </button>
             <button
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "faculty-management" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "faculty-management" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("faculty-management")}
             >
               <span className="material-symbols-outlined text-[22px]">
@@ -49,30 +62,23 @@ const SubjectHeadDashboard: React.FC = () => {
               <span className="text-sm">Faculty Management</span>
             </button>
             <button
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "councils" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
-              onClick={() => setActiveTab("councils")}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "group-management" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("group-management")}
             >
               <span className="material-symbols-outlined text-[22px]">
-                gavel
+                manage_accounts
               </span>
-              <span className="text-sm">Defense Councils</span>
+              <span className="text-sm">Group Management</span>
             </button>
             <button
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "defense-schedule" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
-              onClick={() => setActiveTab("defense-schedule")}
-            >
-              <span className="material-symbols-outlined text-[22px]">event</span>
-              <span className="text-sm">Defense Schedule</span>
-            </button>
-            <a
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-colors"
-              href="/subject-head/assessments"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "syllabus-assessment" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("syllabus-assessment")}
             >
               <span className="material-symbols-outlined text-[22px]">
                 menu_book
               </span>
               <span className="text-sm">Syllabus &amp; Assessment</span>
-            </a>
+            </button>
             <a
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-colors"
               href="#"
@@ -83,7 +89,7 @@ const SubjectHeadDashboard: React.FC = () => {
               <span className="text-sm">Performance Analytics</span>
             </a>
             <button
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("settings")}
             >
               <span className="material-symbols-outlined text-[22px]">
@@ -103,9 +109,13 @@ const SubjectHeadDashboard: React.FC = () => {
               }}
             ></div>
             <div>
-              <p className="text-xs font-bold text-[#111318]">
-                {user?.fullName || "Dr. Sarah Jenkins"}
-              </p>
+              {authLoading ? (
+                <div className="h-3 w-24 bg-slate-200 rounded animate-pulse mb-1"></div>
+              ) : (
+                <p className="text-xs font-bold text-[#111318]">
+                  {user?.fullName}
+                </p>
+              )}
               <p className="text-[10px] text-[#616f89]">Senior Lecturer</p>
             </div>
           </div>
@@ -140,7 +150,9 @@ const SubjectHeadDashboard: React.FC = () => {
               </a>
               <span className="text-[#616f89] text-sm">/</span>
               <span className="text-[#111318] text-sm font-bold capitalize">
-                {activeTab.replace(/-/g, " ")}
+                {activeTab === "syllabus-assessment"
+                  ? "Syllabus & Assessment"
+                  : activeTab.replace(/-/g, " ")}
               </span>
             </div>
           </div>
@@ -496,12 +508,12 @@ const SubjectHeadDashboard: React.FC = () => {
                 </div>
               </div>
             </>
+          ) : activeTab === "syllabus-assessment" ? (
+            <AssessmentManagementContent />
+          ) : activeTab === "group-management" ? (
+            <GroupListContent showMentorInfo={true} />
           ) : activeTab === "settings" ? (
             <Settings />
-          ) : activeTab === "councils" ? (
-            <CouncilManagement />
-          ) : activeTab === "defense-schedule" ? (
-            <ScheduleManagement />
           ) : (
             <div className="bg-white border border-[#dbdfe6] rounded-xl p-12 text-center shadow-sm">
               <span className="material-symbols-outlined text-6xl text-[#616f89] mb-4">

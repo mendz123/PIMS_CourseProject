@@ -349,3 +349,32 @@ ADD CONSTRAINT FK_Submission_Submitter
 ADD StartDate DATETIME NULL,
     Deadline DATETIME NULL,
     Description NVARCHAR(MAX) NULL;
+---------------------------------------------------------------------------------------
+THÊM BẢNG ĐỂ XÉT DUYÊT CÁC LỜI MỜI GIA NHẬP NHÓM CỦA STUDENT
+CREATE TABLE GroupInvitations (
+    InvitationId INT IDENTITY PRIMARY KEY,
+
+    GroupId INT NOT NULL,
+    InvitedUserId INT NOT NULL,
+    InvitedByUserId INT NOT NULL,
+
+    Status INT NOT NULL DEFAULT 0, -- 0: Pending, 1: Accepted, 2: Rejected
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_GI_Group 
+        FOREIGN KEY (GroupId) REFERENCES Groups(GroupId),
+
+    CONSTRAINT FK_GI_InvitedUser 
+        FOREIGN KEY (InvitedUserId) REFERENCES Users(UserId),
+
+    CONSTRAINT FK_GI_InvitedByUser 
+        FOREIGN KEY (InvitedByUserId) REFERENCES Users(UserId),
+
+    -- tránh spam mời 1 người nhiều lần vào cùng 1 group
+    CONSTRAINT UQ_Group_InvitedUser 
+        UNIQUE (GroupId, InvitedUserId)
+);
+
+CREATE INDEX IX_GI_Group ON GroupInvitations(GroupId);
+CREATE INDEX IX_GI_InvitedUser ON GroupInvitations(InvitedUserId);
