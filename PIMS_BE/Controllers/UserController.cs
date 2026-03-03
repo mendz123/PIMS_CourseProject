@@ -44,7 +44,7 @@ public class UserController : BaseApiController
     /// Get list of teachers
     /// </summary>
     [HttpGet("teachers")]
-    [Authorize(Roles = "ADMIN,SUBJECT HEAD")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<List<UserInfo>>>> GetTeachers()
     {
         try

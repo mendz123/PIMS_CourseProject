@@ -33,7 +33,7 @@ public class DefenseScheduleService : IDefenseScheduleService
         else if (semesterId.HasValue)
             schedules = await _scheduleRepo.GetBySemesterAsync(semesterId.Value);
         else
-            schedules = await _scheduleRepo.GetAllAsync();
+            schedules = await _scheduleRepo.GetAllWithDetailsAsync();
 
         return schedules.Select(MapToDto);
     }

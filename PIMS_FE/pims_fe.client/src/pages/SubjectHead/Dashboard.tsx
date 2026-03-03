@@ -3,6 +3,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import Notification from "../../components/dashboard/NotificationNavbar";
+import CouncilManagement from "../../components/SubjectHead/CouncilManagement";
+import ScheduleManagement from "../../components/SubjectHead/ScheduleManagement";
 import AssessmentManagementContent from "./AssessmentManagementContent";
 import GroupListContent from "../../components/shared/GroupListContent";
 
@@ -62,6 +64,24 @@ const SubjectHeadDashboard: React.FC = () => {
               <span className="text-sm">Faculty Management</span>
             </button>
             <button
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "councils" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("councils")}
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                gavel
+              </span>
+              <span className="text-sm">Defense Councils</span>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all w-full ${activeTab === "defense-schedule" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("defense-schedule")}
+            >
+              <span className="material-symbols-outlined text-[22px]">event</span>
+              <span className="text-sm">Defense Schedule</span>
+            </button>
+            <a
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-colors"
+              href="/subject-head/assessments"
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "group-management" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("group-management")}
             >
@@ -514,6 +534,10 @@ const SubjectHeadDashboard: React.FC = () => {
             <GroupListContent showMentorInfo={true} />
           ) : activeTab === "settings" ? (
             <Settings />
+          ) : activeTab === "councils" ? (
+            <CouncilManagement />
+          ) : activeTab === "defense-schedule" ? (
+            <ScheduleManagement />
           ) : (
             <div className="bg-white border border-[#dbdfe6] rounded-xl p-12 text-center shadow-sm">
               <span className="material-symbols-outlined text-6xl text-[#616f89] mb-4">

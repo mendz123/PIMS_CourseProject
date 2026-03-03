@@ -25,7 +25,7 @@ public class CouncilService : ICouncilService
     {
         IEnumerable<Council> councils = semesterId.HasValue
             ? await _councilRepo.GetBySemesterAsync(semesterId.Value)
-            : await _councilRepo.GetAllAsync();
+            : await _councilRepo.GetAllWithMembersAsync();   // ← was GetAllAsync (no Include)
 
         return councils.Select(MapToDto);
     }
@@ -97,8 +97,10 @@ public class CouncilService : ICouncilService
             var toRemove = council.CouncilMembers
                 .Where(m => !newIds.Contains(m.UserId))
                 .ToList();
-            foreach (var m in toRemove)
-                council.CouncilMembers.Remove(m);
+
+            // Phải dùng RemoveRange qua DbContext, không dùng collection.Remove
+            // (vì FK không nullable → EF sẽ báo lỗi nếu chỉ detach khỏi collection)
+            _councilRepo.RemoveMembers(toRemove);
 
             // Thêm member mới chưa có
             foreach (var userId in newIds.Where(uid => !oldIds.Contains(uid)))
@@ -116,6 +118,19 @@ public class CouncilService : ICouncilService
 
         var updated = await _councilRepo.GetWithMembersAsync(id);
         return MapToDto(updated!);
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var council = await _councilRepo.GetWithMembersAsync(id)
+            ?? throw new KeyNotFoundException($"Council {id} not found");
+
+        // Remove all members first (FK constraint)
+        if (council.CouncilMembers.Any())
+            _councilRepo.RemoveMembers(council.CouncilMembers.ToList());
+
+        _councilRepo.Remove(council);
+        await _councilRepo.SaveChangesAsync();
     }
 
     private static CouncilDto MapToDto(Council c) => new()
