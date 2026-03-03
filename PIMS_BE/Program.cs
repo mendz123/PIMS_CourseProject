@@ -53,6 +53,7 @@ builder.Services.AddScoped<IAssessmentRepository, AssessmentRepository>();
 builder.Services.AddScoped<IAssessmentCriterionRepository, AssessmentCriterionRepository>();
 builder.Services.AddScoped<ICouncilRepository, CouncilRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
@@ -60,6 +61,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpRepository>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IMentorRequestRepository, MentorRequestRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IDefenseScheduleRepository, DefenseScheduleRepository>();
 
 // Register Services
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -67,6 +71,10 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 builder.Services.AddScoped<IAssessmentCriterionService, AssessmentCriterionService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ISemesterService, SemesterService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<ICouncilService, CouncilService>();
+builder.Services.AddScoped<IDefenseScheduleService, DefenseScheduleService>();
 
 // Register Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -77,6 +85,7 @@ builder.Services.AddScoped<IProjectSubmissionRepository, ProjectSubmissionReposi
 // Đăng ký Service xử lý logic Dự án và Báo cáo
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITemplateService, TemplateService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ISemesterService, SemesterService>();
@@ -106,19 +115,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Đọc token từ cookie nếu không có trong header
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            // Nếu không có token trong header, thử lấy từ cookie
-            if (string.IsNullOrEmpty(context.Token))
-            {
-                context.Token = context.Request.Cookies["access_token"];
-            }
-            return Task.CompletedTask;
-        }
-    };
+    options.Events = JwtBearerEventHandler.Create();
 });
 
 builder.Services.Configure<CloudinarySettings>(

@@ -107,6 +107,19 @@ namespace PIMS_BE.DTOs
                 Message = message
             };
         }
+
+        /// <summary>
+        /// Trả về error response - Conflict (409)
+        /// </summary>
+        public static ApiResponse<T> Conflict(string message = "Conflict")
+        {
+            return new ApiResponse<T>
+            {
+                Success = false,
+                StatusCode = 409,
+                Message = message
+            };
+        }
     }
 
     /// <summary>

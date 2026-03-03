@@ -13,4 +13,10 @@ public class UpdateAssessmentDto
     public bool? IsFinal { get; set; }
 
     public bool? IsLocked { get; set; }
+
+    public DateTime? StartDate { get; set; }
+
+    public DateTime? Deadline { get; set; }
+
+    public string? Description { get; set; }
 }

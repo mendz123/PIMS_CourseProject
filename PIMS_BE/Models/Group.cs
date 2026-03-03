@@ -19,6 +19,8 @@ public partial class Group
 
     public virtual ICollection<CouncilCriteriaGrade> CouncilCriteriaGrades { get; set; } = new List<CouncilCriteriaGrade>();
 
+    public virtual ICollection<GroupInvitation> GroupInvitations { get; set; } = new List<GroupInvitation>();
+
     public virtual ICollection<DefenseSchedule> DefenseSchedules { get; set; } = new List<DefenseSchedule>();
 
     public virtual ICollection<GroupMember> GroupMembers { get; set; } = new List<GroupMember>();

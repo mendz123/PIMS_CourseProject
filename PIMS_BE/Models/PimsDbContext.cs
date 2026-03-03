@@ -32,7 +32,7 @@ public partial class PimsDbContext : DbContext
     public virtual DbSet<DefenseSchedule> DefenseSchedules { get; set; }
 
     public virtual DbSet<Group> Groups { get; set; }
-
+    public virtual DbSet<GroupInvitation> GroupInvitations { get; set; }
     public virtual DbSet<GroupMember> GroupMembers { get; set; }
 
     public virtual DbSet<GroupMemberStatus> GroupMemberStatuses { get; set; }
@@ -54,6 +54,8 @@ public partial class PimsDbContext : DbContext
     public virtual DbSet<ProjectTemplate> ProjectTemplates { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
+
+    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<Semester> Semesters { get; set; }
 
@@ -187,7 +189,7 @@ public partial class PimsDbContext : DbContext
 
             entity.HasOne(d => d.Council).WithMany(p => p.CouncilMembers)
                 .HasForeignKey(d => d.CouncilId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_CM_Council");
 
             entity.HasOne(d => d.User).WithMany(p => p.CouncilMembers)
@@ -239,13 +241,47 @@ public partial class PimsDbContext : DbContext
 
             entity.HasOne(d => d.Council).WithMany(p => p.DefenseSchedules)
                 .HasForeignKey(d => d.CouncilId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_DS_Council");
 
             entity.HasOne(d => d.Group).WithMany(p => p.DefenseSchedules)
                 .HasForeignKey(d => d.GroupId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DS_Group");
+
+            entity.HasOne(d => d.Room).WithMany(p => p.DefenseSchedules)
+                .HasForeignKey(d => d.RoomId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_DS_Room");
+        });
+
+        modelBuilder.Entity<GroupInvitation>(entity =>
+        {
+            entity.HasKey(e => e.InvitationId).HasName("PK__GroupInv__ItemId");
+
+            entity.HasIndex(e => new { e.GroupId, e.InvitedUserId }, "UQ_GroupInvitation_User").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.Status)
+                .HasDefaultValue(InvitationStatus.Pending);
+
+            entity.HasOne(d => d.Group).WithMany(p => p.GroupInvitations)
+                .HasForeignKey(d => d.GroupId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_Group");
+
+            entity.HasOne(d => d.InvitedUser).WithMany(p => p.GroupInvitationInvitedUsers)
+                .HasForeignKey(d => d.InvitedUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_InvitedUser");
+
+            entity.HasOne(d => d.InvitedByUser).WithMany(p => p.GroupInvitationInvitedByUsers)
+                .HasForeignKey(d => d.InvitedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GI_InvitedByUser");
         });
 
         modelBuilder.Entity<Group>(entity =>

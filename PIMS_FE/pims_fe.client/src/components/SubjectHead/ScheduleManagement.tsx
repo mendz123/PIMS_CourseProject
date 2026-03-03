@@ -1,0 +1,628 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import toast from "react-hot-toast";
+import {
+    format,
+    addMonths,
+    subMonths,
+    startOfMonth,
+    endOfMonth,
+    startOfWeek,
+    endOfWeek,
+    eachDayOfInterval,
+    isSameMonth,
+    isSameDay,
+    isToday,
+    parseISO,
+} from "date-fns";
+import { vi } from "date-fns/locale";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    defenseScheduleService,
+    type DefenseScheduleDto,
+    type CreateDefenseScheduleDto,
+    type GroupInfo,
+} from "../../services/defenseScheduleService";
+import { councilService, type CouncilDto } from "../../services/councilService";
+import { semesterService, type SemesterDto } from "../../services/semesterService";
+import { roomService, type RoomDto } from "../../services/roomService";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const fmtDate = (d: string | null) =>
+    d ? new Date(d + "T00:00:00").toLocaleDateString("vi-VN") : "—";
+
+const fmtTime = (t: string | null) => {
+    if (!t) return "—";
+    const [h, m] = t.split(":");
+    return `${h}:${m}`;
+};
+
+const statusBadge = (s: string | null) => {
+    const map: Record<string, string> = {
+        PENDING: "bg-amber-100 text-amber-700",
+        COMPLETED: "bg-green-100 text-green-700",
+        CANCELLED: "bg-red-100 text-red-500",
+    };
+    return map[s ?? ""] ?? "bg-gray-100 text-gray-600";
+};
+
+// ─── Components ──────────────────────────────────────────────────────────────
+
+interface CreateModalProps {
+    open: boolean;
+    onClose: () => void;
+    onSubmit: (dto: CreateDefenseScheduleDto) => Promise<void>;
+    loading: boolean;
+    councils: CouncilDto[];
+    groups: GroupInfo[];
+    rooms: RoomDto[];
+    filterSemesterId: number | "";
+}
+
+interface FormState {
+    councilId: string;
+    groupId: string;
+    defenseDate: string;
+    startTime: string;
+    endTime: string;
+    roomId: string;
+}
+
+const EMPTY: FormState = {
+    councilId: "",
+    groupId: "",
+    defenseDate: "",
+    startTime: "",
+    endTime: "",
+    roomId: "",
+};
+
+const CreateModal: React.FC<CreateModalProps> = ({
+    open, onClose, onSubmit, loading, councils, groups, rooms, filterSemesterId,
+}) => {
+    const [form, setForm] = useState<FormState>(EMPTY);
+    const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+
+    useEffect(() => {
+        if (open) { setForm(EMPTY); setErrors({}); }
+    }, [open]);
+
+    const filteredCouncils = councils.filter(c =>
+        filterSemesterId === "" || c.semesterId === filterSemesterId
+    );
+
+    const validate = () => {
+        const e: Partial<Record<keyof FormState, string>> = {};
+        if (!form.councilId) e.councilId = "Council is required";
+        if (!form.groupId) e.groupId = "Group is required";
+        if (!form.defenseDate) e.defenseDate = "Date is required";
+        if (!form.startTime) e.startTime = "Start time is required";
+        if (!form.endTime) e.endTime = "End time is required";
+        if (form.startTime && form.endTime && form.endTime <= form.startTime)
+            e.endTime = "End time must be after start time";
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validate()) return;
+        await onSubmit({
+            councilId: Number(form.councilId),
+            groupId: Number(form.groupId),
+            defenseDate: form.defenseDate,
+            startTime: form.startTime + ":00",
+            endTime: form.endTime + ":00",
+            roomId: form.roomId ? Number(form.roomId) : undefined,
+        });
+    };
+
+    if (!open) return null;
+
+    const selectCls = (k: keyof FormState) =>
+        `w-full px-3 py-2.5 text-sm rounded-xl border outline-none focus:ring-2 focus:ring-primary/30 transition-all ${errors[k] ? "border-red-400 bg-red-50" : "border-[#dbdfe6] focus:border-primary"
+        }`;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-[#dbdfe6] sticky top-0 bg-white z-10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <span className="material-symbols-outlined text-primary text-xl">event</span>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-[#111318]">Schedule Defense Session</h2>
+                            <p className="text-xs text-[#616f89]">Set date, time and council for a group</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-all">
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-1.5">Council <span className="text-red-500">*</span></label>
+                        <select value={form.councilId} onChange={e => setForm(p => ({ ...p, councilId: e.target.value }))} className={selectCls("councilId")}>
+                            <option value="">— Select council —</option>
+                            {filteredCouncils.map(c => (
+                                <option key={c.councilId} value={c.councilId}>{c.councilName}</option>
+                            ))}
+                        </select>
+                        {errors.councilId && <p className="text-xs text-red-500 mt-1">{errors.councilId}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-1.5">Group <span className="text-red-500">*</span></label>
+                        <select value={form.groupId} onChange={e => setForm(p => ({ ...p, groupId: e.target.value }))} className={selectCls("groupId")}>
+                            <option value="">— Select group —</option>
+                            {groups.map(g => (
+                                <option key={g.groupId} value={g.groupId}>{g.groupName || `Group #${g.groupId}`}</option>
+                            ))}
+                        </select>
+                        {errors.groupId && <p className="text-xs text-red-500 mt-1">{errors.groupId}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-1.5">Defense Date <span className="text-red-500">*</span></label>
+                        <input type="date" value={form.defenseDate} onChange={e => setForm(p => ({ ...p, defenseDate: e.target.value }))} className={selectCls("defenseDate")} />
+                        {errors.defenseDate && <p className="text-xs text-red-500 mt-1">{errors.defenseDate}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Start Time <span className="text-red-500">*</span></label>
+                            <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))} className={selectCls("startTime")} />
+                            {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">End Time <span className="text-red-500">*</span></label>
+                            <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))} className={selectCls("endTime")} />
+                            {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime}</p>}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-1.5">Room (optional)</label>
+                        <select value={form.roomId} onChange={e => setForm(p => ({ ...p, roomId: e.target.value }))} className={selectCls("roomId")}>
+                            <option value="">— Assign later —</option>
+                            {rooms.map(r => (
+                                <option key={r.roomId} value={r.roomId}>
+                                    {r.roomName}{r.building ? ` (${r.building})` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-[#dbdfe6] text-[#616f89] hover:bg-[#f6f6f8]">Cancel</button>
+                        <button type="submit" disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                            {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Create Schedule
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+interface AssignRoomModalProps {
+    schedule: DefenseScheduleDto | null;
+    onClose: () => void;
+    onSave: (roomId: number | null) => Promise<void>;
+    loading: boolean;
+    rooms: RoomDto[];
+}
+
+const AssignRoomModal: React.FC<AssignRoomModalProps> = ({ schedule, onClose, onSave, loading, rooms }) => {
+    const [roomId, setRoomId] = useState<string>("");
+    useEffect(() => { setRoomId(schedule?.roomId?.toString() ?? ""); }, [schedule]);
+    if (!schedule) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl"><span className="material-symbols-outlined text-primary text-xl">meeting_room</span></div>
+                    <div>
+                        <h3 className="font-bold text-[#111318]">Assign Room</h3>
+                        <p className="text-xs text-[#616f89] mt-0.5">{schedule.groupName} · {fmtDate(schedule.defenseDate)}</p>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-[#111318] mb-1.5">Room</label>
+                    <select value={roomId} onChange={e => setRoomId(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#dbdfe6] focus:border-primary transition-all underline-none">
+                        <option value="">— No room assigned —</option>
+                        {rooms.map(r => <option key={r.roomId} value={r.roomId}>{r.roomName}{r.building ? ` (${r.building})` : ""}</option>)}
+                    </select>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-[#dbdfe6] text-[#616f89] hover:bg-[#f6f6f8]">Cancel</button>
+                    <button onClick={() => onSave(roomId ? Number(roomId) : null)} disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 flex items-center justify-center gap-2">
+                        {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+const ScheduleManagement: React.FC = () => {
+    const [viewMode, setViewMode] = useState<"table" | "calendar">("calendar");
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [schedules, setSchedules] = useState<DefenseScheduleDto[]>([]);
+    const [councils, setCouncils] = useState<CouncilDto[]>([]);
+    const [groups, setGroups] = useState<GroupInfo[]>([]);
+    const [rooms, setRooms] = useState<RoomDto[]>([]);
+    const [semesters, setSemesters] = useState<SemesterDto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filterSemester, setFilterSemester] = useState<number | "">("");
+    const [filterCouncil, setFilterCouncil] = useState<number | "">("");
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createLoading, setCreateLoading] = useState(false);
+    const [assignTarget, setAssignTarget] = useState<DefenseScheduleDto | null>(null);
+    const [assignLoading, setAssignLoading] = useState(false);
+
+    // Filter Logic
+    const filteredSchedules = useMemo(() => {
+        return schedules.filter(s => {
+            const matchCouncil = filterCouncil === "" || s.councilId === filterCouncil;
+            // Note: filterSemester is applied at the API level mostly, but we can double check here
+            return matchCouncil;
+        });
+    }, [schedules, filterCouncil]);
+
+    const fetchSchedules = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await defenseScheduleService.getAll(
+                filterSemester !== "" ? filterSemester : undefined,
+                filterCouncil !== "" ? filterCouncil : undefined,
+            );
+            setSchedules(res.data ?? []);
+        } catch {
+            toast.error("Failed to load schedules");
+        } finally {
+            setLoading(false);
+        }
+    }, [filterSemester, filterCouncil]);
+
+    const fetchSupport = useCallback(async () => {
+        try {
+            const [c, g, r, s] = await Promise.all([
+                councilService.getAllCouncils(),
+                defenseScheduleService.getGroups(),
+                roomService.getAllRooms(),
+                semesterService.getAllSemesters(),
+            ]);
+            setCouncils(c.data ?? []);
+            setGroups(g.data ?? []);
+            setRooms(r.data ?? []);
+            setSemesters(s.data ?? []);
+        } catch { /* silent */ }
+    }, []);
+
+    useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+    useEffect(() => { fetchSupport(); }, [fetchSupport]);
+
+    const handleCreate = async (dto: CreateDefenseScheduleDto) => {
+        setCreateLoading(true);
+        try {
+            await defenseScheduleService.create(dto);
+            toast.success("Defense session scheduled!");
+            setCreateOpen(false);
+            await fetchSchedules();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Failed to create schedule");
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
+    const handleAssignRoom = async (roomId: number | null) => {
+        if (!assignTarget) return;
+        setAssignLoading(true);
+        try {
+            await defenseScheduleService.assignRoom(assignTarget.scheduleId, roomId);
+            toast.success("Room updated!");
+            setAssignTarget(null);
+            await fetchSchedules();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Failed to assign room");
+        } finally {
+            setAssignLoading(false);
+        }
+    };
+
+    // ─── Calendar Logic ──────────────────────────────────────────────────────
+
+    const calendarDays = useMemo(() => {
+        const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+        const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
+        return eachDayOfInterval({ start, end });
+    }, [currentMonth]);
+
+    const getDaySessions = (day: Date) => {
+        return filteredSchedules.filter(s => s.defenseDate && isSameDay(parseISO(s.defenseDate), day));
+    };
+
+    const selectedDaySessions = useMemo(() => getDaySessions(selectedDate), [selectedDate, filteredSchedules]);
+
+    // ─── Render ──────────────────────────────────────────────────────────────
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-black text-[#111318] tracking-tight">Defense Schedule</h2>
+                    <p className="text-[#616f89] mt-1 text-sm">Manage defense sessions for students.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="bg-[#f0f2f5] p-1 rounded-xl flex items-center shadow-inner">
+                        <button
+                            onClick={() => setViewMode("table")}
+                            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all ${viewMode === "table" ? "bg-white text-primary shadow-sm" : "text-[#616f89] hover:text-[#111318]"}`}
+                        >
+                            <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
+                            Table
+                        </button>
+                        <button
+                            onClick={() => setViewMode("calendar")}
+                            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all ${viewMode === "calendar" ? "bg-white text-primary shadow-sm" : "text-[#616f89] hover:text-[#111318]"}`}
+                        >
+                            <span className="material-symbols-outlined text-lg">calendar_month</span>
+                            Calendar
+                        </button>
+                    </div>
+                    <button
+                        onClick={() => setCreateOpen(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 active:scale-95 transition-all shadow-md shadow-primary/20"
+                    >
+                        <span className="material-symbols-outlined text-xl">event_add</span>
+                        New Session
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-[#dbdfe6] shadow-sm">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f6f6f8] rounded-xl text-[#616f89]">
+                    <span className="material-symbols-outlined text-lg">filter_list</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
+                </div>
+                <select
+                    value={filterSemester}
+                    onChange={e => { setFilterSemester(e.target.value ? Number(e.target.value) : ""); setFilterCouncil(""); }}
+                    className="px-3 py-2 text-sm rounded-xl border border-[#dbdfe6] focus:border-primary outline-none bg-white transition-all min-w-[150px]"
+                >
+                    <option value="">All Semesters</option>
+                    {semesters.map(s => <option key={s.semesterId} value={s.semesterId}>{s.semesterName}</option>)}
+                </select>
+                <select
+                    value={filterCouncil}
+                    onChange={e => setFilterCouncil(e.target.value ? Number(e.target.value) : "")}
+                    className="px-3 py-2 text-sm rounded-xl border border-[#dbdfe6] focus:border-primary outline-none bg-white transition-all min-w-[150px]"
+                >
+                    <option value="">All Councils</option>
+                    {councils.filter(c => filterSemester === "" || c.semesterId === filterSemester).map(c => (
+                        <option key={c.councilId} value={c.councilId}>{c.councilName}</option>
+                    ))}
+                </select>
+                <div className="ml-auto flex items-center gap-2 text-[#616f89] text-xs font-medium">
+                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    {filteredSchedules.length} session{filteredSchedules.length !== 1 ? "s" : ""} found
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                    <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-[#616f89] text-sm animate-pulse">Loading schedule data…</p>
+                </div>
+            ) : viewMode === "table" ? (
+                /* ─── Table View ─── */
+                <div className="bg-white border border-[#dbdfe6] rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                        <thead className="bg-[#f8f9fb] border-b border-[#dbdfe6]">
+                            <tr>
+                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Group</th>
+                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Council</th>
+                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Schedule</th>
+                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Location</th>
+                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Status</th>
+                                <th className="text-right px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#dbdfe6]">
+                            {filteredSchedules.map(s => (
+                                <tr key={s.scheduleId} className="hover:bg-[#f8f9fb]/50 transition-colors group">
+                                    <td className="px-5 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold">
+                                                {s.groupName?.[0] || "#"}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-[#111318]">{s.groupName || `Group #${s.groupId}`}</p>
+                                                <p className="text-[10px] text-[#616f89] font-medium tracking-wide">ID: {s.groupId}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <div className="flex items-center gap-2 py-1 px-2.5 bg-[#f0f2f5] rounded-lg w-fit">
+                                            <span className="material-symbols-outlined text-[14px] text-primary">gavel</span>
+                                            <span className="text-xs font-bold text-[#111318]">{s.councilName}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-[#111318]">{fmtDate(s.defenseDate)}</span>
+                                            <span className="text-xs text-[#616f89]">{fmtTime(s.startTime)} – {fmtTime(s.endTime)}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        {s.roomName ? (
+                                            <div className="flex items-center gap-1.5 text-[#111318]">
+                                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                                                <span className="font-medium">{s.roomName}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs italic text-[#b0b8c9]">Assigning room...</span>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-tight uppercase ${statusBadge(s.status)}`}>
+                                            {s.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                        <button
+                                            onClick={() => setAssignTarget(s)}
+                                            className="p-2 rounded-xl text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
+                                            title="Assign Room"
+                                        >
+                                            <span className="material-symbols-outlined">meeting_room</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredSchedules.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center">
+                                        <div className="flex flex-col items-center gap-2 opacity-30">
+                                            <span className="material-symbols-outlined text-6xl">event_busy</span>
+                                            <p className="font-bold">No sessions found</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                /* ─── Calendar View ─── */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[700px]">
+                    {/* Left: Calendar Side */}
+                    <div className="lg:col-span-8 bg-white border border-[#dbdfe6] rounded-3xl shadow-sm overflow-hidden flex flex-col">
+                        {/* Month Header */}
+                        <div className="p-6 flex items-center justify-between border-b border-[#dbdfe6] bg-[#f8f9fb]">
+                            <h3 className="text-lg font-black text-[#111318] capitalize">
+                                {format(currentMonth, "MMMM yyyy", { locale: vi })}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 rounded-xl hover:bg-[#ebedf2] border border-[#dbdfe6] bg-white transition-all text-[#616f89]">
+                                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                                </button>
+                                <button onClick={() => setCurrentMonth(new Date())} className="px-3 py-1.5 rounded-xl border border-[#dbdfe6] bg-white text-xs font-bold hover:bg-[#ebedf2] transition-all text-[#111318]">
+                                    Today
+                                </button>
+                                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 rounded-xl hover:bg-[#ebedf2] border border-[#dbdfe6] bg-white transition-all text-[#616f89]">
+                                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Calendar Grid */}
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="grid grid-cols-7 border-b border-[#dbdfe6] bg-[#f8f9fb]">
+                                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                                    <div key={d} className="py-2 text-center text-[10px] font-black text-[#616f89] uppercase tracking-widest">{d}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7 auto-rows-fr h-full">
+                                {calendarDays.map((day, i) => {
+                                    const sessions = getDaySessions(day);
+                                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                                    const activeDate = isSameDay(day, selectedDate);
+                                    return (
+                                        <div
+                                            key={i}
+                                            onClick={() => setSelectedDate(day)}
+                                            className={`min-h-[100px] p-2 border-r border-b border-[#f0f2f5] transition-all cursor-pointer relative group ${!isCurrentMonth ? "opacity-30 bg-[#fbfbfc]" : "bg-white"} ${activeDate ? "ring-2 ring-primary ring-inset z-10" : ""}`}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg ${isToday(day) ? "bg-primary text-white shadow-md shadow-primary/30" : activeDate ? "text-primary bg-primary/10" : "text-[#111318]"}`}>
+                                                    {format(day, "d")}
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                {sessions.slice(0, 3).map(s => (
+                                                    <div key={s.scheduleId} className="px-1.5 py-0.5 rounded-md bg-primary/5 border-l-2 border-primary text-[9px] font-bold text-primary truncate">
+                                                        {s.groupName || "Group"}
+                                                    </div>
+                                                ))}
+                                                {sessions.length > 3 && (
+                                                    <div className="text-[8px] font-black text-[#616f89] pl-2">+{sessions.length - 3} more</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: Details Side */}
+                    <div className="lg:col-span-4 flex flex-col gap-6 overflow-hidden">
+                        <div className="bg-white border border-[#dbdfe6] rounded-3xl shadow-sm p-6 flex flex-col h-full">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-3 bg-primary/10 rounded-2xl">
+                                    <span className="material-symbols-outlined text-primary">calendar_today</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-[#111318]">{format(selectedDate, "eeee", { locale: vi })}</h3>
+                                    <p className="text-sm text-[#616f89]">{format(selectedDate, "dd MMMM, yyyy", { locale: vi })}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                                {selectedDaySessions.length > 0 ? (
+                                    selectedDaySessions.map(s => (
+                                        <div key={s.scheduleId} className="p-4 rounded-2xl border border-[#f0f2f5] hover:border-primary/30 transition-all bg-[#f8f9fb] group">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${statusBadge(s.status)}`}>{s.status}</span>
+                                                <span className="text-[10px] font-bold text-[#616f89] bg-white px-2 py-1 rounded-lg border border-[#f0f2f5]">{fmtTime(s.startTime)}</span>
+                                            </div>
+                                            <h4 className="font-bold text-[#111318] text-sm group-hover:text-primary transition-colors">{s.groupName || `Group #${s.groupId}`}</h4>
+                                            <div className="mt-2 space-y-2">
+                                                <div className="flex items-center gap-2 text-[11px] text-[#616f89]">
+                                                    <span className="material-symbols-outlined text-sm">gavel</span>
+                                                    {s.councilName}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[11px] text-[#616f89]">
+                                                    <span className="material-symbols-outlined text-sm text-green-500">location_on</span>
+                                                    {s.roomName || "No room assigned"}
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 pt-3 border-t border-[#f0f2f5] flex justify-end">
+                                                <button onClick={() => setAssignTarget(s)} className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline">
+                                                    Assign Room
+                                                    <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-30">
+                                        <span className="material-symbols-outlined text-5xl mb-2">event_available</span>
+                                        <p className="text-sm font-bold uppercase tracking-widest">No sessions scheduled</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={createLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={filterSemester} />
+            <AssignRoomModal schedule={assignTarget} onClose={() => setAssignTarget(null)} onSave={handleAssignRoom} loading={assignLoading} rooms={rooms} />
+        </div>
+    );
+};
+
+export default ScheduleManagement;

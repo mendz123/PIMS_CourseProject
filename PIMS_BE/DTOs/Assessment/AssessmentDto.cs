@@ -14,5 +14,8 @@ public class AssessmentDto
     public int CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
+    public DateTime? StartDate { get; set; }
+    public DateTime? Deadline { get; set; }
+    public string? Description { get; set; }
     public List<AssessmentCriterionDto>? Criteria { get; set; }
 }

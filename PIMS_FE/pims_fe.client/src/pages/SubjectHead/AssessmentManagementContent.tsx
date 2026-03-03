@@ -42,12 +42,25 @@ const AssessmentManagementContent: React.FC = () => {
     file: File | null;
   }>({ title: "", file: null });
 
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    body: string;
+    confirmLabel: string;
+    variant: "danger" | "warning";
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
   // Form states
   const [assessmentForm, setAssessmentForm] = useState<CreateAssessmentDto>({
     semesterId: selectedSemesterId ?? 0,
     title: "",
     weight: 0,
     isFinal: false,
+    startDate: "",
+    deadline: "",
+    description: "",
   });
 
   useEffect(() => {
@@ -76,12 +89,10 @@ const AssessmentManagementContent: React.FC = () => {
   const loadSemesters = async () => {
     try {
       const response = await semesterService.getAllSemesters();
-      setSemesters(response.data);
-      const activeSemester = response.data.find((s) => s.isActive);
-      if (activeSemester) {
-        setSelectedSemesterId(activeSemester.semesterId);
-      } else if (response.data.length > 0) {
-        setSelectedSemesterId(response.data[0].semesterId);
+      const activeSemesters = response.data.filter((s) => s.isActive);
+      setSemesters(activeSemesters);
+      if (activeSemesters.length > 0) {
+        setSelectedSemesterId(activeSemesters[0].semesterId);
       }
     } catch (err: any) {
       console.error("Failed to load semesters:", err);
@@ -131,6 +142,11 @@ const AssessmentManagementContent: React.FC = () => {
         title: assessmentForm.title,
         weight: assessmentForm.weight,
         isFinal: assessmentForm.isFinal,
+        startDate: assessmentForm.startDate
+          ? assessmentForm.startDate
+          : undefined,
+        deadline: assessmentForm.deadline ? assessmentForm.deadline : undefined,
+        description: assessmentForm.description,
       };
       await assessmentService.updateAssessment(
         editingAssessment.assessmentId,
@@ -147,53 +163,81 @@ const AssessmentManagementContent: React.FC = () => {
     }
   };
 
-  const handleDeleteAssessment = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this assessment?")) return;
-    setLoading(true);
-    setError("");
-    try {
-      await assessmentService.deleteAssessment(id);
-      setSuccess("Assessment deleted successfully");
-      loadAssessments();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to delete assessment");
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteAssessment = (id: number) => {
+    setConfirmDialog({
+      title: "Delete Assessment",
+      body: "Are you sure you want to delete this assessment? This action cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        setLoading(true);
+        setError("");
+        try {
+          await assessmentService.deleteAssessment(id);
+          setSuccess("Assessment deleted successfully");
+          loadAssessments();
+        } catch (err: any) {
+          setError(
+            err.response?.data?.message || "Failed to delete assessment",
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
-  const handleLockToggle = async (assessment: AssessmentWithCriteriaDto) => {
+  const handleLockToggle = (assessment: AssessmentWithCriteriaDto) => {
     if (assessment.isLocked) {
-      const confirmed = confirm(
-        "Are you sure you want to unlock this assessment?\n\n" +
-          "Note: You cannot unlock if scores have already been recorded.\n" +
-          "Unlocking allows modifications to criteria and weights.",
-      );
-      if (!confirmed) return;
-    }
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      if (assessment.isLocked) {
-        await assessmentService.unlockAssessment(assessment.assessmentId);
-        setSuccess(
-          "✅ Assessment unlocked successfully. You can now edit criteria and weights.",
-        );
-      } else {
-        await assessmentService.lockAssessment(assessment.assessmentId);
-        setSuccess(
-          "🔒 Assessment locked successfully. No further modifications allowed.",
-        );
-      }
-      loadAssessments();
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message || "Failed to toggle lock";
-      setError(errorMessage);
-      setTimeout(() => setError(""), 8000);
-    } finally {
-      setLoading(false);
+      setConfirmDialog({
+        title: "Unlock Assessment",
+        body: `Unlock "${assessment.title}"?\n\nThis will allow modifications to criteria and weights. Note: you cannot unlock if scores have already been recorded.`,
+        confirmLabel: "Unlock",
+        variant: "warning",
+        onConfirm: async () => {
+          setLoading(true);
+          setError("");
+          setSuccess("");
+          try {
+            await assessmentService.unlockAssessment(assessment.assessmentId);
+            setSuccess(
+              "Assessment unlocked. You can now edit criteria and weights.",
+            );
+            loadAssessments();
+          } catch (err: any) {
+            setError(
+              err.response?.data?.message || "Failed to unlock assessment",
+            );
+            setTimeout(() => setError(""), 8000);
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+    } else {
+      setConfirmDialog({
+        title: "Lock Assessment",
+        body: `Lock "${assessment.title}"?\n\nAfter locking, criteria and weights can no longer be modified. Make sure everything is correct before proceeding.`,
+        confirmLabel: "Lock",
+        variant: "warning",
+        onConfirm: async () => {
+          setLoading(true);
+          setError("");
+          setSuccess("");
+          try {
+            await assessmentService.lockAssessment(assessment.assessmentId);
+            setSuccess("Assessment locked. No further modifications allowed.");
+            loadAssessments();
+          } catch (err: any) {
+            setError(
+              err.response?.data?.message || "Failed to lock assessment",
+            );
+            setTimeout(() => setError(""), 8000);
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
     }
   };
 
@@ -232,6 +276,9 @@ const AssessmentManagementContent: React.FC = () => {
       title: "",
       weight: 0,
       isFinal: false,
+      startDate: "",
+      deadline: "",
+      description: "",
     });
     setEditingAssessment(null);
   };
@@ -243,6 +290,9 @@ const AssessmentManagementContent: React.FC = () => {
       title: assessment.title,
       weight: assessment.weight,
       isFinal: assessment.isFinal,
+      startDate: assessment.startDate ? assessment.startDate.slice(0, 16) : "",
+      deadline: assessment.deadline ? assessment.deadline.slice(0, 16) : "",
+      description: assessment.description ?? "",
     });
     setShowAssessmentModal(true);
   };
@@ -421,8 +471,27 @@ const AssessmentManagementContent: React.FC = () => {
                         </span>
                       )}
                       {assessment.isLocked && (
-                        <span className="material-symbols-outlined text-red-600 text-xl">
-                          lock
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            lock
+                          </span>
+                          Locked
+                        </span>
+                      )}
+                      {assessment.hasScores && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            grading
+                          </span>
+                          Graded
+                        </span>
+                      )}
+                      {assessment.hasSubmissions && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded">
+                          <span className="material-symbols-outlined text-sm leading-none">
+                            upload_file
+                          </span>
+                          Has Submissions
                         </span>
                       )}
                     </div>
@@ -432,14 +501,70 @@ const AssessmentManagementContent: React.FC = () => {
                   </div>
                   <button
                     onClick={() => handleLockToggle(assessment)}
-                    className={`p-2 rounded-lg transition-colors ${assessment.isLocked ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
-                    disabled={loading}
+                    disabled={
+                      loading ||
+                      (!assessment.isLocked && getTotalWeight() !== 100)
+                    }
+                    title={
+                      !assessment.isLocked && getTotalWeight() !== 100
+                        ? `Total weight is ${getTotalWeight().toFixed(2)}% — must be 100% to lock`
+                        : assessment.isLocked
+                          ? "Unlock this assessment"
+                          : "Lock this assessment"
+                    }
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      assessment.isLocked
+                        ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                        : getTotalWeight() === 100
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                          : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                    }`}
                   >
-                    <span className="material-symbols-outlined">
-                      {assessment.isLocked ? "lock" : "lock_open"}
+                    <span className="material-symbols-outlined text-base leading-none">
+                      {assessment.isLocked ? "lock_open" : "lock"}
                     </span>
+                    {assessment.isLocked ? "Unlock" : "Lock"}
                   </button>
                 </div>
+
+                {/* Dates & Description */}
+                {(assessment.startDate ||
+                  assessment.deadline ||
+                  assessment.description) && (
+                  <div className="mb-4 space-y-2 px-0">
+                    {(assessment.startDate || assessment.deadline) && (
+                      <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
+                        {assessment.startDate && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">
+                              calendar_today
+                            </span>
+                            Start:{" "}
+                            {new Date(assessment.startDate).toLocaleDateString(
+                              "vi-VN",
+                            )}
+                          </span>
+                        )}
+                        {assessment.deadline && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">
+                              event
+                            </span>
+                            Deadline:{" "}
+                            {new Date(assessment.deadline).toLocaleDateString(
+                              "vi-VN",
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {assessment.description && (
+                      <p className="text-sm text-[#616f89] italic line-clamp-2">
+                        {assessment.description}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Criteria Section */}
                 <div className="border-t pt-4 mb-4">
@@ -501,7 +626,18 @@ const AssessmentManagementContent: React.FC = () => {
                     onClick={() =>
                       handleDeleteAssessment(assessment.assessmentId)
                     }
-                    disabled={assessment.isLocked || loading}
+                    disabled={
+                      assessment.isLocked ||
+                      assessment.hasSubmissions ||
+                      loading
+                    }
+                    title={
+                      assessment.isLocked
+                        ? "Cannot delete: assessment is locked"
+                        : assessment.hasSubmissions
+                          ? "Cannot delete: students have already submitted for this assessment"
+                          : "Delete assessment"
+                    }
                     className="px-3 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <span className="material-symbols-outlined text-base">
@@ -518,7 +654,7 @@ const AssessmentManagementContent: React.FC = () => {
       {/* Assessment Modal */}
       {showAssessmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#111318] mb-4">
               {editingAssessment ? "Edit Assessment" : "Create Assessment"}
             </h2>
@@ -557,11 +693,11 @@ const AssessmentManagementContent: React.FC = () => {
                     step="0.01"
                     min="0.01"
                     max="100"
-                    value={assessmentForm.weight}
+                    value={assessmentForm.weight || ""}
                     onChange={(e) =>
                       setAssessmentForm({
                         ...assessmentForm,
-                        weight: Number(e.target.value),
+                        weight: parseFloat(e.target.value) || 0,
                       })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
@@ -605,6 +741,57 @@ const AssessmentManagementContent: React.FC = () => {
                     Mark as Final Assessment
                   </label>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#111318] mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={assessmentForm.startDate ?? ""}
+                      onChange={(e) =>
+                        setAssessmentForm({
+                          ...assessmentForm,
+                          startDate: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#111318] mb-1">
+                      Deadline
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={assessmentForm.deadline ?? ""}
+                      onChange={(e) =>
+                        setAssessmentForm({
+                          ...assessmentForm,
+                          deadline: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#111318] mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={assessmentForm.description ?? ""}
+                    onChange={(e) =>
+                      setAssessmentForm({
+                        ...assessmentForm,
+                        description: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    placeholder="Optional description for this assessment..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec] resize-none"
+                  />
+                </div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button
@@ -619,7 +806,7 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || getNewTotalWeight() !== 100}
+                  disabled={loading}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading
@@ -666,12 +853,12 @@ const AssessmentManagementContent: React.FC = () => {
                         step="0.01"
                         min="0.01"
                         max="100"
-                        value={criterion.weight}
+                        value={criterion.weight || ""}
                         onChange={(e) =>
                           updateCriterion(
                             index,
                             "weight",
-                            Number(e.target.value),
+                            parseFloat(e.target.value) || 0,
                           )
                         }
                         placeholder="Weight %"
@@ -749,7 +936,7 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || getCriteriaTotalWeight() !== 100}
+                  disabled={loading}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading ? "Saving..." : "Save Criteria"}
@@ -921,6 +1108,66 @@ const AssessmentManagementContent: React.FC = () => {
                     Xác nhận
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex items-start gap-4 mb-4">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  confirmDialog.variant === "danger"
+                    ? "bg-red-100"
+                    : "bg-amber-100"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined ${
+                    confirmDialog.variant === "danger"
+                      ? "text-red-600"
+                      : "text-amber-600"
+                  }`}
+                >
+                  {confirmDialog.variant === "danger" ? "delete" : "warning"}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#111318] mb-1">
+                  {confirmDialog.title}
+                </h3>
+                <p className="text-sm text-[#616f89] whitespace-pre-line">
+                  {confirmDialog.body}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                disabled={confirmLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-[#616f89] rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setConfirmLoading(true);
+                  await confirmDialog.onConfirm();
+                  setConfirmLoading(false);
+                  setConfirmDialog(null);
+                }}
+                disabled={confirmLoading}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                  confirmDialog.variant === "danger"
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-amber-500 text-white hover:bg-amber-600"
+                }`}
+              >
+                {confirmLoading ? "Processing..." : confirmDialog.confirmLabel}
               </button>
             </div>
           </div>

@@ -9,6 +9,7 @@ import type {
   BatchCreateCriteriaDto,
   AssessmentWithCriteriaDto,
   ApiResponse,
+  StudentMyAssessmentsDto,
 } from "../types/assessment.types";
 
 // Assessment APIs
@@ -100,6 +101,14 @@ export const assessmentService = {
     const response = await api.post<ApiResponse<object>>(
       "/api/assessment/save-grades",
       dto,
+    );
+    return response.data;
+  },
+
+  // Student: xem assessment + điểm của bản thân
+  getMyAssessments: async () => {
+    const response = await api.get<ApiResponse<StudentMyAssessmentsDto>>(
+      "/api/student/assessments/me",
     );
     return response.data;
   },
