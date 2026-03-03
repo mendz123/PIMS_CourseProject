@@ -16,4 +16,6 @@ public interface IAssessmentService
     Task<bool> ValidateAssessmentWeightsAsync(int semesterId, int? excludeAssessmentId = null);
 
     Task<IEnumerable<DeadlineAssessmentDto>> GetActiveIterations();
+
+    Task<bool> SaveGradesAsync(SaveGradesDto dto, int teacherId);
 }

@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import { assessmentService } from "../../services/assessmentService";
@@ -33,8 +34,13 @@ const GradingPage: React.FC = () => {
     const [viewingDocsGroup, setViewingDocsGroup] = useState<GroupGrading | null>(null);
 
     // New filters
-    const [selectedGroupId, setSelectedGroupId] = useState<number | 'all'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | 'all'>('all');
+
+    // Grading State
+    const [groupComments, setGroupComments] = useState<{ [groupId: number]: { [assessmentId: number]: string } }>({});
+    const [studentScores, setStudentScores] = useState<{ [userId: number]: { [assessmentId: number]: number } }>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -81,18 +87,28 @@ const GradingPage: React.FC = () => {
             try {
                 const groupsRes = await groupService.getGroupsByTeacher(selectedSemesterId);
                 if (groupsRes?.data) {
-                    const mappedGroups: GroupGrading[] = groupsRes.data.map((g: TeacherGroupDto) => ({
-                        groupId: g.groupId,
-                        groupName: g.groupName,
-                        submittedDocs: g.submittedDocs,
-                        students: Array.from({ length: g.memberCount }).map((_, i) => ({
-                            userId: g.groupId * 100 + i, // Mock ID
-                            fullName: `Thành viên ${i + 1} (Nhóm ${g.groupId})`,
-                            scores: {},
-                            comment: ""
-                        }))
-                    }));
+                    const initScores: any = {};
+                    const initComments: any = {};
+                    const mappedGroups: GroupGrading[] = groupsRes.data.map((g: TeacherGroupDto) => {
+                        initComments[g.groupId] = g.teacherComments || {};
+                        return {
+                            groupId: g.groupId,
+                            groupName: g.groupName,
+                            submittedDocs: g.submittedDocs,
+                            students: g.students ? g.students.map(s => {
+                                initScores[s.userId] = s.scores || {};
+                                return {
+                                    userId: s.userId,
+                                    fullName: s.fullName,
+                                    scores: {},
+                                    comment: ""
+                                };
+                            }) : []
+                        };
+                    });
                     setGroups(mappedGroups);
+                    setStudentScores(initScores);
+                    setGroupComments(initComments);
                 } else {
                     setGroups([]);
                 }
@@ -110,6 +126,93 @@ const GradingPage: React.FC = () => {
         setExpandedGroups(prev =>
             prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
         );
+    };
+
+    const handleScoreChange = (userId: number, assessmentId: number, score: string) => {
+        if (score === '') {
+            setStudentScores(prev => ({
+                ...prev,
+                [userId]: {
+                    ...prev[userId],
+                    [assessmentId]: '' as any
+                }
+            }));
+            return;
+        }
+
+        let numScore = parseFloat(score);
+        if (isNaN(numScore)) return;
+
+        if (numScore > 10) numScore = 10;
+        if (numScore < 0) numScore = 0;
+
+        setStudentScores(prev => ({
+            ...prev,
+            [userId]: {
+                ...prev[userId],
+                [assessmentId]: numScore
+            }
+        }));
+    };
+
+    const handleCommentChange = (groupId: number, assessmentId: number, comment: string) => {
+        if (assessmentId === 'all' as any) return;
+        setGroupComments(prev => ({
+            ...prev,
+            [groupId]: {
+                ...(prev[groupId] || {}),
+                [assessmentId]: comment
+            }
+        }));
+    };
+
+    const handleSaveGrades = async () => {
+        if (selectedAssessmentId === 'all') {
+            toast.error("Vui lòng chọn một Tiêu chí đánh giá cụ thể để lưu điểm!");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            // Chuẩn bị payload cho từng nhóm đã được mở (hoặc tất cả), lọc theo search
+            const groupsToSave = searchQuery.trim() === '' ? groups : groups.filter(g => g.groupName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+            let saveCount = 0;
+            for (const group of groupsToSave) {
+                const groupScorePayload: any = {
+                    assessmentId: selectedAssessmentId,
+                    groupId: group.groupId,
+                    teacherComment: groupComments[group.groupId]?.[selectedAssessmentId as number] || "",
+                    studentScores: []
+                };
+
+                group.students.forEach(student => {
+                    const mappedScore = studentScores[student.userId]?.[selectedAssessmentId as number];
+                    if (mappedScore !== undefined && mappedScore !== '' as any) {
+                        groupScorePayload.studentScores.push({
+                            userId: student.userId,
+                            score: parseFloat(mappedScore.toString())
+                        });
+                    }
+                });
+
+                // Chỉ lưu nếu có nhập điểm hoặc có nhận xét
+                if (groupScorePayload.studentScores.length > 0 || groupScorePayload.teacherComment) {
+                    await assessmentService.saveGrades(groupScorePayload);
+                    saveCount++;
+                }
+            }
+            if (saveCount > 0) {
+                toast.success("Lưu điểm thành công!");
+            } else {
+                toast.error("Không có thay đổi nào để lưu!");
+            }
+        } catch (error) {
+            console.error("Lỗi khi lưu điểm:", error);
+            toast.error("Đã xảy ra lỗi khi lưu điểm.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (loading) {
@@ -144,20 +247,15 @@ const GradingPage: React.FC = () => {
 
                         {/* Bộ lọc theo nhóm và tiêu chí */}
                         <div className="mt-4 flex flex-wrap items-center gap-6">
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[#616f89]">Lọc theo nhóm:</span>
-                                <select
-                                    className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
-                                    value={selectedGroupId.toString()}
-                                    onChange={(e) => setSelectedGroupId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                >
-                                    <option value="all">-- Tất cả các nhóm --</option>
-                                    {groups.map(g => (
-                                        <option key={g.groupId} value={g.groupId}>
-                                            {g.groupName}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="flex items-center gap-3 relative">
+                                <span className="material-symbols-outlined absolute left-3 text-gray-400 font-bold" style={{ fontSize: '18px' }}>search</span>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm theo tên nhóm..."
+                                    className="pl-9 pr-4 py-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#111318] w-64"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -204,7 +302,7 @@ const GradingPage: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#dbdfe6]">
-                                {groups.filter(g => selectedGroupId === 'all' || g.groupId === selectedGroupId).map(group => (
+                                {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).map(group => (
                                     <React.Fragment key={group.groupId}>
                                         {/* Hàng Nhóm - Accordion Header */}
                                         <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
@@ -237,19 +335,53 @@ const GradingPage: React.FC = () => {
                                                     <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
                                                         <input
                                                             type="number" step="0.1" max="10" min="0" placeholder="0.0"
+                                                            value={studentScores[student.userId]?.[a.assessmentId] ?? ''}
+                                                            onChange={(e) => handleScoreChange(student.userId, a.assessmentId, e.target.value)}
                                                             className="w-16 px-2 py-1 border border-[#dbdfe6] rounded text-center focus:ring-1 focus:ring-primary outline-none"
                                                         />
                                                     </td>
                                                 ))}
-                                                <td className="px-4 py-4 border-r">
-                                                    <textarea
-                                                        rows={1} placeholder="Nhận xét..."
-                                                        className="w-full p-2 text-sm border border-[#dbdfe6] rounded-lg focus:ring-1 focus:ring-primary outline-none"
-                                                    />
+
+                                                {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
+                                                    Nhưng để layout đẹp, ta giữ textarea trống hoặc chỉ là text "--" cho sinh viên, 
+                                                    và hiển thị text cho Group */}
+                                                <td className="px-4 py-4 border-r text-center text-sm text-gray-400">
+                                                    --
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-bold text-orange-600">--</td>
+                                                <td className="px-6 py-4 text-right font-bold text-orange-600">
+                                                    {/* Tính tổng điểm tạm thời tại Frontend */}
+                                                    {(() => {
+                                                        // const userScores = studentScores[student.userId] || {};
+                                                        // let total = 0;
+                                                        // assessments.forEach(a => {
+                                                        //     const score = userScores[a.assessmentId] || 0;
+                                                        //     // Tính tổng = Sum(Điểm * Trọng số) / 100
+                                                        // });
+                                                        // Tạm thời hiển thị raw sum hoặc bỏ qua
+                                                        return '--';
+                                                    })()}
+                                                </td>
                                             </tr>
                                         ))}
+
+                                        {/* Row Nhận xét cấp Group */}
+                                        {expandedGroups.includes(group.groupId) && (
+                                            <tr className="bg-orange-50/20">
+                                                <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
+                                                    Nhận xét chung cho nhóm {group.groupName}:
+                                                </td>
+                                                <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
+                                                    <textarea
+                                                        rows={2}
+                                                        placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
+                                                        value={groupComments[group.groupId]?.[selectedAssessmentId as number] ?? ""}
+                                                        onChange={(e) => handleCommentChange(group.groupId, selectedAssessmentId as number, e.target.value)}
+                                                        disabled={selectedAssessmentId === 'all'}
+                                                        className={`w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none ${selectedAssessmentId === 'all' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
                                     </React.Fragment>
                                 ))}
                             </tbody>
@@ -257,7 +389,12 @@ const GradingPage: React.FC = () => {
 
                         <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3">
                             <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white">Hủy</button>
-                            <button className="px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-blue-700">Lưu điểm</button>
+                            <button
+                                onClick={handleSaveGrades}
+                                disabled={isSaving}
+                                className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                {isSaving ? "Đang lưu..." : "Lưu điểm"}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -284,9 +421,9 @@ const GradingPage: React.FC = () => {
                                                         <p className="text-xs text-gray-500">Nộp lúc: {doc.submittedAt}</p>
                                                     </div>
                                                 </div>
-                                                <button className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors shrink-0" title="Tải xuống">
+                                                <a href={doc.url} download={doc.name} target="_blank" rel="noopener noreferrer" className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors shrink-0" title="Tải xuống">
                                                     <span className="material-symbols-outlined">download</span>
-                                                </button>
+                                                </a>
                                             </li>
                                         ))}
                                     </ul>

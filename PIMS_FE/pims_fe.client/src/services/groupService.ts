@@ -13,6 +13,12 @@ export interface TeacherGroupDto {
     groupId: number;
     groupName: string;
     memberCount: number;
+    students: {
+        userId: number;
+        fullName: string;
+        scores: { [assessmentId: number]: number };
+    }[];
+    teacherComments: { [assessmentId: number]: string };
     submittedDocs: GroupSubmissionDto[];
 }
 

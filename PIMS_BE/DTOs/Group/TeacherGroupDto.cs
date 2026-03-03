@@ -9,6 +9,12 @@ namespace PIMS_BE.DTOs.Group
         public string GroupName { get; set; } = string.Empty;
         public int MemberCount { get; set; }
         
+        // List of students in the group
+        public List<TeacherGroupMemberDto> Students { get; set; } = new List<TeacherGroupMemberDto>();
+        
+        // Dictionary mapping AssessmentId to TeacherComment
+        public Dictionary<int, string> TeacherComments { get; set; } = new Dictionary<int, string>();
+        
         // List of submissions for this group in the current semester/assessment
         public List<GroupSubmissionDto> SubmittedDocs { get; set; } = new List<GroupSubmissionDto>();
     }

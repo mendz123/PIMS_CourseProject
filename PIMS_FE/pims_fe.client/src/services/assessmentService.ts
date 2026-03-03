@@ -94,6 +94,15 @@ export const assessmentService = {
     );
     return response.data;
   },
+
+  // Save teacher grades and comments for a group's assessment
+  saveGrades: async (dto: any) => {
+    const response = await api.post<ApiResponse<object>>(
+      "/api/assessment/save-grades",
+      dto,
+    );
+    return response.data;
+  },
 };
 
 // Criteria APIs

@@ -53,6 +53,8 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
         // Find groups where the given teacher is the mentor, in the specified semester
         return await _dbSet
             .Include(g => g.GroupMembers)
+                .ThenInclude(gm => gm.User)
+                    .ThenInclude(u => u.AssessmentScores)
             .Include(g => g.ProjectSubmissions)
                 .ThenInclude(ps => ps.Submitter)
             .Where(g => g.MentorId == teacherId && g.SemesterId == semesterId && g.StatusId == 1) // Assuming 1 is active/approved status

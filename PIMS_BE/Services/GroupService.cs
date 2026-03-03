@@ -109,8 +109,21 @@ namespace PIMS_BE.Services
                 var teacherGroup = new TeacherGroupDto
                 {
                     GroupId = group.GroupId,
-                    GroupName = group.GroupName ?? "Nhóm $($group.GroupId)",
+                    GroupName = group.GroupName ?? $"Nhóm {group.GroupId}",
                     MemberCount = group.GroupMembers.Count(m => m.StatusId == 1),
+                    Students = group.GroupMembers
+                        .Where(m => m.StatusId == 1)
+                        .Select(m => new TeacherGroupMemberDto
+                        {
+                            UserId = m.UserId,
+                            FullName = m.User?.FullName ?? $"User {m.UserId}",
+                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>()
+                        })
+                        .ToList(),
+                    TeacherComments = group.ProjectSubmissions
+                        .Where(ps => !string.IsNullOrEmpty(ps.TeacherComment))
+                        .GroupBy(ps => ps.AssessmentId)
+                        .ToDictionary(g => g.Key, g => g.OrderByDescending(ps => ps.SubmittedAt).First().TeacherComment!),
                     SubmittedDocs = group.ProjectSubmissions
                         .OrderByDescending(s => s.SubmittedAt)
                         .Select(ps => new GroupSubmissionDto
