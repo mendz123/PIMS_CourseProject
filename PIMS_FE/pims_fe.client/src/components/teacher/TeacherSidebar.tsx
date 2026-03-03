@@ -11,7 +11,7 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ currentPath = "/teacher
     const navigate = useNavigate();
 
     const navItems = [
-        { icon: "dashboard", label: "Dashboard", path: "/teacher", active: currentPath === "/teacher" },
+        { icon: "dashboard", label: "Dashboard", path: "/teacher", active: currentPath === "/teacher/dashboard" },
         { icon: "fact_check", label: "Project Approvals", path: "/teacher/approvals", active: currentPath === "/teacher/approvals" },
         { icon: "trending_up", label: "Group Progress", path: "/teacher/progress", active: currentPath === "/teacher/progress" },
         { icon: "grade", label: "Grading", path: "/teacher/grading", active: currentPath === "/teacher/grading" },

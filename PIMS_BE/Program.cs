@@ -78,6 +78,9 @@ builder.Services.AddScoped<IProjectSubmissionRepository, ProjectSubmissionReposi
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITemplateService, TemplateService>();
 
+builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<ISemesterService, SemesterService>();
+builder.Services.AddScoped<GroupRepository>();
 builder.Services.AddControllers();
 
 // Configure JWT Authentication

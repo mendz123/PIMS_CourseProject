@@ -42,5 +42,27 @@ namespace PIMS_BE.Services
                 new SemesterDto { SemesterId = 3, SemesterName = "Fall 2026" }
             };
         }
+
+        public async Task<SemesterDto?> GetActiveSemesterAsync()
+        {
+            try
+            {
+                var semesters = await _semesterRepository.GetAllAsync();
+                var activeSemester = semesters.FirstOrDefault(s => s.IsActive == true);
+                if (activeSemester != null)
+                {
+                    return new SemesterDto
+                    {
+                        SemesterId = activeSemester.SemesterId,
+                        SemesterName = activeSemester.SemesterName
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Database error in GetActiveSemesterAsync: {ex.Message}");
+            }
+            return new SemesterDto { SemesterId = 1, SemesterName = "Spring 2026" }; // Fallback
+        }
     }
 }

@@ -11,7 +11,8 @@ namespace PIMS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
+[Authorize]
+// [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
 public class AssessmentController : ControllerBase
 {
     private readonly IAssessmentService _assessmentService;
@@ -109,6 +110,7 @@ public class AssessmentController : ControllerBase
     /// Create new assessment
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<AssessmentDto>>> CreateAssessment([FromBody] CreateAssessmentDto dto)
     {
         try
@@ -151,6 +153,7 @@ public class AssessmentController : ControllerBase
     /// Update assessment
     /// </summary>
     [HttpPut("{id}")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<AssessmentDto>>> UpdateAssessment(int id, [FromBody] UpdateAssessmentDto dto)
     {
         try
@@ -193,6 +196,7 @@ public class AssessmentController : ControllerBase
     /// Delete assessment
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteAssessment(int id)
     {
         try
@@ -233,6 +237,7 @@ public class AssessmentController : ControllerBase
     /// Lock assessment
     /// </summary>
     [HttpPost("{id}/lock")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<object>>> LockAssessment(int id)
     {
         try
@@ -268,6 +273,7 @@ public class AssessmentController : ControllerBase
     /// Unlock assessment
     /// </summary>
     [HttpPost("{id}/unlock")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<object>>> UnlockAssessment(int id)
     {
         try
@@ -303,6 +309,7 @@ public class AssessmentController : ControllerBase
     /// Validate assessment weights for a semester
     /// </summary>
     [HttpGet("semester/{semesterId}/validate-weights")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
     public async Task<ActionResult<ApiResponse<object>>> ValidateAssessmentWeights(int semesterId)
     {
         try

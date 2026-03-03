@@ -7,5 +7,6 @@ namespace PIMS_BE.Services.Interfaces
     public interface ISemesterService
     {
         Task<IEnumerable<SemesterDto>> GetAllSemestersAsync();
+        Task<SemesterDto?> GetActiveSemesterAsync();
     }
 }

@@ -1,0 +1,12 @@
+using PIMS_BE.DTOs.Group;
+
+namespace PIMS_BE.Services.Interfaces
+{
+    public interface IGroupService
+    {
+        Task<GroupDto> CreateGroupAsync(int userId, string groupName);
+        Task<GroupDto?> GetMyGroupAsync(int userId);
+        Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize);
+        Task<List<TeacherGroupDto>> GetGroupsByTeacherAsync(int teacherId, int? semesterId = null);
+    }
+}
