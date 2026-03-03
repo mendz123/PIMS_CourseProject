@@ -38,7 +38,7 @@ const GradingPage: React.FC = () => {
     const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | 'all'>('all');
 
     // Grading State
-    const [groupComments, setGroupComments] = useState<{ [groupId: number]: { [assessmentId: number]: string } }>({});
+    const [groupComments, setGroupComments] = useState<{ [groupId: number]: string }>({});
     const [studentScores, setStudentScores] = useState<{ [userId: number]: { [assessmentId: number]: number } }>({});
     const [isSaving, setIsSaving] = useState(false);
 
@@ -90,7 +90,12 @@ const GradingPage: React.FC = () => {
                     const initScores: any = {};
                     const initComments: any = {};
                     const mappedGroups: GroupGrading[] = groupsRes.data.map((g: TeacherGroupDto) => {
-                        initComments[g.groupId] = g.teacherComments || {};
+                        let overallComment = "";
+                        if (g.teacherComments) {
+                            const values = Object.values(g.teacherComments).filter(c => c && c.trim().length > 0);
+                            if (values.length > 0) overallComment = values[0];
+                        }
+                        initComments[g.groupId] = overallComment;
                         return {
                             groupId: g.groupId,
                             groupName: g.groupName,
@@ -155,59 +160,57 @@ const GradingPage: React.FC = () => {
         }));
     };
 
-    const handleCommentChange = (groupId: number, assessmentId: number, comment: string) => {
-        if (assessmentId === 'all' as any) return;
+    const handleCommentChange = (groupId: number, comment: string) => {
         setGroupComments(prev => ({
             ...prev,
-            [groupId]: {
-                ...(prev[groupId] || {}),
-                [assessmentId]: comment
-            }
+            [groupId]: comment
         }));
     };
 
     const handleSaveGrades = async () => {
-        if (selectedAssessmentId === 'all') {
-            toast.error("Vui lòng chọn một Tiêu chí đánh giá cụ thể để lưu điểm!");
-            return;
-        }
-
         setIsSaving(true);
         try {
             // Chuẩn bị payload cho từng nhóm đã được mở (hoặc tất cả), lọc theo search
             const groupsToSave = searchQuery.trim() === '' ? groups : groups.filter(g => g.groupName.toLowerCase().includes(searchQuery.toLowerCase()));
 
             let saveCount = 0;
+            const assessmentsToProcess = selectedAssessmentId === 'all'
+                ? assessments
+                : assessments.filter(a => a.assessmentId === selectedAssessmentId);
+
             for (const group of groupsToSave) {
-                const groupScorePayload: any = {
-                    assessmentId: selectedAssessmentId,
-                    groupId: group.groupId,
-                    teacherComment: groupComments[group.groupId]?.[selectedAssessmentId as number] || "",
-                    studentScores: []
-                };
+                for (const assessment of assessmentsToProcess) {
+                    const groupScorePayload: any = {
+                        assessmentId: assessment.assessmentId,
+                        groupId: group.groupId,
+                        teacherComment: groupComments[group.groupId] || "",
+                        studentScores: []
+                    };
 
-                group.students.forEach(student => {
-                    const mappedScore = studentScores[student.userId]?.[selectedAssessmentId as number];
-                    if (mappedScore !== undefined && mappedScore !== '' as any) {
-                        groupScorePayload.studentScores.push({
-                            userId: student.userId,
-                            score: parseFloat(mappedScore.toString())
-                        });
+                    group.students.forEach(student => {
+                        const mappedScore = studentScores[student.userId]?.[assessment.assessmentId];
+                        if (mappedScore !== undefined && mappedScore !== '' as any) {
+                            groupScorePayload.studentScores.push({
+                                userId: student.userId,
+                                score: parseFloat(mappedScore.toString())
+                            });
+                        }
+                    });
+
+                    // Chỉ lưu nếu có nhập điểm hoặc có nhận xét
+                    if (groupScorePayload.studentScores.length > 0 || groupScorePayload.teacherComment.trim() !== '') {
+                        await assessmentService.saveGrades(groupScorePayload);
+                        saveCount++;
                     }
-                });
-
-                // Chỉ lưu nếu có nhập điểm hoặc có nhận xét
-                if (groupScorePayload.studentScores.length > 0 || groupScorePayload.teacherComment) {
-                    await assessmentService.saveGrades(groupScorePayload);
-                    saveCount++;
                 }
             }
             if (saveCount > 0) {
                 toast.success("Lưu điểm thành công!");
             } else {
-                toast.error("Không có thay đổi nào để lưu!");
+                toast.error("Không có thay đổi nào để lưu hoặc nhóm chưa nộp bài! (Phải có bài nộp mới lưu được Nhận xét)");
             }
-        } catch (error) {
+        }
+        catch (error) {
             console.error("Lỗi khi lưu điểm:", error);
             toast.error("Đã xảy ra lỗi khi lưu điểm.");
         } finally {
@@ -297,7 +300,7 @@ const GradingPage: React.FC = () => {
                                             <span className="text-orange-600">({a.weight}%)</span>
                                         </th>
                                     ))}
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>
+                                    {/*<th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>*/}
                                     <th className="px-6 py-4 text-xs font-bold uppercase text-right">Tổng điểm</th>
                                 </tr>
                             </thead>
@@ -345,9 +348,9 @@ const GradingPage: React.FC = () => {
                                                 {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
                                                     Nhưng để layout đẹp, ta giữ textarea trống hoặc chỉ là text "--" cho sinh viên, 
                                                     và hiển thị text cho Group */}
-                                                <td className="px-4 py-4 border-r text-center text-sm text-gray-400">
-                                                    --
-                                                </td>
+                                                {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
+                                                {/*    --*/}
+                                                {/*</td>*/}
                                                 <td className="px-6 py-4 text-right font-bold text-orange-600">
                                                     {/* Tính tổng điểm tạm thời tại Frontend */}
                                                     {(() => {
@@ -374,10 +377,9 @@ const GradingPage: React.FC = () => {
                                                     <textarea
                                                         rows={2}
                                                         placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
-                                                        value={groupComments[group.groupId]?.[selectedAssessmentId as number] ?? ""}
-                                                        onChange={(e) => handleCommentChange(group.groupId, selectedAssessmentId as number, e.target.value)}
-                                                        disabled={selectedAssessmentId === 'all'}
-                                                        className={`w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none ${selectedAssessmentId === 'all' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                        value={groupComments[group.groupId] ?? ""}
+                                                        onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
+                                                        className="w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none"
                                                     />
                                                 </td>
                                             </tr>
