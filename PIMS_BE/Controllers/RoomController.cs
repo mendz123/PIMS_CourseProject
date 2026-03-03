@@ -71,30 +71,6 @@ public class RoomController : ControllerBase
         }
     }
 
-    // UC — Cập nhật phòng
-    [HttpPut("{id}")]
-    [Authorize(Roles = "ADMIN")]
-    public async Task<ActionResult<ApiResponse<RoomDto>>> Update(int id, [FromBody] UpdateRoomDto dto)
-    {
-        try
-        {
-            var result = await _roomService.UpdateAsync(id, dto);
-            return Ok(ApiResponse<RoomDto>.Ok(result, "Room updated successfully"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<RoomDto>.NotFound(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<RoomDto>.Conflict(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<RoomDto>.InternalError(ex.Message));
-        }
-    }
-
     // UC27 — Xóa phòng
     [HttpDelete("{id}")]
     [Authorize(Roles = "ADMIN")]

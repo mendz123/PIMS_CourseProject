@@ -8,5 +8,4 @@ public interface ICouncilService
     Task<CouncilDto?> GetByIdAsync(int id);
     Task<CouncilDto> CreateAsync(CreateCouncilDto dto);
     Task<CouncilDto> UpdateAsync(int id, UpdateCouncilDto dto);
-    Task DeleteAsync(int id);
 }
