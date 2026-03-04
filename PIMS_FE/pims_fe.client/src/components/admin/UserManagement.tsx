@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import "./UserManagement.css";
 import userService from "../../services/userService";
 import toast from "react-hot-toast";
+import UserInfoDrawer from "../shared/UserInfoDrawer";
 
 interface User {
   id: string;
@@ -32,6 +33,8 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [showUserDrawer, setShowUserDrawer] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const usersPerPage = 5;
 
@@ -324,9 +327,18 @@ const UserManagement: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <div>
-                        <div className="font-bold text-sm">{user.name}</div>
-                        <div className="text-xs text-[#616f89]">
+                      <div className="min-w-0">
+                        <div
+                          className="font-bold text-sm hover:text-primary cursor-pointer transition-colors truncate"
+                          onClick={() => {
+                            setSelectedUserId(Number(user.id));
+                            setShowUserDrawer(true);
+                          }}
+                          title="View user details"
+                        >
+                          {user.name}
+                        </div>
+                        <div className="text-xs text-[#616f89] truncate">
                           {user.email}
                         </div>
                       </div>
@@ -476,6 +488,12 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
+      {/* User Info Drawer */}
+      <UserInfoDrawer
+        userId={selectedUserId}
+        isOpen={showUserDrawer}
+        onClose={() => setShowUserDrawer(false)}
+      />
     </div>
   );
 };
