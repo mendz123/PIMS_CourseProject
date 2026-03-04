@@ -41,6 +41,12 @@ const Sidebar: React.FC = () => {
       requiresGroup: false,
     },
     {
+      name: "Chat",
+      icon: "chat",
+      path: "/student/chat",
+      requiresGroup: false,
+    },
+    {
       name: "Settings",
       icon: "settings",
       path: "/student/settings",

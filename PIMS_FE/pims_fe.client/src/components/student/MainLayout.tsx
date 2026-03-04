@@ -23,6 +23,8 @@ const MainLayout: React.FC = () => {
         return "Thông báo";
       case "/student/assessment":
         return "Assessment";
+      case "/student/chat":
+        return "Chat";
       case "/student/settings":
         return "Settings";
       default:

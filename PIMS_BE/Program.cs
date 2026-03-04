@@ -1,18 +1,20 @@
-using System.Text;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PIMS_BE.Configurations;
+using PIMS_BE.Helpers;
+using PIMS_BE.Hubs;
+using PIMS_BE.Middlewares;
 using PIMS_BE.Models;
+using PIMS_BE.Repositories;
 using PIMS_BE.Services;
 using PIMS_BE.Services.Interfaces;
-using PIMS_BE.Configurations;
-using Microsoft.Extensions.Options;
-using CloudinaryDotNet;
-using PIMS_BE.Repositories;
-using PIMS_BE.Middlewares;
-using PIMS_BE.Helpers;
 using Serilog;
+using System.Text;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -34,6 +36,22 @@ try
     Log.Information("Starting PIMS Backend Application");
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSignalR();
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins(
+                  "https://localhost:49684", 
+                  "http://localhost:49684", 
+                  "http://localhost:5173",
+                  "http://localhost:5172",
+                  "https://localhost:5172")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials(); // Cho phép gửi cookies
+        });
+    });
 
 // Use Serilog
 builder.Host.UseSerilog();
@@ -114,11 +132,31 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
         ClockSkew = TimeSpan.Zero
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                context.HttpContext.Request.Path.StartsWithSegments("/chatHub"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 
     options.Events = JwtBearerEventHandler.Create();
 });
 
-builder.Services.Configure<CloudinarySettings>(
+
+    builder.Services.AddAuthorization();
+
+    builder.Services.AddSignalR();
+
+    builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("Cloudinary"));
 
 builder.Services.AddSingleton(provider =>
@@ -196,8 +234,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Add security headers for Google OAuth (must be early in pipeline)
-app.Use(async (context, next) =>
+app.UseCors("AllowFrontend");
+
+app.MapHub<ChatHub>("/chathub");
+
+    // Add security headers for Google OAuth (must be early in pipeline)
+    app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
     context.Response.Headers.Append("Cross-Origin-Embedder-Policy", "require-corp");

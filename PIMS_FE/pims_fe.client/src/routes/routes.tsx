@@ -23,6 +23,7 @@ import ProgressReports from "../pages/Student/ProgressReports";
 import Notifications from "../pages/Student/Notifications";
 import NotFound from "../pages/NotFound";
 import AssessmentPage from "../pages/Student/AssessmentPage";
+import Chat from "../components/chat/ChatInterface";
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
           {
             path: "assessment",
             element: <AssessmentPage />,
+          },
+          {
+            path: "chat",
+            element: <Chat />,
           },
           {
             path: "settings",
