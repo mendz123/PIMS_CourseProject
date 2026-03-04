@@ -29,6 +29,26 @@ public class UserService : IUserService
         _userStatusRepository = userStatusRepository;
     }
 
+    public async Task<UserInfo> GetUserByIdAsync(int id)
+    {
+        var user = await _userRepository.GetByIdWithDetailsAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+        return new UserInfo 
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role != null ? user.Role.RoleName : null,
+            Status = user.Status != null ? user.Status.StatusName : null,
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl
+        };
+    }
+
     public async Task<List<UserInfo>> GetTeachersAsync()
     {
         // 2 is TEACHER

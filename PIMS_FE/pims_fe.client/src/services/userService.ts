@@ -16,6 +16,11 @@ export const userService = {
     return response.data;
   },
 
+  getUserById: async (id: number): Promise<ApiResponse<UserInfo>> => {
+    const response = await api.get<ApiResponse<UserInfo>>(`/api/user/${id}`);
+    return response.data;
+  },
+
   changePassword: async (
     data: ChangePasswordRequest,
   ): Promise<ApiResponse<UserInfo>> => {

@@ -18,6 +18,22 @@ public class UserController : BaseApiController
         _userService = userService;
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<UserInfo>>> getUserById(int id) {
+        try
+        {
+            var user = await _userService.GetUserByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound(ApiResponse<UserInfo>.NotFound("User not found"));
+            }
+            return Ok(ApiResponse<UserInfo>.Ok(user, "User retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<UserInfo>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
 
     /// getAllUsers
     [HttpGet]
