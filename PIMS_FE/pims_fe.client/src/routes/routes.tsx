@@ -100,12 +100,22 @@ export const router = createBrowserRouter([
         element: <TeacherSettingsPage />,
       },
       {
-        path: "subject-head/dashboard",
-        element: <SubjectHeadDashboard />,
-      },
-      {
-        path: "subject-head/assessments",
-        element: <AssessmentManagement />,
+        path: "subject-head",
+        element: (
+          <GroupProvider>
+            <RouterWrapper />
+          </GroupProvider>
+        ),
+        children: [
+          {
+            path: "dashboard",
+            element: <SubjectHeadDashboard />,
+          },
+          {
+            path: "assessments",
+            element: <AssessmentManagement />,
+          },
+        ],
       },
       {
         path: "assign-teacher",
