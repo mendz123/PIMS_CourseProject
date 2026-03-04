@@ -11,4 +11,5 @@ public interface IUserService
     Task<UserInfo> UpdateUserByIdAsync(UpdateProfileRequestDto request, int id);
     Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id);
     Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request);
+    Task<UserInfo> GetUserByIdAsync(int id);
 }
