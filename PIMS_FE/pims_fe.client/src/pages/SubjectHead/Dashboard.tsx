@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import Settings from "../../components/dashboard/Settings";
 import Notification from "../../components/dashboard/NotificationNavbar";
+import Notifications from "../../components/dashboard/Notifications";
 import AssessmentManagementContent from "./AssessmentManagementContent";
 import GroupListContent from "../../components/shared/GroupListContent";
 import CouncilManagement from "../../components/SubjectHead/CouncilManagement";
@@ -76,14 +77,18 @@ const SubjectHeadDashboard: React.FC = () => {
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "councils" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("councils")}
             >
-              <span className="material-symbols-outlined text-[22px]">gavel</span>
+              <span className="material-symbols-outlined text-[22px]">
+                gavel
+              </span>
               <span className="text-sm">Defense Councils</span>
             </button>
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "defense-schedule" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("defense-schedule")}
             >
-              <span className="material-symbols-outlined text-[22px]">event</span>
+              <span className="material-symbols-outlined text-[22px]">
+                event
+              </span>
               <span className="text-sm">Defense Schedule</span>
             </button>
             <button
@@ -104,6 +109,15 @@ const SubjectHeadDashboard: React.FC = () => {
               </span>
               <span className="text-sm">Performance Analytics</span>
             </a>
+            <button
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "notifications" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("notifications")}
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                notifications
+              </span>
+              <span className="text-sm">Notifications</span>
+            </button>
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("settings")}
@@ -534,6 +548,8 @@ const SubjectHeadDashboard: React.FC = () => {
             <ScheduleManagement />
           ) : activeTab === "settings" ? (
             <Settings />
+          ) : activeTab === "notifications" ? (
+            <Notifications />
           ) : (
             <div className="bg-white border border-[#dbdfe6] rounded-xl p-12 text-center shadow-sm">
               <span className="material-symbols-outlined text-6xl text-[#616f89] mb-4">
