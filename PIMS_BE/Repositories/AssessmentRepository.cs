@@ -13,6 +13,7 @@ public class StudentAssessmentRawData
     public List<Assessment> Assessments      { get; set; } = new();
     public List<AssessmentScore> Scores      { get; set; } = new();
     public DefenseSchedule? DefenseSchedule  { get; set; }
+    public List<ProjectSubmission> Submissions { get; set; } = new();
 }
 
 public interface IAssessmentRepository : IGenericRepository<Assessment>
@@ -141,6 +142,13 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
                 .FirstOrDefaultAsync();
         }
 
+        // 5. Lấy teacher comment từ ProjectSubmissions của nhóm
+        var submissions = await _context.ProjectSubmissions
+            .Where(ps => ps.GroupId == group.GroupId
+                      && assessmentIds.Contains(ps.AssessmentId)
+                      && ps.TeacherComment != null)
+            .ToListAsync();
+
         return new StudentAssessmentRawData
         {
             Group           = group,
@@ -148,7 +156,8 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             Project         = project,
             Assessments     = assessments,
             Scores          = scores,
-            DefenseSchedule = defenseSchedule
+            DefenseSchedule = defenseSchedule,
+            Submissions     = submissions
         };
     }
     }

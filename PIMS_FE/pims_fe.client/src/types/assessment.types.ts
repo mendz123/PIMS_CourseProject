@@ -102,6 +102,7 @@ export interface StudentAssessmentItemDto {
   description?: string;
   score?: number;
   isPassed?: boolean;
+  teacherComment?: string;
   // Chỉ có khi isFinal == true
   defenseDate?: string; // DateOnly -> "YYYY-MM-DD"
   defenseStartTime?: string; // TimeOnly -> "HH:mm:ss"

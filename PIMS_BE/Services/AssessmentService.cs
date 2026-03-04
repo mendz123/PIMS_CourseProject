@@ -367,21 +367,30 @@ public class AssessmentService : IAssessmentService
         // Map điểm theo assessmentId để tra cứu nhanh
         var scoreMap = raw.Scores.ToDictionary(s => s.AssessmentId, s => s);
 
+        // Map teacher comment theo assessmentId (lấy comment mới nhất)
+        var commentMap = raw.Submissions
+            .GroupBy(ps => ps.AssessmentId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(ps => ps.SubmittedAt).First().TeacherComment);
+
         var items = raw.Assessments.Select(a =>
         {
             scoreMap.TryGetValue(a.AssessmentId, out var scoreEntry);
+            commentMap.TryGetValue(a.AssessmentId, out var teacherComment);
 
             var item = new StudentAssessmentItemDto
             {
-                AssessmentId = a.AssessmentId,
-                Title        = a.Title ?? string.Empty,
-                Weight       = a.Weight ?? 0,
-                IsFinal      = a.IsFinal ?? false,
-                StartDate    = a.StartDate,
-                Deadline     = a.Deadline,
-                Description  = a.Description,
-                Score        = scoreEntry?.Score,
-                IsPassed     = scoreEntry?.IsPassed,
+                AssessmentId  = a.AssessmentId,
+                Title         = a.Title ?? string.Empty,
+                Weight        = a.Weight ?? 0,
+                IsFinal       = a.IsFinal ?? false,
+                StartDate     = a.StartDate,
+                Deadline      = a.Deadline,
+                Description   = a.Description,
+                Score         = scoreEntry?.Score,
+                IsPassed      = scoreEntry?.IsPassed,
+                TeacherComment = teacherComment,
             };
 
             // Nếu là final: gắn thêm thông tin lịch bảo vệ

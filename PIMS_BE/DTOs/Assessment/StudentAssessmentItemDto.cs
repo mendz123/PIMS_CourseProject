@@ -20,6 +20,9 @@ public class StudentAssessmentItemDto
 
     public bool? IsPassed { get; set; }
 
+    /// <summary>Nhận xét của giảng viên sau khi chấm điểm</summary>
+    public string? TeacherComment { get; set; }
+
     // ---- Chỉ có khi IsFinal == true ----
     public DateOnly?  DefenseDate      { get; set; }
     public TimeOnly?  DefenseStartTime  { get; set; }
