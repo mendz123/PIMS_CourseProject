@@ -189,7 +189,8 @@ namespace PIMS_BE.Services
                         Email = m.User?.Email ?? "",
                         AvatarUrl = m.User?.AvatarUrl,
                         StatusId = m.StatusId,
-                        StatusName = m.Status?.StatusName ?? ""
+                        StatusName = m.Status?.StatusName ?? "",
+                        TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == activeSemester.SemesterId)?.TotalScore
                     }).ToList(),
                 Project = activeProject != null ? new ProjectDto
                 {
@@ -258,7 +259,8 @@ namespace PIMS_BE.Services
                     Email = m.User?.Email ?? "",
                     AvatarUrl = m.User?.AvatarUrl,
                     StatusId = m.StatusId,
-                    StatusName = m.Status?.StatusName ?? ""
+                    StatusName = m.Status?.StatusName ?? "",
+                    TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == group.SemesterId)?.TotalScore
                 }).ToList()
             };
         }
