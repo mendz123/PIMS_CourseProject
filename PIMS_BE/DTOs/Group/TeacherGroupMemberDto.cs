@@ -7,5 +7,8 @@ namespace PIMS_BE.DTOs.Group
         
         // Dictionary mapping AssessmentId to Score
         public Dictionary<int, decimal?> Scores { get; set; } = new Dictionary<int, decimal?>();
+        
+        // Total score calculated and stored in StudentFinalResults
+        public decimal? TotalScore { get; set; }
     }
 }

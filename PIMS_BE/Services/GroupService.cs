@@ -880,7 +880,8 @@ namespace PIMS_BE.Services
                         {
                             UserId = m.UserId,
                             FullName = m.User?.FullName ?? $"User {m.UserId}",
-                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>()
+                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>(),
+                            TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == targetSemesterId)?.TotalScore
                         })
                         .ToList(),
                     TeacherComments = group.ProjectSubmissions

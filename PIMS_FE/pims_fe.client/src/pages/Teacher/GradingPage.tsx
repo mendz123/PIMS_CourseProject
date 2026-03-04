@@ -14,6 +14,7 @@ interface StudentGrade {
     fullName: string;
     scores: { [criteriaId: number]: number };
     comment: string;
+    totalScore?: number;
 }
 
 
@@ -66,64 +67,66 @@ const GradingPage: React.FC = () => {
         fetchInitialData();
     }, []);
 
-    // Reset assessments and groups when semester changes
-    useEffect(() => {
-        const fetchSemesterData = async () => {
-            if (!selectedSemesterId) return;
-            setLoading(true);
+    const fetchSemesterData = async () => {
+        if (!selectedSemesterId) return;
+        setLoading(true);
 
-            // 1. Fetch Assessments independently
-            let currentAssessments: AssessmentWithCriteriaDto[] = [];
-            try {
-                const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
-                currentAssessments = assessmentRes.data || [];
-                setAssessments(currentAssessments);
-            } catch (error) {
-                console.error("Failed to fetch assessments", error);
-                setAssessments([]);
-            }
+        // 1. Fetch Assessments independently
+        let currentAssessments: AssessmentWithCriteriaDto[] = [];
+        try {
+            const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
+            currentAssessments = assessmentRes.data || [];
+            setAssessments(currentAssessments);
+        } catch (error) {
+            console.error("Failed to fetch assessments", error);
+            setAssessments([]);
+        }
 
-            // 2. Fetch Groups independently
-            try {
-                const groupsRes = await groupService.getGroupsByTeacher(selectedSemesterId);
-                if (groupsRes?.data) {
-                    const initScores: any = {};
-                    const initComments: any = {};
-                    const mappedGroups: GroupGrading[] = groupsRes.data.map((g: TeacherGroupDto) => {
-                        let overallComment = "";
-                        if (g.teacherComments) {
-                            const values = Object.values(g.teacherComments).filter(c => c && c.trim().length > 0);
-                            if (values.length > 0) overallComment = values[0];
-                        }
-                        initComments[g.groupId] = overallComment;
-                        return {
-                            groupId: g.groupId,
-                            groupName: g.groupName,
-                            submittedDocs: g.submittedDocs,
-                            students: g.students ? g.students.map(s => {
-                                initScores[s.userId] = s.scores || {};
-                                return {
-                                    userId: s.userId,
-                                    fullName: s.fullName,
-                                    scores: {},
-                                    comment: ""
-                                };
-                            }) : []
-                        };
-                    });
-                    setGroups(mappedGroups);
-                    setStudentScores(initScores);
-                    setGroupComments(initComments);
-                } else {
-                    setGroups([]);
-                }
-            } catch (error) {
-                console.error("Failed to fetch groups data", error);
+        // 2. Fetch Groups independently
+        try {
+            const groupsRes = await groupService.getGroupsByTeacher(selectedSemesterId);
+            if (groupsRes?.data) {
+                const initScores: any = {};
+                const initComments: any = {};
+                const mappedGroups: GroupGrading[] = groupsRes.data.map((g: TeacherGroupDto) => {
+                    let overallComment = "";
+                    if (g.teacherComments) {
+                        const values = Object.values(g.teacherComments).filter(c => c && c.trim().length > 0);
+                        if (values.length > 0) overallComment = values[0];
+                    }
+                    initComments[g.groupId] = overallComment;
+                    return {
+                        groupId: g.groupId,
+                        groupName: g.groupName,
+                        submittedDocs: g.submittedDocs,
+                        students: g.students ? g.students.map(s => {
+                            initScores[s.userId] = s.scores || {};
+                            return {
+                                userId: s.userId,
+                                fullName: s.fullName,
+                                scores: {},
+                                comment: "",
+                                totalScore: s.totalScore
+                            };
+                        }) : []
+                    };
+                });
+                setGroups(mappedGroups);
+                setStudentScores(initScores);
+                setGroupComments(initComments);
+            } else {
                 setGroups([]);
             }
+        } catch (error) {
+            console.error("Failed to fetch groups data", error);
+            setGroups([]);
+        }
 
-            setLoading(false);
-        };
+        setLoading(false);
+    };
+
+    // Reset assessments and groups when semester changes
+    useEffect(() => {
         fetchSemesterData();
     }, [selectedSemesterId]);
 
@@ -206,6 +209,8 @@ const GradingPage: React.FC = () => {
             }
             if (saveCount > 0) {
                 toast.success("Lưu điểm thành công!");
+                // Re-fetch data to reflect newly calculated total scores
+                await fetchSemesterData();
             } else {
                 toast.error("Không có thay đổi nào để lưu hoặc nhóm chưa nộp bài! (Phải có bài nộp mới lưu được Nhận xét)");
             }
@@ -352,17 +357,9 @@ const GradingPage: React.FC = () => {
                                                 {/*    --*/}
                                                 {/*</td>*/}
                                                 <td className="px-6 py-4 text-right font-bold text-orange-600">
-                                                    {/* Tính tổng điểm tạm thời tại Frontend */}
-                                                    {(() => {
-                                                        // const userScores = studentScores[student.userId] || {};
-                                                        // let total = 0;
-                                                        // assessments.forEach(a => {
-                                                        //     const score = userScores[a.assessmentId] || 0;
-                                                        //     // Tính tổng = Sum(Điểm * Trọng số) / 100
-                                                        // });
-                                                        // Tạm thời hiển thị raw sum hoặc bỏ qua
-                                                        return '--';
-                                                    })()}
+                                                    {student.totalScore !== undefined && student.totalScore !== null
+                                                        ? student.totalScore.toFixed(2)
+                                                        : '--'}
                                                 </td>
                                             </tr>
                                         ))}

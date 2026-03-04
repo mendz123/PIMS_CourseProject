@@ -346,6 +346,54 @@ public class AssessmentService : IAssessmentService
                 }
             }
 
+            // Save first to ensure the new scores are in the context/DB before recalculating
+            await _context.SaveChangesAsync();
+
+            // 3. Recalculate Total Score for modified students in the current semester
+            var assessment = await _context.Assessments.FindAsync(dto.AssessmentId);
+            if (assessment != null)
+            {
+                var semesterId = assessment.SemesterId;
+                var assessmentsInSemester = await _context.Assessments
+                    .Where(a => a.SemesterId == semesterId)
+                    .ToListAsync();
+
+                var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
+
+                var allScoresForStudents = await _context.AssessmentScores
+                    .Where(s => studentIds.Contains(s.UserId) && assessmentsInSemester.Select(a => a.AssessmentId).Contains(s.AssessmentId))
+                    .ToListAsync();
+
+                foreach (var studentId in studentIds)
+                {
+                    decimal totalScore = 0;
+                    foreach (var a in assessmentsInSemester)
+                    {
+                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
+                        totalScore += score * (a.Weight ?? 0) / 100m;
+                    }
+
+                    var finalResult = await _context.StudentFinalResults
+                        .FirstOrDefaultAsync(r => r.UserId == studentId && r.SemesterId == semesterId);
+
+                    if (finalResult != null)
+                    {
+                        finalResult.TotalScore = totalScore;
+                        _context.StudentFinalResults.Update(finalResult);
+                    }
+                    else
+                    {
+                        finalResult = new StudentFinalResult
+                        {
+                            UserId = studentId,
+                            SemesterId = semesterId,
+                            TotalScore = totalScore
+                        };
+                        await _context.StudentFinalResults.AddAsync(finalResult);
+                    }
+                }
+            }
+
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             return true;

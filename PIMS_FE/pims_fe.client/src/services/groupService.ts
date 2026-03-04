@@ -17,6 +17,7 @@ export interface TeacherGroupDto {
         userId: number;
         fullName: string;
         scores: { [assessmentId: number]: number };
+        totalScore?: number;
     }[];
     teacherComments: { [assessmentId: number]: string };
     submittedDocs: GroupSubmissionDto[];
