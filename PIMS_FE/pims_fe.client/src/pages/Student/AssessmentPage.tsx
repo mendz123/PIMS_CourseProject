@@ -13,6 +13,7 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  MessageSquare,
 } from "lucide-react";
 import { assessmentService } from "../../services/assessmentService";
 import type {
@@ -316,6 +317,18 @@ const AssessmentCard: React.FC<{
                 </p>
               </div>
             )}
+
+            {item.teacherComment && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <MessageSquare size={13} /> Teacher Comment
+                </p>
+                <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                  {item.teacherComment}
+                </p>
+              </div>
+            )}
+
             {item.isFinal && <DefenseInfoCard item={item} />}
           </div>
         </div>
