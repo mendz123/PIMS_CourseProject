@@ -189,7 +189,8 @@ namespace PIMS_BE.Services
                         Email = m.User?.Email ?? "",
                         AvatarUrl = m.User?.AvatarUrl,
                         StatusId = m.StatusId,
-                        StatusName = m.Status?.StatusName ?? ""
+                        StatusName = m.Status?.StatusName ?? "",
+                        TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == activeSemester.SemesterId)?.TotalScore
                     }).ToList(),
                 Project = activeProject != null ? new ProjectDto
                 {
@@ -258,7 +259,8 @@ namespace PIMS_BE.Services
                     Email = m.User?.Email ?? "",
                     AvatarUrl = m.User?.AvatarUrl,
                     StatusId = m.StatusId,
-                    StatusName = m.Status?.StatusName ?? ""
+                    StatusName = m.Status?.StatusName ?? "",
+                    TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == group.SemesterId)?.TotalScore
                 }).ToList()
             };
         }
@@ -880,7 +882,8 @@ namespace PIMS_BE.Services
                         {
                             UserId = m.UserId,
                             FullName = m.User?.FullName ?? $"User {m.UserId}",
-                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>()
+                            Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>(),
+                            TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == targetSemesterId)?.TotalScore
                         })
                         .ToList(),
                     TeacherComments = group.ProjectSubmissions

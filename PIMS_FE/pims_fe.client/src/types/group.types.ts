@@ -21,6 +21,7 @@ export interface GroupMemberDto {
   avatarUrl?: string | null;
   statusId: number;
   statusName: string;
+  totalScore?: number;
 }
 
 export interface GroupDetailDto extends GroupDto {

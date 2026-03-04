@@ -15,6 +15,14 @@ import type {
   CreateCriterionDto,
 } from "../../types/assessment.types";
 
+interface TemplateDto {
+  templateId: number;
+  templateName: string;
+  templateUrl: string;
+  fileResourceId?: string;
+  createdAt?: string;
+}
+
 const AssessmentManagementContent: React.FC = () => {
   const [assessments, setAssessments] = useState<AssessmentWithCriteriaDto[]>(
     [],
@@ -41,6 +49,10 @@ const AssessmentManagementContent: React.FC = () => {
     title: string;
     file: File | null;
   }>({ title: "", file: null });
+
+  // Template Data state
+  const [templates, setTemplates] = useState<TemplateDto[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -83,6 +95,7 @@ const AssessmentManagementContent: React.FC = () => {
   useEffect(() => {
     if (selectedSemesterId !== null) {
       loadAssessments();
+      loadTemplates();
     }
   }, [selectedSemesterId]);
 
@@ -113,6 +126,47 @@ const AssessmentManagementContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadTemplates = async () => {
+    if (selectedSemesterId === null) return;
+    setTemplatesLoading(true);
+    try {
+      const response = await api.get(`/api/ProjectTemplate/semester/${selectedSemesterId}`);
+      if (response.data.success) {
+        setTemplates(response.data.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to load templates:", err);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const handleDeleteTemplate = (templateId: number) => {
+    setConfirmDialog({
+      title: "Delete Template",
+      body: "Are you sure you want to delete this template? This action cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+      onConfirm: async () => {
+        setTemplatesLoading(true);
+        setError("");
+        try {
+          const response = await api.delete(`/api/ProjectTemplate/${templateId}`);
+          if (response.data.success) {
+            setSuccess("Template deleted successfully");
+            loadTemplates();
+          }
+        } catch (err: any) {
+          setError(
+            err.response?.data?.message || "Failed to delete template"
+          );
+        } finally {
+          setTemplatesLoading(false);
+        }
+      },
+    });
   };
 
   const handleCreateAssessment = async (e: React.FormEvent) => {
@@ -406,7 +460,73 @@ const AssessmentManagementContent: React.FC = () => {
             </div>
           </div>
         </div>
-
+        {/* Templates Grid Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-[#111318] mb-1">
+              Uploaded Templates
+            </h3>
+          </div>
+          {templatesLoading ? (
+            <div className="text-center py-4 text-[#616f89]">Loading templates...</div>
+          ) : templates.length === 0 ? (
+            <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
+              <span className="material-symbols-outlined text-4xl text-[#616f89] mb-2">
+                folder_open
+              </span>
+              <p className="text-sm text-[#616f89]">No templates uploaded for this semester yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left align-middle border-collapse">
+                <thead>
+                  <tr className="border-b-[2px] border-[#dbdfe6] text-[#616f89] bg-[#f6f6f8]">
+                    <th className="px-4 py-3 font-semibold w-1/2">Template Name</th>
+                    <th className="px-4 py-3 font-semibold">Uploaded At</th>
+                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#dbdfe6]">
+                  {templates.map((tpl) => (
+                    <tr key={tpl.templateId} className="hover:bg-blue-50/50 transition-colors group">
+                      <td className="px-4 py-3 font-medium text-[#111318]">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-blue-500 text-lg">
+                            description
+                          </span>
+                          {tpl.templateName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[#616f89]">
+                        {tpl.createdAt ? new Date(tpl.createdAt).toLocaleDateString("vi-VN") : "--"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a
+                            href={tpl.templateUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                            title="Download/View"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">download</span>
+                          </a>
+                          <button
+                            onClick={() => handleDeleteTemplate(tpl.templateId)}
+                            className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+                            title="Delete"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
         {/* Weight Summary */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
@@ -436,6 +556,8 @@ const AssessmentManagementContent: React.FC = () => {
             </div>
           )}
         </div>
+
+
 
         {/* Assessments Grid */}
         {loading && !assessments.length ? (
@@ -512,13 +634,12 @@ const AssessmentManagementContent: React.FC = () => {
                           ? "Unlock this assessment"
                           : "Lock this assessment"
                     }
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      assessment.isLocked
-                        ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                        : getTotalWeight() === 100
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                          : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${assessment.isLocked
+                      ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                      : getTotalWeight() === 100
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                        : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      }`}
                   >
                     <span className="material-symbols-outlined text-base leading-none">
                       {assessment.isLocked ? "lock_open" : "lock"}
@@ -531,40 +652,40 @@ const AssessmentManagementContent: React.FC = () => {
                 {(assessment.startDate ||
                   assessment.deadline ||
                   assessment.description) && (
-                  <div className="mb-4 space-y-2 px-0">
-                    {(assessment.startDate || assessment.deadline) && (
-                      <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
-                        {assessment.startDate && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              calendar_today
+                    <div className="mb-4 space-y-2 px-0">
+                      {(assessment.startDate || assessment.deadline) && (
+                        <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
+                          {assessment.startDate && (
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-base">
+                                calendar_today
+                              </span>
+                              Start:{" "}
+                              {new Date(assessment.startDate).toLocaleDateString(
+                                "vi-VN",
+                              )}
                             </span>
-                            Start:{" "}
-                            {new Date(assessment.startDate).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
-                        {assessment.deadline && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              event
+                          )}
+                          {assessment.deadline && (
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-base">
+                                event
+                              </span>
+                              Deadline:{" "}
+                              {new Date(assessment.deadline).toLocaleDateString(
+                                "vi-VN",
+                              )}
                             </span>
-                            Deadline:{" "}
-                            {new Date(assessment.deadline).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {assessment.description && (
-                      <p className="text-sm text-[#616f89] italic line-clamp-2">
-                        {assessment.description}
-                      </p>
-                    )}
-                  </div>
-                )}
+                          )}
+                        </div>
+                      )}
+                      {assessment.description && (
+                        <p className="text-sm text-[#616f89] italic line-clamp-2">
+                          {assessment.description}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                 {/* Criteria Section */}
                 <div className="border-t pt-4 mb-4">
@@ -653,7 +774,7 @@ const AssessmentManagementContent: React.FC = () => {
 
       {/* Assessment Modal */}
       {showAssessmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#111318] mb-4">
               {editingAssessment ? "Edit Assessment" : "Create Assessment"}
@@ -823,7 +944,7 @@ const AssessmentManagementContent: React.FC = () => {
 
       {/* Criteria Modal */}
       {showCriteriaModal && selectedAssessment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#111318] mb-2">
               Edit Criteria - {selectedAssessment.title}
@@ -949,7 +1070,7 @@ const AssessmentManagementContent: React.FC = () => {
 
       {/* Upload Template Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[60]">
           <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-blue-50 text-primary rounded-2xl flex items-center justify-center">
@@ -1086,6 +1207,7 @@ const AssessmentManagementContent: React.FC = () => {
                       setSuccess("Tải lên tài liệu mẫu thành công!");
                       setShowUploadModal(false);
                       setTemplateForm({ title: "", file: null });
+                      loadTemplates();
                     }
                   } catch (err: any) {
                     setError(
@@ -1116,22 +1238,20 @@ const AssessmentManagementContent: React.FC = () => {
 
       {/* Confirm Dialog */}
       {confirmDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70]">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
             <div className="flex items-start gap-4 mb-4">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                  confirmDialog.variant === "danger"
-                    ? "bg-red-100"
-                    : "bg-amber-100"
-                }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${confirmDialog.variant === "danger"
+                  ? "bg-red-100"
+                  : "bg-amber-100"
+                  }`}
               >
                 <span
-                  className={`material-symbols-outlined ${
-                    confirmDialog.variant === "danger"
-                      ? "text-red-600"
-                      : "text-amber-600"
-                  }`}
+                  className={`material-symbols-outlined ${confirmDialog.variant === "danger"
+                    ? "text-red-600"
+                    : "text-amber-600"
+                    }`}
                 >
                   {confirmDialog.variant === "danger" ? "delete" : "warning"}
                 </span>
@@ -1161,11 +1281,10 @@ const AssessmentManagementContent: React.FC = () => {
                   setConfirmDialog(null);
                 }}
                 disabled={confirmLoading}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-                  confirmDialog.variant === "danger"
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-amber-500 text-white hover:bg-amber-600"
-                }`}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${confirmDialog.variant === "danger"
+                  ? "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-amber-500 text-white hover:bg-amber-600"
+                  }`}
               >
                 {confirmLoading ? "Processing..." : confirmDialog.confirmLabel}
               </button>

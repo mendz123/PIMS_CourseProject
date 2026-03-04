@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { groupService } from "../../services/groupService";
 import type { GroupDetailDto } from "../../types/group.types";
 
@@ -107,12 +107,13 @@ const GroupDetailModal: React.FC<GroupDetailModalProps> = ({ groupId, onClose, s
                                                 <th className="text-left px-4 py-3 text-xs font-bold text-[#616f89] uppercase tracking-wide">Name</th>
                                                 <th className="text-left px-4 py-3 text-xs font-bold text-[#616f89] uppercase tracking-wide">Email</th>
                                                 <th className="text-left px-4 py-3 text-xs font-bold text-[#616f89] uppercase tracking-wide">Status</th>
+                                                <th className="text-right px-4 py-3 text-xs font-bold text-[#616f89] uppercase tracking-wide">Total Score</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {detail.members.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={3} className="text-center py-8 text-[#616f89]">No members found.</td>
+                                                    <td colSpan={4} className="text-center py-8 text-[#616f89]">No members found.</td>
                                                 </tr>
                                             ) : (
                                                 detail.members.map((m) => (
@@ -128,7 +129,7 @@ const GroupDetailModal: React.FC<GroupDetailModalProps> = ({ groupId, onClose, s
                                                                         </span>
                                                                     </div>
                                                                 )}
-                                                                <span className="font-medium text-[#111318]">{m.fullName || "�"}</span>
+                                                                <span className="font-medium text-[#111318]">{m.fullName || "—"}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-3 text-[#616f89]">{m.email}</td>
@@ -136,6 +137,9 @@ const GroupDetailModal: React.FC<GroupDetailModalProps> = ({ groupId, onClose, s
                                                             <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${statusColor[m.statusName] ?? "bg-slate-100 text-slate-600"}`}>
                                                                 {m.statusName}
                                                             </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-orange-600">
+                                                            {m.totalScore !== undefined && m.totalScore !== null ? m.totalScore.toFixed(2) : '--'}
                                                         </td>
                                                     </tr>
                                                 ))

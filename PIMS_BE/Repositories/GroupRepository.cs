@@ -27,6 +27,7 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.Leader)
             .Include(g => g.Mentor)
             .Include(g => g.GroupMembers).ThenInclude(m => m.User)
+                .ThenInclude(u => u.StudentFinalResults)
             .Include(g => g.GroupMembers).ThenInclude(m => m.Status)
             .Include(g => g.Projects).ThenInclude(p => p.Status)
             .FirstOrDefaultAsync(g => g.GroupId == groupId);
@@ -99,6 +100,9 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.GroupMembers)
                 .ThenInclude(gm => gm.User)
                     .ThenInclude(u => u.AssessmentScores)
+            .Include(g => g.GroupMembers)
+                .ThenInclude(gm => gm.User)
+                    .ThenInclude(u => u.StudentFinalResults)
             .Include(g => g.ProjectSubmissions)
                 .ThenInclude(ps => ps.Submitter)
             .Where(g => g.MentorId == teacherId && g.SemesterId == semesterId && g.StatusId == 1) // Assuming 1 is active/approved status
