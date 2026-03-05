@@ -44,6 +44,12 @@ public class DefenseScheduleService : IDefenseScheduleService
         return schedule == null ? null : MapToDto(schedule);
     }
 
+    public async Task<IEnumerable<DefenseScheduleDto>> GetByTeacherAsync(int userId)
+    {
+        var schedules = await _scheduleRepo.GetByTeacherAsync(userId);
+        return schedules.Select(MapToDto);
+    }
+
     public async Task<DefenseScheduleDto> CreateAsync(CreateDefenseScheduleDto dto)
     {
         if (dto.EndTime <= dto.StartTime)
