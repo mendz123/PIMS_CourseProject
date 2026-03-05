@@ -119,8 +119,9 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
         var project = group.Projects.FirstOrDefault(p => p.StatusId == 2)   // Approved
                    ?? group.Projects.FirstOrDefault(p => p.StatusId == 1);  // Pending
 
-        // 2. Lấy tất cả assessments của học kỳ đó
+        // 2. Lấy tất cả assessments của học kỳ đó (kèm criteria)
         var assessments = await _context.Assessments
+            .Include(a => a.AssessmentCriteria)
             .Where(a => a.SemesterId == semester.SemesterId)
             .OrderBy(a => a.CreatedAt)
             .ToListAsync();

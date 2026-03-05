@@ -439,6 +439,13 @@ public class AssessmentService : IAssessmentService
                 Score         = scoreEntry?.Score,
                 IsPassed      = scoreEntry?.IsPassed,
                 TeacherComment = teacherComment,
+                Criteria      = a.AssessmentCriteria.Select(c => new AssessmentCriterionDto
+                {
+                    CriteriaId   = c.CriteriaId,
+                    AssessmentId = c.AssessmentId,
+                    CriteriaName = c.CriteriaName ?? string.Empty,
+                    Weight       = c.Weight ?? 0
+                }).ToList(),
             };
 
             // Nếu là final: gắn thêm thông tin lịch bảo vệ

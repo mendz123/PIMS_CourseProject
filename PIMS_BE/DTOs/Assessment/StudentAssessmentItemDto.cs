@@ -23,6 +23,9 @@ public class StudentAssessmentItemDto
     /// <summary>Nhận xét của giảng viên sau khi chấm điểm</summary>
     public string? TeacherComment { get; set; }
 
+    // ---- Assessment Criteria ----
+    public List<AssessmentCriterionDto> Criteria { get; set; } = new();
+
     // ---- Chỉ có khi IsFinal == true ----
     public DateOnly?  DefenseDate      { get; set; }
     public TimeOnly?  DefenseStartTime  { get; set; }
