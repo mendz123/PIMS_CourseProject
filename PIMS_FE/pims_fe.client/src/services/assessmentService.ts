@@ -105,6 +105,15 @@ export const assessmentService = {
     return response.data;
   },
 
+  // Save teacher criteria grades for a group's assessment
+  saveGradesByCriteria: async (dto: any) => {
+    const response = await api.post<ApiResponse<object>>(
+      "/api/assessment/save-grades-criteria",
+      dto,
+    );
+    return response.data;
+  },
+
   // Student: xem assessment + điểm của bản thân
   getMyAssessments: async () => {
     const response = await api.get<ApiResponse<StudentMyAssessmentsDto>>(

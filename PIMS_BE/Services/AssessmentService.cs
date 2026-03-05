@@ -470,5 +470,141 @@ public class AssessmentService : IAssessmentService
         };
     }
 
+    public async Task<bool> SaveGradesByCriteriaAsync(SaveGradesByCriteriaDto dto, int teacherId)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var assessment = await _context.Assessments
+                .Include(a => a.AssessmentCriteria)
+                .FirstOrDefaultAsync(a => a.AssessmentId == dto.AssessmentId);
 
+            if (assessment == null)
+                throw new Exception("Assessment not found");
+
+            var criteriaDict = assessment.AssessmentCriteria.ToDictionary(c => c.CriteriaId, c => c.Weight ?? 0);
+
+            // 1. Cập nhật Comment của Giáo viên vào Submission
+            var submission = await _context.ProjectSubmissions
+                .FirstOrDefaultAsync(ps => ps.GroupId == dto.GroupId && ps.AssessmentId == dto.AssessmentId);
+
+            if (submission != null && !string.IsNullOrEmpty(dto.TeacherComment))
+            {
+                submission.TeacherComment = dto.TeacherComment;
+                _context.ProjectSubmissions.Update(submission);
+            }
+
+            // 2. Cập nhật Điểm tiêu chí và tính Tổng điểm đợt (AssessmentScore)
+            foreach (var studentData in dto.StudentScores)
+            {
+                decimal totalAssessmentScore = 0;
+
+                foreach (var (criteriaId, score) in studentData.CriteriaScores)
+                {
+                    // Lưu/Cập nhật CriteriaGrade (Bảng điểm cho từng tiêu chí)
+                    var existingCriteriaGrade = await _context.CriteriaGrades
+                        .FirstOrDefaultAsync(cg => cg.UserId == studentData.UserId && cg.CriteriaId == criteriaId);
+
+                    if (existingCriteriaGrade != null)
+                    {
+                        existingCriteriaGrade.Score = score;
+                        existingCriteriaGrade.TeacherId = teacherId;
+                        _context.CriteriaGrades.Update(existingCriteriaGrade);
+                    }
+                    else
+                    {
+                        var newCriteriaGrade = new CriteriaGrade
+                        {
+                            UserId = studentData.UserId,
+                            CriteriaId = criteriaId,
+                            TeacherId = teacherId,
+                            Score = score
+                        };
+                        await _context.CriteriaGrades.AddAsync(newCriteriaGrade);
+                    }
+
+                    // Cộng dồn vào tổng điểm đợt (Nhân hệ số tiêu chí)
+                    if (criteriaDict.TryGetValue(criteriaId, out var criteriaWeight))
+                    {
+                        totalAssessmentScore += score * (criteriaWeight / 100m);
+                    }
+                }
+
+                // Lưu/Cập nhật AssessmentScore (Tổng điểm của đợt)
+                var existingAssessmentScore = await _context.AssessmentScores
+                    .FirstOrDefaultAsync(s => s.AssessmentId == dto.AssessmentId && s.UserId == studentData.UserId);
+
+                if (existingAssessmentScore != null)
+                {
+                    existingAssessmentScore.Score = totalAssessmentScore;
+                    existingAssessmentScore.IsPassed = totalAssessmentScore >= 5;
+                    _context.AssessmentScores.Update(existingAssessmentScore);
+                }
+                else
+                {
+                    var newScore = new AssessmentScore
+                    {
+                        AssessmentId = dto.AssessmentId,
+                        UserId = studentData.UserId,
+                        Score = totalAssessmentScore,
+                        IsPassed = totalAssessmentScore >= 5
+                    };
+                    await _context.AssessmentScores.AddAsync(newScore);
+                }
+            }
+
+            // Lưu thay đổi để hàm tính tổng môn (StudentFinalResult) lấy được dữ liệu chuẩn
+            await _context.SaveChangesAsync();
+
+            // 3. Tính lại Tổng Kết Môn (StudentFinalResult)
+            var semesterId = assessment.SemesterId;
+            var assessmentsInSemester = await _context.Assessments
+                .Where(a => a.SemesterId == semesterId)
+                .ToListAsync();
+
+            var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
+
+            var allScoresForStudents = await _context.AssessmentScores
+                .Where(s => studentIds.Contains(s.UserId) && assessmentsInSemester.Select(a => a.AssessmentId).Contains(s.AssessmentId))
+                .ToListAsync();
+
+            foreach (var studentId in studentIds)
+            {
+                decimal finalSubjectScore = 0;
+                foreach (var a in assessmentsInSemester)
+                {
+                    var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
+                    finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+                }
+
+                var finalResult = await _context.StudentFinalResults
+                    .FirstOrDefaultAsync(r => r.UserId == studentId && r.SemesterId == semesterId);
+
+                if (finalResult != null)
+                {
+                    finalResult.TotalScore = finalSubjectScore;
+                    _context.StudentFinalResults.Update(finalResult);
+                }
+                else
+                {
+                    finalResult = new StudentFinalResult
+                    {
+                        UserId = studentId,
+                        SemesterId = semesterId,
+                        TotalScore = finalSubjectScore
+                    };
+                    await _context.StudentFinalResults.AddAsync(finalResult);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new Exception("Error saving grades by criteria: " + ex.Message);
+        }
+    }
 }

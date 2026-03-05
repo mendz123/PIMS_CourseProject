@@ -883,6 +883,13 @@ namespace PIMS_BE.Services
                             UserId = m.UserId,
                             FullName = m.User?.FullName ?? $"User {m.UserId}",
                             Scores = m.User?.AssessmentScores?.ToDictionary(s => s.AssessmentId, s => s.Score) ?? new Dictionary<int, decimal?>(),
+                            CriteriaScores = m.User?.CriteriaGradeUsers?
+                                .Where(cg => cg.Criteria?.AssessmentId != null)
+                                .GroupBy(cg => cg.Criteria.AssessmentId)
+                                .ToDictionary(
+                                    g => g.Key,
+                                    g => g.ToDictionary(cg => cg.CriteriaId, cg => cg.Score)
+                                ) ?? new Dictionary<int, Dictionary<int, decimal?>>(),
                             TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == targetSemesterId)?.TotalScore
                         })
                         .ToList(),

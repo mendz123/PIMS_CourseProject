@@ -1,0 +1,8 @@
+﻿D:\SWP\Project_v3\PIMS_CourseProject\PIMS_BE\Repositories\GroupRepository.cs(105,41): error CS1061: 'User' does not contain a definition for 'CriteriaGrades' and no accessible extension method 'CriteriaGrades' accepting a first argument of type 'User' could be found (are you missing a using directive or an assembly reference?) [D:\SWP\Project_v3\PIMS_CourseProject\PIMS_BE\PIMS_BE.csproj]
+D:\SWP\Project_v3\PIMS_CourseProject\PIMS_BE\Services\GroupService.cs(886,53): error CS1061: 'User' does not contain a definition for 'CriteriaGrades' and no accessible extension method 'CriteriaGrades' accepting a first argument of type 'User' could be found (are you missing a using directive or an assembly reference?) [D:\SWP\Project_v3\PIMS_CourseProject\PIMS_BE\PIMS_BE.csproj]
+
+Build FAILED.
+    16 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:02.07

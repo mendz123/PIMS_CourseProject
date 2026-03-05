@@ -362,4 +362,35 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Save teacher grades and comments for a group's assessment by criteria
+    /// </summary>
+    [HttpPost("save-grades-criteria")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<object>>> SaveGradesByCriteria([FromBody] SaveGradesByCriteriaDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int teacherId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
+
+            var success = await _assessmentService.SaveGradesByCriteriaAsync(dto, teacherId);
+            
+            if (success)
+            {
+                return Ok(ApiResponse<object>.Ok(new { }, "Lưu điểm tiêu chí và nhận xét thành công"));
+            }
+            
+            return BadRequest(ApiResponse<object>.BadRequest("Không thể lưu điểm tiêu chí"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving criteria grades for assessment {AssessmentId} and group {GroupId}: {Message}", dto.AssessmentId, dto.GroupId, ex.Message);
+            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
+        }
+    }
+
 }

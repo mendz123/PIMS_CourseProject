@@ -10,5 +10,8 @@ namespace PIMS_BE.DTOs.Group
         
         // Total score calculated and stored in StudentFinalResults
         public decimal? TotalScore { get; set; }
+
+        // Mảng chứa các cặp AssessmentId -> (CriteriaId -> Score)
+        public Dictionary<int, Dictionary<int, decimal?>> CriteriaScores { get; set; } = new Dictionary<int, Dictionary<int, decimal?>>();
     }
 }

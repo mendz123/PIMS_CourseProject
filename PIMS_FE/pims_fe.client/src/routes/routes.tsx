@@ -6,6 +6,7 @@ import { StudentDashboard } from "../pages/Student";
 import {
   TeacherDashboard,
   GradingPage,
+  CriteriaGradingPage,
   GroupListPage,
   TeacherNotifications,
 } from "../pages/Teacher";
@@ -90,6 +91,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/grading",
         element: <GradingPage />,
+      },
+      {
+        path: "teacher/grading-criteria",
+        element: <CriteriaGradingPage />,
       },
       {
         path: "teacher/notifications",
