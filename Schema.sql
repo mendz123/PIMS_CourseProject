@@ -378,3 +378,49 @@ CREATE TABLE GroupInvitations (
 
 CREATE INDEX IX_GI_Group ON GroupInvitations(GroupId);
 CREATE INDEX IX_GI_InvitedUser ON GroupInvitations(InvitedUserId);
+// Bảng lưu trữ cuộc trò chuyện (chat) giữa các thành viên trong nhóm hoặc giữa sinh viên và giáo viên
+CREATE TABLE Conversations (
+    Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    Type INT NOT NULL, -- 0 = Private, 1 = Group
+    Name NVARCHAR(255) NULL, -- Null nếu private chat
+    CreatedBy BIGINT NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    IsDeleted BIT NOT NULL DEFAULT 0,
+
+    CONSTRAINT FK_Conversations_CreatedBy
+        FOREIGN KEY (CreatedBy) REFERENCES Users(UserId)
+);
+CREATE TABLE ConversationParticipants (
+    Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ConversationId BIGINT NOT NULL,
+    UserId BIGINT NOT NULL,
+    Role INT NOT NULL DEFAULT 0, -- 0 = Member, 1 = Admin
+    JoinedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    LastReadMessageId BIGINT NULL,
+    IsMuted BIT NOT NULL DEFAULT 0,
+    IsDeleted BIT NOT NULL DEFAULT 0,
+
+    CONSTRAINT FK_CP_Conversation
+        FOREIGN KEY (ConversationId) REFERENCES Conversations(Id),
+
+    CONSTRAINT FK_CP_User
+        FOREIGN KEY (UserId) REFERENCES Users(UserId),
+
+    CONSTRAINT UQ_CP UNIQUE (ConversationId, UserId)
+);
+CREATE TABLE Messages (
+    Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    ConversationId BIGINT NOT NULL,
+    SenderId BIGINT NOT NULL,
+    Content NVARCHAR(MAX) NULL,
+    MessageType INT NOT NULL DEFAULT 0, -- 0=text,1=image,2=file
+    FileUrl NVARCHAR(1000) NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    IsDeleted BIT NOT NULL DEFAULT 0,
+
+    CONSTRAINT FK_Messages_Conversation
+        FOREIGN KEY (ConversationId) REFERENCES Conversations(Id),
+
+    CONSTRAINT FK_Messages_Sender
+        FOREIGN KEY (SenderId) REFERENCES Users(UserId)
+);
