@@ -10,7 +10,8 @@ namespace PIMS_BE.Hubs
 
         public async Task SendPrivateMessage(string toUserId, string message) 
         {
-            await Clients.User(toUserId).SendAsync("ReceivePrivateMessage", message);
+            var senderUserId = Context.UserIdentifier;
+            await Clients.User(toUserId).SendAsync("ReceivePrivateMessage", senderUserId,message);
         }
     }
 }

@@ -93,6 +93,7 @@ builder.Services.AddScoped<ISemesterService, SemesterService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<ICouncilService, CouncilService>();
 builder.Services.AddScoped<IDefenseScheduleService, DefenseScheduleService>();
+    builder.Services.AddScoped<IChatService, ChatService>();
 
 // Register Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
