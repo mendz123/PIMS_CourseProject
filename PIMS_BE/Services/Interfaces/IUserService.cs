@@ -12,4 +12,5 @@ public interface IUserService
     Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id);
     Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request);
     Task<UserInfo> GetUserByIdAsync(int id);
+    Task<List<LecturerSummaryDto>> GetLecturersSummaryAsync(int? semesterId);
 }
