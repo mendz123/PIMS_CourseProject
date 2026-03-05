@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using PIMS_BE.Models.Chat;
 
 namespace PIMS_BE.Models;
 
@@ -14,6 +15,12 @@ public partial class PimsDbContext : DbContext
         : base(options)
     {
     }
+
+    public virtual DbSet<Conversation> Conversations { get; set; }
+
+    public virtual DbSet<ConversationParticipant> ConversationParticipants { get; set; }
+
+    public virtual DbSet<Message> Messages { get; set; }
 
     public virtual DbSet<Assessment> Assessments { get; set; }
 
@@ -76,6 +83,48 @@ public partial class PimsDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Conversation>(entity =>
+{
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.CreatedAt)
+          .HasDefaultValueSql("sysdatetime()");
+
+    entity.Property(e => e.Name)
+          .HasMaxLength(255);
+});
+
+modelBuilder.Entity<ConversationParticipant>(entity =>
+{
+    entity.HasKey(e => e.Id);
+
+    entity.HasIndex(e => new { e.ConversationId, e.UserId })
+          .IsUnique();
+
+    entity.Property(e => e.JoinedAt)
+          .HasDefaultValueSql("sysdatetime()");
+
+    entity.HasOne(d => d.Conversation)
+          .WithMany(p => p.ConversationParticipants)
+          .HasForeignKey(d => d.ConversationId)
+          .OnDelete(DeleteBehavior.Cascade);
+});
+
+modelBuilder.Entity<Message>(entity =>
+{
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.CreatedAt)
+          .HasDefaultValueSql("sysdatetime()");
+
+    entity.Property(e => e.FileUrl)
+          .HasMaxLength(1000);
+
+    entity.HasOne(d => d.Conversation)
+          .WithMany(p => p.Messages)
+          .HasForeignKey(d => d.ConversationId)
+          .OnDelete(DeleteBehavior.Cascade);
+});
         modelBuilder.Entity<Assessment>(entity =>
         {
             entity.HasKey(e => e.AssessmentId).HasName("PK__Assessme__3D2BF81E93898FB3");
