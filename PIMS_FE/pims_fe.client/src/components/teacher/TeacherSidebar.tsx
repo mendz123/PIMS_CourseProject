@@ -16,8 +16,8 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
     {
       icon: "dashboard",
       label: "Dashboard",
-      path: "/teacher",
-      active: currentPath === "/teacher",
+      path: "/teacher/dashboard",
+      active: currentPath === "/teacher/dashboard",
     },
     {
       icon: "fact_check",
@@ -42,6 +42,12 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       label: "Grading",
       path: "/teacher/grading",
       active: currentPath === "/teacher/grading",
+    },
+    {
+      icon: "event",
+      label: "Defense Schedule",
+      path: "/teacher/defense-schedule",
+      active: currentPath === "/teacher/defense-schedule",
     },
     {
       icon: "group",

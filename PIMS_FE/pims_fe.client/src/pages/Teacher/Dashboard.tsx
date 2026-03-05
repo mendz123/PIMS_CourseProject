@@ -74,7 +74,7 @@ const TeacherDashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318] font-display">
-      <TeacherSidebar currentPath="/teacher" />
+      <TeacherSidebar currentPath="/teacher/dashboard" />
 
       <main className="flex-1 overflow-y-auto bg-[#f6f6f8]">
         <TeacherHeader

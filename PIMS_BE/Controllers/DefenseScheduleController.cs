@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
@@ -17,6 +18,26 @@ public class DefenseScheduleController : ControllerBase
     public DefenseScheduleController(IDefenseScheduleService scheduleService)
     {
         _scheduleService = scheduleService;
+    }
+
+    /// <summary>UC-NEW: Teacher views their own defense schedule (by council membership)</summary>
+    [HttpGet("my-schedule")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<DefenseScheduleDto>>>> GetMySchedule()
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized(ApiResponse<IEnumerable<DefenseScheduleDto>>.Unauthorized("Invalid token"));
+
+            var result = await _scheduleService.GetByTeacherAsync(userId);
+            return Ok(ApiResponse<IEnumerable<DefenseScheduleDto>>.Ok(result, "My defense schedules retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<IEnumerable<DefenseScheduleDto>>.InternalError(ex.Message));
+        }
     }
 
     [HttpGet]

@@ -8,6 +8,7 @@ public interface IDefenseScheduleRepository : IGenericRepository<Models.DefenseS
     Task<IEnumerable<Models.DefenseSchedule>> GetAllWithDetailsAsync();
     Task<IEnumerable<Models.DefenseSchedule>> GetByCouncilAsync(int councilId);
     Task<IEnumerable<Models.DefenseSchedule>> GetBySemesterAsync(int semesterId);
+    Task<IEnumerable<Models.DefenseSchedule>> GetByTeacherAsync(int userId);
     Task<Models.DefenseSchedule?> GetWithDetailsAsync(int scheduleId);
     /// <summary>Check time conflict for same council on same day</summary>
     Task<bool> IsTimeConflictAsync(int councilId, DateOnly date,
@@ -49,6 +50,17 @@ public class DefenseScheduleRepository
             .Include(ds => ds.Group)
             .Include(ds => ds.Room)
             .Where(ds => ds.Council.SemesterId == semesterId)
+            .OrderBy(ds => ds.DefenseDate)
+            .ThenBy(ds => ds.StartTime)
+            .ToListAsync();
+
+    public async Task<IEnumerable<Models.DefenseSchedule>> GetByTeacherAsync(int userId)
+        => await _context.DefenseSchedules
+            .Include(ds => ds.Council)
+                .ThenInclude(c => c.CouncilMembers)
+            .Include(ds => ds.Group)
+            .Include(ds => ds.Room)
+            .Where(ds => ds.Council.CouncilMembers.Any(m => m.UserId == userId))
             .OrderBy(ds => ds.DefenseDate)
             .ThenBy(ds => ds.StartTime)
             .ToListAsync();
