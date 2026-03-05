@@ -74,6 +74,24 @@ public class UserController : BaseApiController
         }
     }
 
+    /// <summary>
+    /// Get lecturer summary including mentoring groups and defense council groups
+    /// </summary>
+    [HttpGet("lecturers/summary")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
+    public async Task<ActionResult<ApiResponse<List<LecturerSummaryDto>>>> GetLecturersSummary([FromQuery] int? semesterId)
+    {
+        try
+        {
+            var result = await _userService.GetLecturersSummaryAsync(semesterId);
+            return Ok(ApiResponse<List<LecturerSummaryDto>>.Ok(result, "Lecturers summary retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<List<LecturerSummaryDto>>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
+
     // update profile
     [HttpPut("me")]
     [Authorize]

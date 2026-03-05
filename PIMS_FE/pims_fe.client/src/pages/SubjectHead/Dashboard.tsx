@@ -8,6 +8,7 @@ import AssessmentManagementContent from "./AssessmentManagementContent";
 import GroupListContent from "../../components/shared/GroupListContent";
 import CouncilManagement from "../../components/SubjectHead/CouncilManagement";
 import ScheduleManagement from "../../components/SubjectHead/ScheduleManagement";
+import LecturerListContent from "../../components/SubjectHead/LecturerListContent";
 
 const SubjectHeadDashboard: React.FC = () => {
   const { user, logout, loading: authLoading } = useAuth();
@@ -63,6 +64,15 @@ const SubjectHeadDashboard: React.FC = () => {
                 groups
               </span>
               <span className="text-sm">Faculty Management</span>
+            </button>
+            <button
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "lecturer-list" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
+              onClick={() => setActiveTab("lecturer-list")}
+            >
+              <span className="material-symbols-outlined text-[22px]">
+                person_search
+              </span>
+              <span className="text-sm">Lecturer List</span>
             </button>
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "group-management" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
@@ -182,7 +192,9 @@ const SubjectHeadDashboard: React.FC = () => {
               <span className="text-[#111318] text-sm font-bold capitalize">
                 {activeTab === "syllabus-assessment"
                   ? "Syllabus & Assessment"
-                  : activeTab.replace(/-/g, " ")}
+                  : activeTab === "lecturer-list"
+                    ? "Lecturer List"
+                    : activeTab.replace(/-/g, " ")}
               </span>
             </div>
           </div>
@@ -546,6 +558,8 @@ const SubjectHeadDashboard: React.FC = () => {
             <CouncilManagement />
           ) : activeTab === "defense-schedule" ? (
             <ScheduleManagement />
+          ) : activeTab === "lecturer-list" ? (
+            <LecturerListContent />
           ) : activeTab === "settings" ? (
             <Settings />
           ) : activeTab === "notifications" ? (

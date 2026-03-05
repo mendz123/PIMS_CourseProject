@@ -1,6 +1,6 @@
 import api from "./api";
 import type { ApiResponse, UserInfo, ChangePasswordRequest } from "../types";
-import type { PagedResult } from "../types/user.types";
+import type { PagedResult, LecturerSummaryDto } from "../types/user.types";
 
 export const userService = {
   updateProfile: async (data: FormData): Promise<ApiResponse<UserInfo>> => {
@@ -63,6 +63,16 @@ export const userService = {
     const response = await api.patch<ApiResponse<UserInfo>>(
       `/api/user/${id}`,
       data,
+    );
+    return response.data;
+  },
+
+  getLecturersSummary: async (
+    semesterId?: number,
+  ): Promise<ApiResponse<LecturerSummaryDto[]>> => {
+    const params = semesterId ? `?semesterId=${semesterId}` : "";
+    const response = await api.get<ApiResponse<LecturerSummaryDto[]>>(
+      `/api/user/lecturers/summary${params}`,
     );
     return response.data;
   },

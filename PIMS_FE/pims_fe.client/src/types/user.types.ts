@@ -27,3 +27,28 @@ export interface PagedResult<T> {
   totalPages: number;
   items: T[];
 }
+
+export interface LecturerMentoringGroupInfo {
+  groupId: number;
+  groupName: string | null;
+  semesterId: number;
+  semesterName: string | null;
+}
+
+export interface LecturerCouncilGroupInfo {
+  groupId: number;
+  groupName: string | null;
+  councilId: number;
+  councilName: string | null;
+  semesterName: string | null;
+  defenseDate: string | null;
+}
+
+export interface LecturerSummaryDto {
+  userId: number;
+  fullName: string | null;
+  email: string;
+  avatarUrl: string | null;
+  mentoringGroups: LecturerMentoringGroupInfo[];
+  councilGroups: LecturerCouncilGroupInfo[];
+}

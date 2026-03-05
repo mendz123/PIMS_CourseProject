@@ -395,6 +395,15 @@ public class AssessmentService : IAssessmentService
             }
 
             await _context.SaveChangesAsync();
+
+            // 4. Auto-lock assessment when grades are saved
+            if (assessment != null && assessment.IsLocked != true)
+            {
+                assessment.IsLocked = true;
+                _context.Assessments.Update(assessment);
+                await _context.SaveChangesAsync();
+            }
+
             await transaction.CommitAsync();
             return true;
         }
