@@ -81,6 +81,9 @@ builder.Services.AddScoped<IPasswordResetOtpRepository, PasswordResetOtpReposito
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IMentorRequestRepository, MentorRequestRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IConversationParticipantRepository, ConversationParticipantRepository>();
 builder.Services.AddScoped<IDefenseScheduleRepository, DefenseScheduleRepository>();
 
 // Register Services

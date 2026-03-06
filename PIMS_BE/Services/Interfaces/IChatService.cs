@@ -1,12 +1,14 @@
-﻿using PIMS_BE.Models.Chat;
+﻿using PIMS_BE.DTOs.Chat;
+using PIMS_BE.Models.Chat;
 
 namespace PIMS_BE.Services.Interfaces
 {
     public interface IChatService
     {
-        //Task SendMessageAsync(int senderId, int receiverId, string message);
-        //Task SendGroupMessageAsync(int senderId, int conversationId, string message);
-        //Task<List<Message>> GetConversationMessagesAsync(int conversationId);
-        //Task<List<Conversation>> GetUserConversationsAsync(int userId);
+        Task<IEnumerable<ConversationDto>> GetUserConversationsAsync(int userId);
+        Task<IEnumerable<MessageDto>> GetConversationMessagesAsync(int conversationId, int count = 50);
+        Task<MessageDto> SendMessageAsync(int senderId, SendMessageRequest request);
+        Task<ConversationDto> GetOrCreateDirectConversationAsync(int user1Id, int user2Id);
+        Task<ConversationDto> CreateGroupConversationAsync(int creatorId, string name, List<int> participantIds);
     }
 }
