@@ -12,9 +12,10 @@ import type { AssessmentWithCriteriaDto } from "../../types/assessment.types";
 interface StudentGrade {
     userId: number;
     fullName: string;
-    scores: { [criteriaId: number]: number };
+    scores: { [assessmentId: number]: number };
     comment: string;
     totalScore?: number;
+    criteriaScores?: { [assessmentId: number]: { [criteriaId: number]: number } };
 }
 
 
@@ -106,7 +107,8 @@ const GradingPage: React.FC = () => {
                                 fullName: s.fullName,
                                 scores: {},
                                 comment: "",
-                                totalScore: s.totalScore
+                                totalScore: s.totalScore,
+                                criteriaScores: s.criteriaScores
                             };
                         }) : []
                     };
@@ -223,180 +225,196 @@ const GradingPage: React.FC = () => {
         }
     };
 
-    if (loading) {
-        return <div className="flex justify-center items-center h-screen">Đang tải dữ liệu...</div>;
-    }
-
     return (
         <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318]">
             <TeacherSidebar currentPath="/teacher/grading" />
 
             <main className="flex-1 overflow-y-auto">
-                <TeacherHeader title="Chấm điểm sinh viên" subtitle="Đánh giá năng lực dựa trên các tiêu chí cụ thể." />
+                <TeacherHeader title="Tổng điểm sinh viên" subtitle="Tổng Điểm Của Sing Viên Trong Kì Học." />
 
-                <div className="p-8 max-w-[1400px] mx-auto space-y-6">
-                    {/* 1. Chọn Assessment */}
-                    <section className="bg-white rounded-xl border border-[#dbdfe6] p-6 shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-bold uppercase text-[#616f89]">Chọn giai đoạn đánh giá</h3>
-                            <select
-                                className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
-                                value={selectedSemesterId || ''}
-                                onChange={(e) => setSelectedSemesterId(Number(e.target.value))}
-                            >
-                                <option value="" disabled>-- Chọn học kỳ --</option>
-                                {semesters.map(s => (
-                                    <option key={s.semesterId} value={s.semesterId}>
-                                        {s.semesterName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Bộ lọc theo nhóm và tiêu chí */}
-                        <div className="mt-4 flex flex-wrap items-center gap-6">
-                            <div className="flex items-center gap-3 relative">
-                                <span className="material-symbols-outlined absolute left-3 text-gray-400 font-bold" style={{ fontSize: '18px' }}>search</span>
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm theo tên nhóm..."
-                                    className="pl-9 pr-4 py-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#111318] w-64"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-[#616f89]">Lọc theo tiêu chí:</span>
+                {loading ? (
+                    <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <span className="ml-3 text-gray-500 font-medium">Đang tải dữ liệu...</span>
+                    </div>
+                ) : (
+                    <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+                        {/* 1. Chọn Assessment */}
+                        <section className="bg-white rounded-xl border border-[#dbdfe6] p-6 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-sm font-bold uppercase text-[#616f89]">Chọn giai đoạn đánh giá</h3>
                                 <select
-                                    className={`p-2 border rounded-lg outline-none text-sm font-medium transition-colors ${(!assessments || assessments.length === 0)
-                                        ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
-                                        : "border-[#dbdfe6] focus:border-primary text-[#616f89]"
-                                        }`}
-                                    value={selectedAssessmentId.toString()}
-                                    onChange={(e) => setSelectedAssessmentId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                                    disabled={!assessments || assessments.length === 0}
-                                    title={(!assessments || assessments.length === 0) ? "Không có dữ liệu tiêu chí để lọc" : ""}
+                                    className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
+                                    value={selectedSemesterId || ''}
+                                    onChange={(e) => setSelectedSemesterId(Number(e.target.value))}
                                 >
-                                    <option value="all">
-                                        {(!assessments || assessments.length === 0)
-                                            ? "-- Không có tiêu chí --"
-                                            : "-- Tất cả các tiêu chí --"}
-                                    </option>
-                                    {assessments.map(a => (
-                                        <option key={a.assessmentId} value={a.assessmentId}>
-                                            {a.title} ({a.weight}%)
+                                    <option value="" disabled>-- Chọn học kỳ --</option>
+                                    {semesters.map(s => (
+                                        <option key={s.semesterId} value={s.semesterId}>
+                                            {s.semesterName}
                                         </option>
                                     ))}
                                 </select>
                             </div>
-                        </div>
-                    </section>
 
-                    {/* 2. Bảng chấm điểm theo tiêu chí  */}
-                    <div className="bg-white rounded-xl border border-[#dbdfe6] shadow-sm overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-[#f8f9fa] border-b border-[#dbdfe6]">
-                                    <th className="px-6 py-4 text-xs font-bold uppercase w-[250px]">Nhóm / Sinh viên</th>
-                                    {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => (
-                                        <th key={a.assessmentId} className="px-4 py-4 text-xs font-bold uppercase text-center bg-orange-50/30">
-                                            {a.title} <br />
-                                            <span className="text-orange-600">({a.weight}%)</span>
-                                        </th>
-                                    ))}
-                                    {/*<th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>*/}
-                                    <th className="px-6 py-4 text-xs font-bold uppercase text-right">Tổng điểm</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#dbdfe6]">
-                                {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).map(group => (
-                                    <React.Fragment key={group.groupId}>
-                                        {/* Hàng Nhóm - Accordion Header */}
-                                        <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
-                                            <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary">
-                                                <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
-                                                    keyboard_arrow_down
-                                                </span>
-                                                {group.groupName}
-                                            </td>
-                                            <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 2} className="px-6 py-4 text-right">
-                                                {group.submittedDocs && group.submittedDocs.length > 0 ? (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setViewingDocsGroup(group); }}
-                                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                                                    >
-                                                        <span className="material-symbols-outlined text-sm">description</span>
-                                                        Xem tài liệu ({group.submittedDocs.length})
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
-                                                )}
-                                            </td>
-                                        </tr>
+                            {/* Bộ lọc theo nhóm và tiêu chí */}
+                            <div className="mt-4 flex flex-wrap items-center gap-6">
+                                <div className="flex items-center gap-3 relative">
+                                    <span className="material-symbols-outlined absolute left-3 text-gray-400 font-bold" style={{ fontSize: '18px' }}>search</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm kiếm theo tên nhóm..."
+                                        className="pl-9 pr-4 py-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#111318] w-64"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
 
-                                        {/* Hàng Sinh viên - Accordion Content */}
-                                        {expandedGroups.includes(group.groupId) && group.students.map(student => (
-                                            <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
-                                                {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => (
-                                                    <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
-                                                        <input
-                                                            type="number" step="0.1" max="10" min="0" placeholder="0.0"
-                                                            value={studentScores[student.userId]?.[a.assessmentId] ?? ''}
-                                                            onChange={(e) => handleScoreChange(student.userId, a.assessmentId, e.target.value)}
-                                                            className="w-16 px-2 py-1 border border-[#dbdfe6] rounded text-center focus:ring-1 focus:ring-primary outline-none"
-                                                        />
-                                                    </td>
-                                                ))}
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-medium text-[#616f89]">Lọc theo Đợt:</span>
+                                    <select
+                                        className={`p-2 border rounded-lg outline-none text-sm font-medium transition-colors ${(!assessments || assessments.length === 0)
+                                            ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                                            : "border-[#dbdfe6] focus:border-primary text-[#616f89]"
+                                            }`}
+                                        value={selectedAssessmentId.toString()}
+                                        onChange={(e) => setSelectedAssessmentId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                        disabled={!assessments || assessments.length === 0}
+                                        title={(!assessments || assessments.length === 0) ? "Không có dữ liệu Đợt để lọc" : ""}
+                                    >
+                                        <option value="all">
+                                            {(!assessments || assessments.length === 0)
+                                                ? "-- Không có Đợt --"
+                                                : "-- Tất cả các Đợt --"}
+                                        </option>
+                                        {assessments.map(a => (
+                                            <option key={a.assessmentId} value={a.assessmentId}>
+                                                {a.title} ({a.weight}%)
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
 
-                                                {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
+                        {/* 2. Bảng chấm điểm theo tiêu chí  */}
+                        <div className="bg-white rounded-xl border border-[#dbdfe6] shadow-sm overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-[#f8f9fa] border-b border-[#dbdfe6]">
+                                        <th className="px-6 py-4 text-xs font-bold uppercase w-[250px]">Nhóm / Sinh viên</th>
+                                        {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => (
+                                            <th key={a.assessmentId} className="px-4 py-4 text-xs font-bold uppercase text-center bg-orange-50/30">
+                                                {a.title} <br />
+                                                <span className="text-orange-600">({a.weight}%)</span>
+                                            </th>
+                                        ))}
+                                        {/*<th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>*/}
+                                        <th className="px-6 py-4 text-xs font-bold uppercase text-right">Tổng điểm</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#dbdfe6]">
+                                    {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).map(group => (
+                                        <React.Fragment key={group.groupId}>
+                                            {/* Hàng Nhóm - Accordion Header */}
+                                            <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
+                                                <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary">
+                                                    <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
+                                                        keyboard_arrow_down
+                                                    </span>
+                                                    {group.groupName}
+                                                </td>
+                                                <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 2} className="px-6 py-4 text-right">
+                                                    {group.submittedDocs && group.submittedDocs.length > 0 ? (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setViewingDocsGroup(group); }}
+                                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">description</span>
+                                                            Xem tài liệu ({group.submittedDocs.length})
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+
+                                            {/* Hàng Sinh viên - Accordion Content */}
+                                            {expandedGroups.includes(group.groupId) && group.students.map(student => (
+                                                <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
+                                                    {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => {
+                                                        const hasCriteriaGrades = student.criteriaScores && student.criteriaScores[a.assessmentId] && Object.keys(student.criteriaScores[a.assessmentId]).length > 0;
+                                                        const isDisabled = !group.submittedDocs || group.submittedDocs.length === 0;
+
+                                                        return (
+                                                            <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
+                                                                {hasCriteriaGrades ? (
+                                                                    <div className="w-16 mx-auto px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded text-center text-sm font-bold" title="Điểm đã được chấm chi tiết theo tiêu chí">
+                                                                        {studentScores[student.userId]?.[a.assessmentId] !== undefined ? studentScores[student.userId]?.[a.assessmentId] : '--'}
+                                                                    </div>
+                                                                ) : (
+                                                                    <input
+                                                                        type="number" step="0.1" max="10" min="0" placeholder="0.0"
+                                                                        value={studentScores[student.userId]?.[a.assessmentId] ?? ''}
+                                                                        onChange={(e) => handleScoreChange(student.userId, a.assessmentId, e.target.value)}
+                                                                        disabled={isDisabled}
+                                                                        className={`w-16 px-2 py-1 border border-[#dbdfe6] rounded text-center focus:ring-1 focus:ring-primary outline-none ${isDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}`}
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+
+                                                    {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
                                                     Nhưng để layout đẹp, ta giữ textarea trống hoặc chỉ là text "--" cho sinh viên, 
                                                     và hiển thị text cho Group */}
-                                                {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
-                                                {/*    --*/}
-                                                {/*</td>*/}
-                                                <td className="px-6 py-4 text-right font-bold text-orange-600">
-                                                    {student.totalScore !== undefined && student.totalScore !== null
-                                                        ? student.totalScore.toFixed(2)
-                                                        : '--'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
+                                                    {/*    --*/}
+                                                    {/*</td>*/}
+                                                    <td className="px-6 py-4 text-right font-bold text-orange-600">
+                                                        {student.totalScore !== undefined && student.totalScore !== null
+                                                            ? student.totalScore.toFixed(2)
+                                                            : '--'}
+                                                    </td>
+                                                </tr>
+                                            ))}
 
-                                        {/* Row Nhận xét cấp Group */}
-                                        {expandedGroups.includes(group.groupId) && (
-                                            <tr className="bg-orange-50/20">
-                                                <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
-                                                    Nhận xét chung cho nhóm {group.groupName}:
-                                                </td>
-                                                <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
-                                                    <textarea
-                                                        rows={2}
-                                                        placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
-                                                        value={groupComments[group.groupId] ?? ""}
-                                                        onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
-                                                        className="w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                            </tbody>
-                        </table>
+                                            {/* Row Nhận xét cấp Group */}
+                                            {expandedGroups.includes(group.groupId) && (
+                                                <tr className="bg-orange-50/20">
+                                                    <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
+                                                        Nhận xét chung cho nhóm {group.groupName}:
+                                                    </td>
+                                                    <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
+                                                        <textarea
+                                                            rows={2}
+                                                            placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
+                                                            value={groupComments[group.groupId] ?? ""}
+                                                            onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
+                                                            disabled={!group.submittedDocs || group.submittedDocs.length === 0}
+                                                            className={`w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
 
-                        <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3">
-                            <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white">Hủy</button>
-                            <button
-                                onClick={handleSaveGrades}
-                                disabled={isSaving}
-                                className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                {isSaving ? "Đang lưu..." : "Lưu điểm"}
-                            </button>
+                            <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3">
+                                <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white">Hủy</button>
+                                <button
+                                    onClick={handleSaveGrades}
+                                    disabled={isSaving}
+                                    className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                    {isSaving ? "Đang lưu..." : "Lưu điểm"}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Modal Xem Tài Liệu */}
                 {viewingDocsGroup && (

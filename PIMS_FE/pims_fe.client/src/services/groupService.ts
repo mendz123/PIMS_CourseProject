@@ -17,10 +17,23 @@ export interface TeacherGroupDto {
         userId: number;
         fullName: string;
         scores: { [assessmentId: number]: number };
+        criteriaScores?: { [assessmentId: number]: { [criteriaId: number]: number } };
         totalScore?: number;
     }[];
     teacherComments: { [assessmentId: number]: string };
     submittedDocs: GroupSubmissionDto[];
+}
+
+export interface StudentCriteriaScoreDto {
+    userId: number;
+    criteriaScores: { [criteriaId: number]: number };
+}
+
+export interface SaveGradesByCriteriaDto {
+    assessmentId: number;
+    groupId: number;
+    teacherComment?: string;
+    studentScores: StudentCriteriaScoreDto[];
 }
 
 

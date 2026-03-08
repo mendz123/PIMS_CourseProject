@@ -102,10 +102,13 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
                     .ThenInclude(u => u.AssessmentScores)
             .Include(g => g.GroupMembers)
                 .ThenInclude(gm => gm.User)
+                    .ThenInclude(u => u.CriteriaGradeUsers)
+            .Include(g => g.GroupMembers)
+                .ThenInclude(gm => gm.User)
                     .ThenInclude(u => u.StudentFinalResults)
             .Include(g => g.ProjectSubmissions)
                 .ThenInclude(ps => ps.Submitter)
-            .Where(g => g.MentorId == teacherId && g.SemesterId == semesterId && g.StatusId == 1) // Assuming 1 is active/approved status
+            .Where(g => g.MentorId == teacherId && g.SemesterId == semesterId && g.StatusId == 4)
             .OrderBy(g => g.GroupId)
             .ToListAsync();
     }

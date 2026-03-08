@@ -44,10 +44,10 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       active: currentPath === "/teacher/grading",
     },
     {
-      icon: "event",
-      label: "Defense Schedule",
-      path: "/teacher/defense-schedule",
-      active: currentPath === "/teacher/defense-schedule",
+      icon: "checklist",
+      label: "Criteria Grading",
+      path: "/teacher/grading-criteria",
+      active: currentPath === "/teacher/grading-criteria",
     },
     {
       icon: "group",
@@ -90,11 +90,10 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
             <button
               key={item.label}
               onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                item.active
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${item.active
                   ? "bg-primary/10 text-primary"
                   : "text-[#616f89] hover:bg-gray-100"
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-[20px]">
                 {item.icon}
