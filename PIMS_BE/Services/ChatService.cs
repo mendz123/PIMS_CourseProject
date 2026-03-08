@@ -1,4 +1,6 @@
-﻿using PIMS_BE.DTOs.Chat;
+﻿using Microsoft.AspNetCore.SignalR;
+using PIMS_BE.DTOs.Chat;
+using PIMS_BE.Hubs;
 using PIMS_BE.Models.Chat;
 using PIMS_BE.Repositories;
 using PIMS_BE.Services.Interfaces;
@@ -11,17 +13,20 @@ namespace PIMS_BE.Services
         private readonly IMessageRepository _messageRepository;
         private readonly IConversationParticipantRepository _participantRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public ChatService(
             IConversationRepository conversationRepository,
             IMessageRepository messageRepository,
             IConversationParticipantRepository participantRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IHubContext<ChatHub> hubContext)
         {
             _conversationRepository = conversationRepository;
             _messageRepository = messageRepository;
             _participantRepository = participantRepository;
             _userRepository = userRepository;
+            _hubContext = hubContext;
         }
 
         public async Task<IEnumerable<ConversationDto>> GetUserConversationsAsync(int userId)
@@ -105,7 +110,7 @@ namespace PIMS_BE.Services
 
             var user = await _userRepository.GetByIdAsync(senderId);
 
-            return new MessageDto
+            var messageDto = new MessageDto
             {
                 Id = message.Id,
                 ConversationId = message.ConversationId,
@@ -116,6 +121,12 @@ namespace PIMS_BE.Services
                 FileUrl = message.FileUrl,
                 CreatedAt = message.CreatedAt
             };
+
+            // Broadcast to SignalR group
+            await _hubContext.Clients.Group($"Conversation_{request.ConversationId}")
+                .SendAsync("ReceiveMessage", messageDto);
+
+            return messageDto;
         }
 
         public async Task<ConversationDto> GetOrCreateDirectConversationAsync(int user1Id, int user2Id)

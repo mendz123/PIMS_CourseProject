@@ -1,3 +1,4 @@
+import React from "react";
 import {
   FileText,
   Image as ImageIcon,
@@ -7,13 +8,24 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import type { Conversation } from "../../types/chat.types";
+import { useAuth } from "../../context/AuthContext";
 
 interface ChatInfoProps {
   isCollapsed: boolean;
   onClose: () => void;
+  activeConversation: Conversation | null;
 }
 
-const ChatInfo: React.FC<ChatInfoProps> = ({ isCollapsed, onClose }) => {
+const ChatInfo: React.FC<ChatInfoProps> = ({
+  isCollapsed,
+  onClose,
+  activeConversation,
+}) => {
+  const { user: currentUser } = useAuth();
+
+  if (!activeConversation) return null;
+
   return (
     <div
       className={`chat-info ${isCollapsed ? "collapsed" : ""} h-full flex flex-col`}
@@ -30,10 +42,14 @@ const ChatInfo: React.FC<ChatInfoProps> = ({ isCollapsed, onClose }) => {
 
       <div className="p-6 flex flex-col items-center">
         <div className="w-24 h-24 rounded-3xl bg-blue-600/10 flex items-center justify-center text-blue-600 text-3xl font-bold mb-4 shadow-sm">
-          GP
+          {activeConversation.name ? activeConversation.name.charAt(0) : "C"}
         </div>
-        <h4 className="text-lg font-bold text-gray-900">Group Project Team</h4>
-        <p className="text-sm text-gray-500">4 Members • Active</p>
+        <h4 className="text-lg font-bold text-gray-900">
+          {activeConversation.name || "Direct Message"}
+        </h4>
+        <p className="text-sm text-gray-500">
+          {activeConversation.participants.length} Members • Active
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto chat-custom-scrollbar p-4 space-y-6">
@@ -48,18 +64,19 @@ const ChatInfo: React.FC<ChatInfoProps> = ({ isCollapsed, onClose }) => {
             </button>
           </div>
           <div className="space-y-3">
-            {["Alice", "Bob", "Charlie", "You"].map((name) => (
+            {activeConversation.participants.map((participant) => (
               <div
-                key={name}
+                key={participant.userId}
                 className="flex items-center gap-3 px-2 py-1.5 hover:bg-white/30 rounded-xl transition"
               >
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium">
-                  {name.charAt(0)}
+                  {participant.fullName.charAt(0)}
                 </div>
-                <span className="text-sm text-gray-700 font-medium">
-                  {name}
+                <span className="text-sm text-gray-700 font-medium truncate flex-1">
+                  {participant.fullName}
+                  {participant.userId === currentUser?.userId && " (You)"}
                 </span>
-                {name === "You" && (
+                {participant.role === 1 && (
                   <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 rounded-md ml-auto">
                     Admin
                   </span>
@@ -69,7 +86,7 @@ const ChatInfo: React.FC<ChatInfoProps> = ({ isCollapsed, onClose }) => {
           </div>
         </div>
 
-        {/* Shared Links/Files */}
+        {/* Shared Links/Files - Placeholder for now */}
         <div>
           <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">
             Shared Files
@@ -81,18 +98,6 @@ const ChatInfo: React.FC<ChatInfoProps> = ({ isCollapsed, onClose }) => {
                 name: "Project_Requirements.pdf",
                 size: "2.4 MB",
                 color: "text-red-500",
-              },
-              {
-                icon: ImageIcon,
-                name: "Design_Mockup.png",
-                size: "1.8 MB",
-                color: "text-blue-500",
-              },
-              {
-                icon: LinkIcon,
-                name: "API Documentation",
-                size: "bit.ly/api-docs",
-                color: "text-green-500",
               },
             ].map((file, idx) => (
               <div

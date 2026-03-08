@@ -60,6 +60,13 @@ CREATE TABLE Users (
         FOREIGN KEY (StatusId) REFERENCES UserStatus(StatusId)
 );
 
+ALTER TABLE Users
+ADD AvatarUrl NVARCHAR(500) NULL,
+    Bio NVARCHAR(1000) NULL,
+    EmailVerificationToken NVARCHAR(255) NULL,
+    EmailVerificationTokenExpiresAt DATETIME2 NULL,
+    PhoneNumber NVARCHAR(20) NULL;
+
 CREATE TABLE Groups (
     GroupId INT IDENTITY PRIMARY KEY,
     GroupName NVARCHAR(255),
