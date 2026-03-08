@@ -230,7 +230,7 @@ const GradingPage: React.FC = () => {
             <TeacherSidebar currentPath="/teacher/grading" />
 
             <main className="flex-1 overflow-y-auto">
-                <TeacherHeader title="Chấm điểm sinh viên" subtitle="Đánh giá năng lực dựa trên các tiêu chí cụ thể." />
+                <TeacherHeader title="Tổng điểm sinh viên" subtitle="Tổng Điểm Của Sing Viên Trong Kì Học." />
 
                 {loading ? (
                     <div className="flex justify-center items-center h-[calc(100vh-200px)]">
