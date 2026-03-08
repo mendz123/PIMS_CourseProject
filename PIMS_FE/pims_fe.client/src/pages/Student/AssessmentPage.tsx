@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  ListChecks,
 } from "lucide-react";
 import { assessmentService } from "../../services/assessmentService";
 import type {
@@ -315,6 +316,69 @@ const AssessmentCard: React.FC<{
                 <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
                   {item.description}
                 </p>
+              </div>
+            )}
+
+            {/* Assessment Criteria */}
+            {item.criteria && item.criteria.length > 0 && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-100 rounded-xl">
+                <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <ListChecks size={13} /> Assessment Criteria
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-green-200">
+                        <th className="text-left pb-2 pr-4 text-xs font-semibold text-green-700 uppercase tracking-wide">
+                          #
+                        </th>
+                        <th className="text-left pb-2 pr-4 text-xs font-semibold text-green-700 uppercase tracking-wide">
+                          Criteria Name
+                        </th>
+                        <th className="text-right pb-2 text-xs font-semibold text-green-700 uppercase tracking-wide">
+                          Weight
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {item.criteria.map((c, ci) => (
+                        <tr
+                          key={c.criteriaId}
+                          className={`border-b border-green-100 last:border-0 ${
+                            ci % 2 === 0 ? "bg-white/50" : ""
+                          }`}
+                        >
+                          <td className="py-2 pr-4 text-gray-400 text-xs w-6">
+                            {ci + 1}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-700 font-medium">
+                            {c.criteriaName}
+                          </td>
+                          <td className="py-2 text-right">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                              {c.weight}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td
+                          colSpan={2}
+                          className="pt-2 text-xs text-gray-400 font-semibold"
+                        >
+                          Total
+                        </td>
+                        <td className="pt-2 text-right">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-green-200 text-green-800">
+                            {item.criteria.reduce((s, c) => s + c.weight, 0)}%
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             )}
 

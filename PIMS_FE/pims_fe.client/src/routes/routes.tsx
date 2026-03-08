@@ -9,6 +9,7 @@ import {
   CriteriaGradingPage,
   GroupListPage,
   TeacherNotifications,
+  TeacherDefenseSchedulePage,
 } from "../pages/Teacher";
 import {
   SubjectHeadDashboard,
@@ -81,6 +82,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "teacher",
+        element: <Navigate to="/teacher/dashboard" replace />,
+      },
+      {
         path: "teacher/dashboard",
         element: <TeacherDashboard />,
       },
@@ -99,6 +104,10 @@ export const router = createBrowserRouter([
       {
         path: "teacher/notifications",
         element: <TeacherNotifications />,
+      },
+      {
+        path: "teacher/defense-schedule",
+        element: <TeacherDefenseSchedulePage />,
       },
       {
         path: "teacher/settings",

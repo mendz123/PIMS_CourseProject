@@ -3,6 +3,5 @@ export { default as GradingPage } from "./GradingPage";
 export { default as CriteriaGradingPage } from "./CriteriaGradingPage";
 export { default as GroupListPage } from "./GroupListPage";
 export { default as TeacherNotifications } from "./TeacherNotifications";
+export { default as TeacherDefenseSchedulePage } from "./TeacherDefenseSchedulePage";
 export { default } from "./Dashboard";
-
-

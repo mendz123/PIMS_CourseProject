@@ -228,4 +228,77 @@ public class UserService : IUserService
             AvatarUrl = updatedUser.AvatarUrl
         };
     }
+
+    public async Task<List<LecturerSummaryDto>> GetLecturersSummaryAsync(int? semesterId)
+    {
+        // Role "TEACHER" has RoleId = 2
+        var lecturersQuery = _context.Users
+            .Include(u => u.Role)
+            .Where(u => u.RoleId == 2);
+
+        var lecturers = await lecturersQuery.ToListAsync();
+
+        var result = new List<LecturerSummaryDto>();
+
+        foreach (var lecturer in lecturers)
+        {
+            // Mentoring groups
+            var mentoringGroupsQuery = _context.Groups
+                .Include(g => g.Semester)
+                .Where(g => g.MentorId == lecturer.UserId);
+
+            if (semesterId.HasValue)
+                mentoringGroupsQuery = mentoringGroupsQuery.Where(g => g.SemesterId == semesterId.Value);
+
+            var mentoringGroups = await mentoringGroupsQuery
+                .Select(g => new LecturerMentoringGroupDto
+                {
+                    GroupId = g.GroupId,
+                    GroupName = g.GroupName,
+                    SemesterId = g.SemesterId,
+                    SemesterName = g.Semester != null ? g.Semester.SemesterName : null
+                })
+                .ToListAsync();
+
+            // Council groups: councils this lecturer is a member of -> defense schedules -> groups
+            var councilGroupsQuery = _context.CouncilMembers
+                .Where(cm => cm.UserId == lecturer.UserId)
+                .Join(_context.DefenseSchedules,
+                    cm => cm.CouncilId,
+                    ds => ds.CouncilId,
+                    (cm, ds) => new { cm.Council, ds })
+                .Join(_context.Groups.Include(g => g.Semester),
+                    x => x.ds.GroupId,
+                    g => g.GroupId,
+                    (x, g) => new { x.Council, x.ds, Group = g });
+
+            if (semesterId.HasValue)
+                councilGroupsQuery = councilGroupsQuery.Where(x => x.Group.SemesterId == semesterId.Value);
+
+            var councilGroups = await councilGroupsQuery
+                .Select(x => new LecturerCouncilGroupDto
+                {
+                    GroupId = x.Group.GroupId,
+                    GroupName = x.Group.GroupName,
+                    CouncilId = x.Council.CouncilId,
+                    CouncilName = x.Council.CouncilName,
+                    SemesterName = x.Group.Semester != null ? x.Group.Semester.SemesterName : null,
+                    DefenseDate = x.ds.DefenseDate
+                })
+                .Distinct()
+                .ToListAsync();
+
+            result.Add(new LecturerSummaryDto
+            {
+                UserId = lecturer.UserId,
+                FullName = lecturer.FullName,
+                Email = lecturer.Email,
+                AvatarUrl = lecturer.AvatarUrl,
+                MentoringGroups = mentoringGroups,
+                CouncilGroups = councilGroups
+            });
+        }
+
+        return result;
+    }
 }
