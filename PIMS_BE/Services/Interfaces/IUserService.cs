@@ -1,0 +1,17 @@
+using PIMS_BE.DTOs.Auth;
+using PIMS_BE.DTOs.User;
+using PIMS_BE.Models;
+
+namespace PIMS_BE.Services.Interfaces;
+
+public interface IUserService
+{
+    Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status);
+    Task<List<UserInfo>> GetTeachersAsync();
+    Task<UserInfo> UpdateUserByIdAsync(UpdateProfileRequestDto request, int id);
+    Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id);
+    Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request);
+    Task<UserInfo> GetUserByIdAsync(int id);
+    Task<List<LecturerSummaryDto>> GetLecturersSummaryAsync(int? semesterId);
+    Task<List<UserSuggestionDto>> SearchUserSuggestionsAsync(string query, string role, int limit);
+}

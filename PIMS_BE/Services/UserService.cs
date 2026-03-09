@@ -1,0 +1,316 @@
+using Microsoft.EntityFrameworkCore;
+using PIMS_BE.DTOs.Auth;
+using PIMS_BE.DTOs.Notification;
+using PIMS_BE.DTOs.User;
+using PIMS_BE.Models;
+using PIMS_BE.Repositories;
+using PIMS_BE.Services.Interfaces;
+
+namespace PIMS_BE.Services;
+
+public class UserService : IUserService
+{
+    private readonly PimsDbContext _context;
+    private readonly IUserRepository _userRepository;
+    private readonly ICloudinaryService _cloudinaryService;
+    private readonly IGenericRepository<Role> _roleRepository;
+    private readonly IGenericRepository<UserStatus> _userStatusRepository; 
+
+    private readonly INotificationService _notificationService; 
+
+    public UserService(PimsDbContext context, IUserRepository userRepository, ICloudinaryService cloudinaryService, INotificationService notificationService, IGenericRepository<Role> roleRepository,
+        IGenericRepository<UserStatus> userStatusRepository)
+    {
+        _context = context;
+        _userRepository = userRepository;
+        _cloudinaryService = cloudinaryService;
+        _notificationService = notificationService;
+         _roleRepository = roleRepository;
+        _userStatusRepository = userStatusRepository;
+    }
+
+    public async Task<UserInfo> GetUserByIdAsync(int id)
+    {
+        var user = await _userRepository.GetByIdWithDetailsAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+        return new UserInfo 
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role != null ? user.Role.RoleName : null,
+            Status = user.Status != null ? user.Status.StatusName : null,
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl
+        };
+    }
+
+    public async Task<List<UserInfo>> GetTeachersAsync()
+    {
+        // 2 is TEACHER
+        var teachers = await _context.Users
+            .Include(u => u.Role)
+            .Where(u => u.RoleId == 2)
+            .Select(u => new UserInfo
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FullName = u.FullName,
+                Role = u.Role != null ? u.Role.RoleName : null
+            })
+            .ToListAsync();
+
+        return teachers;
+    }
+
+    // update user by id
+    public async Task<UserInfo> UpdateUserByIdAsync(UpdateProfileRequestDto request, int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+
+        user.FullName = request.FullName;
+        user.PhoneNumber = request.PhoneNumber;
+        user.Bio = request.Bio;
+
+        if (request.Avatar != null)
+        {
+             var avatarUrl = await _cloudinaryService.UploadImageAsync(request.Avatar, "pims/avatars");
+             user.AvatarUrl = avatarUrl;
+        }
+
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+        
+        // Return updated UserInfo
+        return new UserInfo 
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role != null ? user.Role.RoleName : null, // Assuming Role is loaded or not needed to be updated here
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl
+            // Status mapping if needed, but not in DTO or UserInfo based on previous context 
+        };
+    }
+
+    public async Task<UserInfo> ChangePasswordAsync(ChangePasswordRequestDto request, int id)
+    {
+        var user = await _userRepository.GetByIdAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+        bool isLogginGoogle = BCrypt.Net.BCrypt.Verify("nopassword", user.PasswordHash);
+        if (!isLogginGoogle)
+        {
+            if(!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Current password is incorrect");
+            }
+            if(request.CurrentPassword == request.NewPassword)
+            {
+                throw new ArgumentException("New password must be different from current password");
+            }
+            if(request.NewPassword != request.ConfirmPassword)
+            {
+                throw new ArgumentException("New password and confirm password do not match");
+            }
+            
+        }
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+        CreateNotificationRequest notificationRequest = new CreateNotificationRequest
+        {
+            UserId = user.UserId,
+            Title = "Password Changed",
+            Content = "Your password has been changed successfully.",
+        };
+        await _notificationService.CreateNotificationAsync(user.UserId, notificationRequest);
+        
+        return new UserInfo 
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            FullName = user.FullName,
+            Role = user.Role != null ? user.Role.RoleName : null, // Assuming Role is loaded or not needed to be updated here
+            PhoneNumber = user.PhoneNumber,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl
+        };
+    }
+
+    public async Task<PagedResult<UserInfo>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status)
+    {
+        var pagedUsers = await _userRepository.GetUsersPagedAsync(pageIndex, pageSize, search, role, status);
+
+        var pagedUserInfos = new PagedResult<UserInfo>
+        {
+            PageIndex = pagedUsers.PageIndex,
+            PageSize = pagedUsers.PageSize,
+            TotalCount = pagedUsers.TotalCount,
+            Items = pagedUsers.Items.Select(u => new UserInfo
+            {
+                UserId = u.UserId,
+                Email = u.Email,
+                FullName = u.FullName,
+                Role = u.Role != null ? u.Role.RoleName : null,
+                Status = u.Status != null ? u.Status.StatusName : null,
+                PhoneNumber = u.PhoneNumber,
+                Bio = u.Bio,
+                AvatarUrl = u.AvatarUrl
+            }).ToList()
+        };
+
+        return pagedUserInfos;
+    }
+    public async Task<UserInfo> PatchUserAsync(int id, AdminUpdateUserRequestDto request)
+    {
+        var user = await _userRepository.GetByIdWithDetailsAsync(id);
+        if (user == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(request.FullName))
+        {
+            user.FullName = request.FullName;
+        }
+
+        if (!string.IsNullOrEmpty(request.PhoneNumber))
+        {
+            user.PhoneNumber = request.PhoneNumber;
+        }
+
+        if (!string.IsNullOrEmpty(request.RoleName))
+        {
+            var roles = await _roleRepository.FindAsync(r => r.RoleName == request.RoleName);
+            var role = roles.FirstOrDefault();
+            if (role != null)
+            {
+                user.RoleId = role.RoleId;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(request.StatusName))
+        {
+            var statuses = await _userStatusRepository.FindAsync(s => s.StatusName == request.StatusName);
+            var status = statuses.FirstOrDefault();
+            if (status != null)
+            {
+                user.StatusId = status.StatusId;
+            }
+        }
+
+        await _userRepository.UpdateAsync(user);
+        await _userRepository.SaveChangesAsync();
+        var updatedUser = await _userRepository.GetByIdWithDetailsAsync(id);
+
+        return new UserInfo
+        {
+            UserId = updatedUser.UserId,
+            Email = updatedUser.Email,
+            FullName = updatedUser.FullName,
+            Role = updatedUser.Role != null ? updatedUser.Role.RoleName : null,
+            Status = updatedUser.Status != null ? updatedUser.Status.StatusName : null,
+            PhoneNumber = updatedUser.PhoneNumber,
+            Bio = updatedUser.Bio,
+            AvatarUrl = updatedUser.AvatarUrl
+        };
+    }
+
+    public async Task<List<LecturerSummaryDto>> GetLecturersSummaryAsync(int? semesterId)
+    {
+        // Role "TEACHER" has RoleId = 2
+        var lecturersQuery = _context.Users
+            .Include(u => u.Role)
+            .Where(u => u.RoleId == 2);
+
+        var lecturers = await lecturersQuery.ToListAsync();
+
+        var result = new List<LecturerSummaryDto>();
+
+        foreach (var lecturer in lecturers)
+        {
+            // Mentoring groups
+            var mentoringGroupsQuery = _context.Groups
+                .Include(g => g.Semester)
+                .Where(g => g.MentorId == lecturer.UserId);
+
+            if (semesterId.HasValue)
+                mentoringGroupsQuery = mentoringGroupsQuery.Where(g => g.SemesterId == semesterId.Value);
+
+            var mentoringGroups = await mentoringGroupsQuery
+                .Select(g => new LecturerMentoringGroupDto
+                {
+                    GroupId = g.GroupId,
+                    GroupName = g.GroupName,
+                    SemesterId = g.SemesterId,
+                    SemesterName = g.Semester != null ? g.Semester.SemesterName : null
+                })
+                .ToListAsync();
+
+            // Council groups: councils this lecturer is a member of -> defense schedules -> groups
+            var councilGroupsQuery = _context.CouncilMembers
+                .Where(cm => cm.UserId == lecturer.UserId)
+                .Join(_context.DefenseSchedules,
+                    cm => cm.CouncilId,
+                    ds => ds.CouncilId,
+                    (cm, ds) => new { cm.Council, ds })
+                .Join(_context.Groups.Include(g => g.Semester),
+                    x => x.ds.GroupId,
+                    g => g.GroupId,
+                    (x, g) => new { x.Council, x.ds, Group = g });
+
+            if (semesterId.HasValue)
+                councilGroupsQuery = councilGroupsQuery.Where(x => x.Group.SemesterId == semesterId.Value);
+
+            var councilGroups = await councilGroupsQuery
+                .Select(x => new LecturerCouncilGroupDto
+                {
+                    GroupId = x.Group.GroupId,
+                    GroupName = x.Group.GroupName,
+                    CouncilId = x.Council.CouncilId,
+                    CouncilName = x.Council.CouncilName,
+                    SemesterName = x.Group.Semester != null ? x.Group.Semester.SemesterName : null,
+                    DefenseDate = x.ds.DefenseDate
+                })
+                .Distinct()
+                .ToListAsync();
+
+            result.Add(new LecturerSummaryDto
+            {
+                UserId = lecturer.UserId,
+                FullName = lecturer.FullName,
+                Email = lecturer.Email,
+                AvatarUrl = lecturer.AvatarUrl,
+                MentoringGroups = mentoringGroups,
+                CouncilGroups = councilGroups
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<List<UserSuggestionDto>> SearchUserSuggestionsAsync(string query, string role, int limit)
+    {
+        var users = await _userRepository.SearchActiveUsersByEmailAsync(query, role, limit);
+        return users.Select(u => new UserSuggestionDto
+        {
+            Email = u.Email ?? "",
+            FullName = u.FullName ?? "",
+            AvatarUrl = u.AvatarUrl
+        }).ToList();
+    }
+}
+
