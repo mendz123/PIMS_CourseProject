@@ -301,4 +301,16 @@ public class UserService : IUserService
 
         return result;
     }
+
+    public async Task<List<UserSuggestionDto>> SearchUserSuggestionsAsync(string query, string role, int limit)
+    {
+        var users = await _userRepository.SearchActiveUsersByEmailAsync(query, role, limit);
+        return users.Select(u => new UserSuggestionDto
+        {
+            Email = u.Email ?? "",
+            FullName = u.FullName ?? "",
+            AvatarUrl = u.AvatarUrl
+        }).ToList();
+    }
 }
+

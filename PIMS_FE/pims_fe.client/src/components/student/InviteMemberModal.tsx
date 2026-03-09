@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { X, UserPlus, Loader2, Send } from "lucide-react";
 import axios from "axios";
 import { groupService } from "../../services/groupService";
+import { userService } from "../../services/userService";
+import EmailAutocompleteInput from "../shared/EmailAutocompleteInput";
 
 interface Props {
   groupId: number;
@@ -80,23 +82,14 @@ const InviteMemberModal: React.FC<Props> = ({
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Student Email <span className="text-red-500">*</span>
           </label>
-          <input
-            type="email"
+          <EmailAutocompleteInput
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError("");
-              setSuccessMsg("");
-            }}
-            onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+            onChange={(v) => { setEmail(v); setError(""); setSuccessMsg(""); }}
+            onSelect={(s) => { setEmail(s.email); setError(""); setSuccessMsg(""); }}
+            fetchSuggestions={userService.searchStudents}
             placeholder="Enter student email..."
             disabled={loading}
-            autoFocus
-            className={`w-full px-4 py-3 border rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-primary/30 ${
-              error
-                ? "border-red-400 bg-red-50"
-                : "border-gray-200 focus:border-primary"
-            }`}
+            hasError={!!error}
           />
           {error && (
             <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">

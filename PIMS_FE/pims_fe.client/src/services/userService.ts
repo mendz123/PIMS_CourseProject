@@ -2,6 +2,13 @@ import api from "./api";
 import type { ApiResponse, UserInfo, ChangePasswordRequest } from "../types";
 import type { PagedResult, LecturerSummaryDto } from "../types/user.types";
 
+export interface UserSuggestion {
+  email: string;
+  fullName: string;
+  avatarUrl?: string | null;
+}
+
+
 export const userService = {
   updateProfile: async (data: FormData): Promise<ApiResponse<UserInfo>> => {
     const response = await api.put<ApiResponse<UserInfo>>(
@@ -75,6 +82,24 @@ export const userService = {
       `/api/user/lecturers/summary${params}`,
     );
     return response.data;
+  },
+
+  searchStudents: async (query: string): Promise<UserSuggestion[]> => {
+    if (!query.trim()) return [];
+    const response = await api.get<ApiResponse<UserSuggestion[]>>(
+      "/api/user/suggest",
+      { params: { q: query, role: "STUDENT" } },
+    );
+    return response.data.data ?? [];
+  },
+
+  searchTeachers: async (query: string): Promise<UserSuggestion[]> => {
+    if (!query.trim()) return [];
+    const response = await api.get<ApiResponse<UserSuggestion[]>>(
+      "/api/user/suggest",
+      { params: { q: query, role: "TEACHER" } },
+    );
+    return response.data.data ?? [];
   },
 };
 
