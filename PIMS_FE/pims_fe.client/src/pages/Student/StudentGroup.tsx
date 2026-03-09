@@ -325,9 +325,13 @@ const StudentGroup: React.FC = () => {
                       ? "Leader only"
                       : "Unlocks at 4–5 members (FORMING)"
               }
-              locked={!canInviteMentor && !group!.mentorId}
+              locked={!canInviteMentor}
               lockReason={
-                !group!.isLeader ? "Leader only" : "Unlocks at FORMING status"
+                group!.mentorId
+                  ? "Mentor already assigned"
+                  : !group!.isLeader
+                    ? "Leader only"
+                    : "Unlocks at FORMING status"
               }
               onClick={() => setShowInviteMentorModal(true)}
             />
