@@ -7,6 +7,7 @@ import type {
   CreateCriterionDto,
   UpdateCriterionDto,
   BatchCreateCriteriaDto,
+  BatchCreateAssessmentsDto,
   AssessmentWithCriteriaDto,
   ApiResponse,
   StudentMyAssessmentsDto,
@@ -50,6 +51,15 @@ export const assessmentService = {
   createAssessment: async (dto: CreateAssessmentDto) => {
     const response = await api.post<ApiResponse<AssessmentDto>>(
       "/api/assessment",
+      dto,
+    );
+    return response.data;
+  },
+
+  // Batch create assessments (total weight must equal 100%)
+  batchCreateAssessments: async (dto: BatchCreateAssessmentsDto) => {
+    const response = await api.post<ApiResponse<AssessmentDto[]>>(
+      "/api/assessment/batch",
       dto,
     );
     return response.data;

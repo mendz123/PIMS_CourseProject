@@ -10,8 +10,6 @@ import {
 } from "../../services/semesterService";
 import type {
   AssessmentWithCriteriaDto,
-  CreateAssessmentDto,
-  UpdateAssessmentDto,
   CreateCriterionDto,
 } from "../../types/assessment.types";
 
@@ -38,8 +36,7 @@ const AssessmentManagementContent: React.FC = () => {
   // Modal states
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
-  const [editingAssessment, setEditingAssessment] =
-    useState<AssessmentWithCriteriaDto | null>(null);
+  const [showBatchEditModal, setShowBatchEditModal] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
     useState<AssessmentWithCriteriaDto | null>(null);
 
@@ -65,8 +62,7 @@ const AssessmentManagementContent: React.FC = () => {
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   // Form states
-  const [assessmentForm, setAssessmentForm] = useState<CreateAssessmentDto>({
-    semesterId: selectedSemesterId ?? 0,
+  const emptyBatchItem = () => ({
     title: "",
     weight: 0,
     isFinal: false,
@@ -74,15 +70,34 @@ const AssessmentManagementContent: React.FC = () => {
     deadline: "",
     description: "",
   });
+  const [batchForms, setBatchForms] = useState<
+    Array<{
+      title: string;
+      weight: number;
+      isFinal: boolean;
+      startDate: string;
+      deadline: string;
+      description: string;
+    }>
+  >([emptyBatchItem()]);
 
-  useEffect(() => {
-    if (selectedSemesterId !== null) {
-      setAssessmentForm((prev) => ({
-        ...prev,
-        semesterId: selectedSemesterId,
-      }));
-    }
-  }, [selectedSemesterId]);
+  // Batch edit state
+  const [batchEditForms, setBatchEditForms] = useState<
+    Array<{
+      assessmentId: number;
+      title: string;
+      weight: number;
+      isFinal: boolean;
+      startDate: string;
+      deadline: string;
+      description: string;
+      isLocked: boolean;
+      hasSubmissions: boolean;
+      hasScores: boolean;
+      isNew?: boolean;
+      isDeleted?: boolean;
+    }>
+  >([]);
 
   const [criteriaList, setCriteriaList] = useState<CreateCriterionDto[]>([
     { criteriaName: "", weight: 0 },
@@ -132,7 +147,9 @@ const AssessmentManagementContent: React.FC = () => {
     if (selectedSemesterId === null) return;
     setTemplatesLoading(true);
     try {
-      const response = await api.get(`/api/ProjectTemplate/semester/${selectedSemesterId}`);
+      const response = await api.get(
+        `/api/ProjectTemplate/semester/${selectedSemesterId}`,
+      );
       if (response.data.success) {
         setTemplates(response.data.data);
       }
@@ -153,15 +170,15 @@ const AssessmentManagementContent: React.FC = () => {
         setTemplatesLoading(true);
         setError("");
         try {
-          const response = await api.delete(`/api/ProjectTemplate/${templateId}`);
+          const response = await api.delete(
+            `/api/ProjectTemplate/${templateId}`,
+          );
           if (response.data.success) {
             setSuccess("Template deleted successfully");
             loadTemplates();
           }
         } catch (err: any) {
-          setError(
-            err.response?.data?.message || "Failed to delete template"
-          );
+          setError(err.response?.data?.message || "Failed to delete template");
         } finally {
           setTemplatesLoading(false);
         }
@@ -169,76 +186,98 @@ const AssessmentManagementContent: React.FC = () => {
     });
   };
 
-  const handleCreateAssessment = async (e: React.FormEvent) => {
+  const handleBatchCreateAssessments = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      await assessmentService.createAssessment(assessmentForm);
-      setSuccess("Assessment created successfully");
-      setShowAssessmentModal(false);
-      resetAssessmentForm();
-      loadAssessments();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create assessment");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateAssessment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingAssessment) return;
-    setLoading(true);
-    setError("");
-    try {
-      const updateDto: UpdateAssessmentDto = {
-        title: assessmentForm.title,
-        weight: assessmentForm.weight,
-        isFinal: assessmentForm.isFinal,
-        startDate: assessmentForm.startDate
-          ? assessmentForm.startDate
-          : undefined,
-        deadline: assessmentForm.deadline ? assessmentForm.deadline : undefined,
-        description: assessmentForm.description,
-      };
-      await assessmentService.updateAssessment(
-        editingAssessment.assessmentId,
-        updateDto,
+    const totalWeight = batchForms.reduce(
+      (sum, item) => sum + (item.weight || 0),
+      0,
+    );
+    if (Math.abs(totalWeight - 100) > 0.01) {
+      setError(
+        `Total weight must be exactly 100%. Currently: ${totalWeight.toFixed(2)}%`,
       );
-      setSuccess("Assessment updated successfully");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await assessmentService.batchCreateAssessments({
+        semesterId: selectedSemesterId!,
+        assessments: batchForms.map((f) => ({
+          title: f.title,
+          weight: f.weight,
+          isFinal: f.isFinal,
+          startDate: f.startDate || undefined,
+          deadline: f.deadline || undefined,
+          description: f.description || undefined,
+        })),
+      });
+      setSuccess("Assessments created successfully");
       setShowAssessmentModal(false);
-      resetAssessmentForm();
+      setBatchForms([emptyBatchItem()]);
       loadAssessments();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update assessment");
+      setError(err.response?.data?.message || "Failed to create assessments");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteAssessment = (id: number) => {
-    setConfirmDialog({
-      title: "Delete Assessment",
-      body: "Are you sure you want to delete this assessment? This action cannot be undone.",
-      confirmLabel: "Delete",
-      variant: "danger",
-      onConfirm: async () => {
-        setLoading(true);
-        setError("");
-        try {
-          await assessmentService.deleteAssessment(id);
-          setSuccess("Assessment deleted successfully");
-          loadAssessments();
-        } catch (err: any) {
-          setError(
-            err.response?.data?.message || "Failed to delete assessment",
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-    });
+  const handleBatchUpdateAssessments = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const totalWeight = batchEditForms
+      .filter((item) => !item.isDeleted)
+      .reduce((sum, item) => sum + (item.weight || 0), 0);
+    if (Math.abs(totalWeight - 100) > 0.01) {
+      setError(
+        `Total weight must be exactly 100%. Currently: ${totalWeight.toFixed(2)}%`,
+      );
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const toDelete = batchEditForms.filter((f) => f.isDeleted && !f.isNew);
+      await Promise.all(
+        toDelete.map((f) => assessmentService.deleteAssessment(f.assessmentId)),
+      );
+      const editableForms = batchEditForms.filter(
+        (f) => !f.isLocked && !f.hasScores && !f.isNew && !f.isDeleted,
+      );
+      const newForms = batchEditForms.filter((f) => f.isNew && !f.isDeleted);
+      await Promise.all(
+        editableForms.map((f) =>
+          assessmentService.updateAssessment(f.assessmentId, {
+            title: f.title,
+            weight: f.weight,
+            isFinal: f.isFinal,
+            startDate: f.startDate || undefined,
+            deadline: f.deadline || undefined,
+            description: f.description || undefined,
+          }),
+        ),
+      );
+      await Promise.all(
+        newForms.map((f) =>
+          assessmentService.createAssessment({
+            semesterId: selectedSemesterId!,
+            title: f.title,
+            weight: f.weight,
+            isFinal: f.isFinal,
+            startDate: f.startDate || undefined,
+            deadline: f.deadline || undefined,
+            description: f.description || undefined,
+          }),
+        ),
+      );
+      setSuccess("Assessments saved successfully");
+      setShowBatchEditModal(false);
+      loadAssessments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to save assessments");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLockToggle = (assessment: AssessmentWithCriteriaDto) => {
@@ -325,30 +364,60 @@ const AssessmentManagementContent: React.FC = () => {
   };
 
   const resetAssessmentForm = () => {
-    setAssessmentForm({
-      semesterId: selectedSemesterId ?? 0,
-      title: "",
-      weight: 0,
-      isFinal: false,
-      startDate: "",
-      deadline: "",
-      description: "",
-    });
-    setEditingAssessment(null);
+    setBatchForms([emptyBatchItem()]);
   };
 
-  const openEditModal = (assessment: AssessmentWithCriteriaDto) => {
-    setEditingAssessment(assessment);
-    setAssessmentForm({
-      semesterId: assessment.semesterId,
-      title: assessment.title,
-      weight: assessment.weight,
-      isFinal: assessment.isFinal,
-      startDate: assessment.startDate ? assessment.startDate.slice(0, 16) : "",
-      deadline: assessment.deadline ? assessment.deadline.slice(0, 16) : "",
-      description: assessment.description ?? "",
-    });
-    setShowAssessmentModal(true);
+  const openBatchEditModal = () => {
+    setBatchEditForms(
+      assessments.map((a) => ({
+        assessmentId: a.assessmentId,
+        title: a.title,
+        weight: a.weight,
+        isFinal: a.isFinal,
+        startDate: a.startDate ? a.startDate.slice(0, 16) : "",
+        deadline: a.deadline ? a.deadline.slice(0, 16) : "",
+        description: a.description ?? "",
+        isLocked: a.isLocked,
+        hasSubmissions: a.hasSubmissions ?? false,
+        hasScores: a.hasScores ?? false,
+      })),
+    );
+    setShowBatchEditModal(true);
+  };
+
+  const addBatchEditItem = () =>
+    setBatchEditForms([
+      ...batchEditForms,
+      {
+        assessmentId: 0,
+        title: "",
+        weight: 0,
+        isFinal: false,
+        startDate: "",
+        deadline: "",
+        description: "",
+        isLocked: false,
+        hasSubmissions: false,
+        hasScores: false,
+        isNew: true,
+      },
+    ]);
+
+  const removeBatchEditItem = (index: number) =>
+    setBatchEditForms(batchEditForms.filter((_, i) => i !== index));
+
+  const handleDeleteFromBatchEdit = (index: number, _title: string) => {
+    setBatchEditForms((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, isDeleted: true } : item,
+      ),
+    );
+  };
+
+  const updateBatchEditItem = (index: number, field: string, value: any) => {
+    const updated = [...batchEditForms];
+    updated[index] = { ...updated[index], [field]: value };
+    setBatchEditForms(updated);
   };
 
   const openCriteriaModal = (assessment: AssessmentWithCriteriaDto) => {
@@ -380,20 +449,29 @@ const AssessmentManagementContent: React.FC = () => {
     setCriteriaList(updated);
   };
 
+  const todayDateTimeLocal = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const getTotalWeight = () =>
     assessments.reduce((sum, a) => sum + a.weight, 0);
   const getCriteriaTotalWeight = () =>
     criteriaList.reduce((sum, c) => sum + c.weight, 0);
-  const getNewTotalWeight = () => {
-    const currentWeight = assessmentForm.weight || 0;
-    const otherAssessmentsWeight = assessments
-      .filter((a) =>
-        editingAssessment
-          ? a.assessmentId !== editingAssessment.assessmentId
-          : true,
-      )
-      .reduce((sum, a) => sum + a.weight, 0);
-    return currentWeight + otherAssessmentsWeight;
+  const getBatchTotalWeight = () =>
+    batchForms.reduce((sum, item) => sum + (item.weight || 0), 0);
+  const getBatchEditTotalWeight = () =>
+    batchEditForms
+      .filter((item) => !item.isDeleted)
+      .reduce((sum, item) => sum + (item.weight || 0), 0);
+  const addBatchItem = () => setBatchForms([...batchForms, emptyBatchItem()]);
+  const removeBatchItem = (index: number) =>
+    setBatchForms(batchForms.filter((_, i) => i !== index));
+  const updateBatchItem = (index: number, field: string, value: any) => {
+    const updated = [...batchForms];
+    updated[index] = { ...updated[index], [field]: value };
+    setBatchForms(updated);
   };
 
   return (
@@ -440,16 +518,27 @@ const AssessmentManagementContent: React.FC = () => {
               </select>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  resetAssessmentForm();
-                  setShowAssessmentModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors shadow-sm"
-              >
-                <span className="material-symbols-outlined">add</span>
-                <span>New Assessment</span>
-              </button>
+              {assessments.length === 0 && (
+                <button
+                  onClick={() => {
+                    resetAssessmentForm();
+                    setShowAssessmentModal(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined">add</span>
+                  <span>New Assessment</span>
+                </button>
+              )}
+              {assessments.length > 0 && (
+                <button
+                  onClick={openBatchEditModal}
+                  className="flex items-center gap-2 px-4 py-2 border border-[#135bec] text-[#135bec] rounded-lg hover:bg-[#f0f5ff] transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined">edit</span>
+                  <span>Edit Assessments</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="flex items-center gap-2 px-4 py-2 border border-[#135bec] text-[#135bec] rounded-lg hover:bg-[#f0f5ff] transition-colors shadow-sm"
@@ -468,27 +557,38 @@ const AssessmentManagementContent: React.FC = () => {
             </h3>
           </div>
           {templatesLoading ? (
-            <div className="text-center py-4 text-[#616f89]">Loading templates...</div>
+            <div className="text-center py-4 text-[#616f89]">
+              Loading templates...
+            </div>
           ) : templates.length === 0 ? (
             <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
               <span className="material-symbols-outlined text-4xl text-[#616f89] mb-2">
                 folder_open
               </span>
-              <p className="text-sm text-[#616f89]">No templates uploaded for this semester yet.</p>
+              <p className="text-sm text-[#616f89]">
+                No templates uploaded for this semester yet.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left align-middle border-collapse">
                 <thead>
                   <tr className="border-b-[2px] border-[#dbdfe6] text-[#616f89] bg-[#f6f6f8]">
-                    <th className="px-4 py-3 font-semibold w-1/2">Template Name</th>
+                    <th className="px-4 py-3 font-semibold w-1/2">
+                      Template Name
+                    </th>
                     <th className="px-4 py-3 font-semibold">Uploaded At</th>
-                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                    <th className="px-4 py-3 font-semibold text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#dbdfe6]">
                   {templates.map((tpl) => (
-                    <tr key={tpl.templateId} className="hover:bg-blue-50/50 transition-colors group">
+                    <tr
+                      key={tpl.templateId}
+                      className="hover:bg-blue-50/50 transition-colors group"
+                    >
                       <td className="px-4 py-3 font-medium text-[#111318]">
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-blue-500 text-lg">
@@ -498,7 +598,9 @@ const AssessmentManagementContent: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-[#616f89]">
-                        {tpl.createdAt ? new Date(tpl.createdAt).toLocaleDateString("vi-VN") : "--"}
+                        {tpl.createdAt
+                          ? new Date(tpl.createdAt).toLocaleDateString("vi-VN")
+                          : "--"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -509,14 +611,18 @@ const AssessmentManagementContent: React.FC = () => {
                             className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
                             title="Download/View"
                           >
-                            <span className="material-symbols-outlined text-[20px]">download</span>
+                            <span className="material-symbols-outlined text-[20px]">
+                              download
+                            </span>
                           </a>
                           <button
                             onClick={() => handleDeleteTemplate(tpl.templateId)}
                             className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
                             title="Delete"
                           >
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                            <span className="material-symbols-outlined text-[20px]">
+                              delete
+                            </span>
                           </button>
                         </div>
                       </td>
@@ -547,17 +653,7 @@ const AssessmentManagementContent: React.FC = () => {
               <div className="text-sm text-[#616f89]">of 100%</div>
             </div>
           </div>
-          {getTotalWeight() !== 100 && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
-              <span className="material-symbols-outlined text-base mr-2 align-middle">
-                warning
-              </span>
-              Total weight must equal 100% before locking assessments
-            </div>
-          )}
         </div>
-
-
 
         {/* Assessments Grid */}
         {loading && !assessments.length ? (
@@ -623,23 +719,17 @@ const AssessmentManagementContent: React.FC = () => {
                   </div>
                   <button
                     onClick={() => handleLockToggle(assessment)}
-                    disabled={
-                      loading ||
-                      (!assessment.isLocked && getTotalWeight() !== 100)
-                    }
+                    disabled={loading}
                     title={
-                      !assessment.isLocked && getTotalWeight() !== 100
-                        ? `Total weight is ${getTotalWeight().toFixed(2)}% — must be 100% to lock`
-                        : assessment.isLocked
-                          ? "Unlock this assessment"
-                          : "Lock this assessment"
+                      assessment.isLocked
+                        ? "Unlock this assessment"
+                        : "Lock this assessment"
                     }
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${assessment.isLocked
-                      ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                      : getTotalWeight() === 100
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                        : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                      }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      assessment.isLocked
+                        ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                    }`}
                   >
                     <span className="material-symbols-outlined text-base leading-none">
                       {assessment.isLocked ? "lock_open" : "lock"}
@@ -652,40 +742,40 @@ const AssessmentManagementContent: React.FC = () => {
                 {(assessment.startDate ||
                   assessment.deadline ||
                   assessment.description) && (
-                    <div className="mb-4 space-y-2 px-0">
-                      {(assessment.startDate || assessment.deadline) && (
-                        <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
-                          {assessment.startDate && (
-                            <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-base">
-                                calendar_today
-                              </span>
-                              Start:{" "}
-                              {new Date(assessment.startDate).toLocaleDateString(
-                                "vi-VN",
-                              )}
+                  <div className="mb-4 space-y-2 px-0">
+                    {(assessment.startDate || assessment.deadline) && (
+                      <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
+                        {assessment.startDate && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">
+                              calendar_today
                             </span>
-                          )}
-                          {assessment.deadline && (
-                            <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-base">
-                                event
-                              </span>
-                              Deadline:{" "}
-                              {new Date(assessment.deadline).toLocaleDateString(
-                                "vi-VN",
-                              )}
+                            Start:{" "}
+                            {new Date(assessment.startDate).toLocaleDateString(
+                              "vi-VN",
+                            )}
+                          </span>
+                        )}
+                        {assessment.deadline && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-base">
+                              event
                             </span>
-                          )}
-                        </div>
-                      )}
-                      {assessment.description && (
-                        <p className="text-sm text-[#616f89] italic line-clamp-2">
-                          {assessment.description}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                            Deadline:{" "}
+                            {new Date(assessment.deadline).toLocaleDateString(
+                              "vi-VN",
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {assessment.description && (
+                      <p className="text-sm text-[#616f89] italic line-clamp-2">
+                        {assessment.description}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Criteria Section */}
                 <div className="border-t pt-4 mb-4">
@@ -726,44 +816,22 @@ const AssessmentManagementContent: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => openCriteriaModal(assessment)}
-                    disabled={assessment.isLocked || loading}
+                    disabled={
+                      assessment.isLocked || assessment.hasScores || loading
+                    }
+                    title={
+                      assessment.hasScores
+                        ? "Cannot edit criteria: scores have already been recorded"
+                        : assessment.isLocked
+                          ? "Cannot edit criteria: assessment is locked"
+                          : undefined
+                    }
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
                   >
                     <span className="material-symbols-outlined text-base">
                       edit
                     </span>
                     <span>Edit Criteria</span>
-                  </button>
-                  <button
-                    onClick={() => openEditModal(assessment)}
-                    disabled={assessment.isLocked || loading}
-                    className="px-3 py-2 border border-[#135bec] text-[#135bec] rounded-lg hover:bg-[#f0f5ff] transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      edit
-                    </span>
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleDeleteAssessment(assessment.assessmentId)
-                    }
-                    disabled={
-                      assessment.isLocked ||
-                      assessment.hasSubmissions ||
-                      loading
-                    }
-                    title={
-                      assessment.isLocked
-                        ? "Cannot delete: assessment is locked"
-                        : assessment.hasSubmissions
-                          ? "Cannot delete: students have already submitted for this assessment"
-                          : "Delete assessment"
-                    }
-                    className="px-3 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      delete
-                    </span>
                   </button>
                 </div>
               </div>
@@ -775,151 +843,154 @@ const AssessmentManagementContent: React.FC = () => {
       {/* Assessment Modal */}
       {showAssessmentModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-[#111318] mb-4">
-              {editingAssessment ? "Edit Assessment" : "Create Assessment"}
+              Create Assessments
             </h2>
-            <form
-              onSubmit={
-                editingAssessment
-                  ? handleUpdateAssessment
-                  : handleCreateAssessment
-              }
-            >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#111318] mb-1">
-                    Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={assessmentForm.title}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        title: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
-                    required
-                    maxLength={200}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#111318] mb-1">
-                    Weight (%) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="100"
-                    value={assessmentForm.weight || ""}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        weight: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
-                    required
-                  />
-                  {assessmentForm.weight > 0 && getNewTotalWeight() !== 100 && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <span className="material-symbols-outlined text-amber-600 text-base">
-                          warning
+
+            {/* ── Batch create assessments ── */}
+            <form onSubmit={handleBatchCreateAssessments}>
+              <p className="text-sm text-[#616f89] mb-4">
+                Add all assessments for this semester. Total weight must equal
+                exactly 100%.
+              </p>
+
+              <div className="space-y-3 mb-4">
+                {batchForms.map((item, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2"
+                  >
+                    {/* Row 1: index, title, weight, delete */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 w-6 shrink-0">
+                        #{index + 1}
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="Assessment title *"
+                        value={item.title}
+                        onChange={(e) =>
+                          updateBatchItem(index, "title", e.target.value)
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#135bec]"
+                        required
+                        maxLength={200}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Weight %"
+                        step="0.01"
+                        min="0.01"
+                        max="100"
+                        value={item.weight || ""}
+                        onChange={(e) =>
+                          updateBatchItem(
+                            index,
+                            "weight",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#135bec]"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBatchItem(index)}
+                        disabled={batchForms.length === 1}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors disabled:text-gray-300 disabled:cursor-not-allowed"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          delete
                         </span>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800">
-                            Total weight will be{" "}
-                            {getNewTotalWeight().toFixed(2)}%
-                          </p>
-                          <p className="text-xs text-amber-700 mt-1">
-                            All assessments must total exactly 100%.{" "}
-                            {getNewTotalWeight() > 100 ? "Reduce" : "Increase"}{" "}
-                            the weight to reach 100%.
-                          </p>
-                        </div>
-                      </div>
+                      </button>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isFinal"
-                    checked={assessmentForm.isFinal}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        isFinal: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 text-[#135bec] border-gray-300 rounded focus:ring-[#135bec]"
-                  />
-                  <label htmlFor="isFinal" className="text-sm text-[#111318]">
-                    Mark as Final Assessment
-                  </label>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#111318] mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={assessmentForm.startDate ?? ""}
-                      onChange={(e) =>
-                        setAssessmentForm({
-                          ...assessmentForm,
-                          startDate: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
-                    />
+                    {/* Row 2: isFinal, start date, deadline */}
+                    <div className="flex items-center gap-3 pl-8 flex-wrap">
+                      <label className="flex items-center gap-1.5 text-sm text-[#111318] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={item.isFinal}
+                          onChange={(e) =>
+                            updateBatchItem(index, "isFinal", e.target.checked)
+                          }
+                          className="w-4 h-4 text-[#135bec] border-gray-300 rounded focus:ring-[#135bec]"
+                        />
+                        Final
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={item.startDate || ""}
+                        min={todayDateTimeLocal()}
+                        onChange={(e) =>
+                          updateBatchItem(index, "startDate", e.target.value)
+                        }
+                        className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                        title="Start Date"
+                      />
+                      <input
+                        type="datetime-local"
+                        value={item.deadline || ""}
+                        min={todayDateTimeLocal()}
+                        onChange={(e) =>
+                          updateBatchItem(index, "deadline", e.target.value)
+                        }
+                        className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                        title="Deadline"
+                      />
+                    </div>
+                    {/* Row 3: description */}
+                    <div className="pl-8">
+                      <input
+                        type="text"
+                        placeholder="Description (optional)"
+                        value={item.description || ""}
+                        onChange={(e) =>
+                          updateBatchItem(index, "description", e.target.value)
+                        }
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#111318] mb-1">
-                      Deadline
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={assessmentForm.deadline ?? ""}
-                      onChange={(e) =>
-                        setAssessmentForm({
-                          ...assessmentForm,
-                          deadline: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec]"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#111318] mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={assessmentForm.description ?? ""}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        description: e.target.value,
-                      })
-                    }
-                    rows={3}
-                    placeholder="Optional description for this assessment..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#135bec] resize-none"
-                  />
-                </div>
+                ))}
               </div>
-              <div className="flex gap-3 mt-6">
+
+              <button
+                type="button"
+                onClick={addBatchItem}
+                className="flex items-center gap-2 px-4 py-2 border border-[#135bec] text-[#135bec] rounded-lg hover:bg-[#f0f5ff] transition-colors mb-4 text-sm"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add Assessment
+              </button>
+
+              {/* Total weight */}
+              <div className="p-4 bg-gray-50 rounded-lg mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#111318]">
+                    Total Weight:
+                  </span>
+                  <span
+                    className={`text-xl font-bold ${getBatchTotalWeight() === 100 ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {getBatchTotalWeight().toFixed(2)}%
+                  </span>
+                </div>
+                {getBatchTotalWeight() !== 100 && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Total must be exactly 100%. Currently{" "}
+                    {getBatchTotalWeight() > 100 ? "over by" : "under by"}{" "}
+                    {Math.abs(100 - getBatchTotalWeight()).toFixed(2)}%.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAssessmentModal(false);
-                    resetAssessmentForm();
+                    setBatchForms([emptyBatchItem()]);
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-[#616f89] rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -927,14 +998,250 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || getBatchTotalWeight() !== 100}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {loading
-                    ? "Saving..."
-                    : editingAssessment
-                      ? "Update"
-                      : "Create"}
+                  {loading ? "Creating..." : "Create All"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Edit Modal */}
+      {showBatchEditModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-[#111318] mb-4">
+              Edit Assessments
+            </h2>
+            <form onSubmit={handleBatchUpdateAssessments}>
+              <p className="text-sm text-[#616f89] mb-4">
+                Edit all unlocked assessments. Total weight must equal exactly
+                100%. Locked assessments cannot be modified.
+              </p>
+              <div className="space-y-3 mb-4">
+                {batchEditForms
+                  .filter((item) => !item.isDeleted)
+                  .map((item, _idx) => {
+                    const realIndex = batchEditForms.indexOf(item);
+                    return (
+                      <div
+                        key={item.assessmentId ?? `new-${realIndex}`}
+                        className={`border rounded-lg p-3 space-y-2 ${
+                          item.isLocked || item.hasScores
+                            ? "bg-gray-100 border-gray-300 opacity-75"
+                            : "border-gray-200 bg-gray-50"
+                        }`}
+                      >
+                        {/* Row 1: index, title, weight, locked badge, delete/remove */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-400 w-6 shrink-0">
+                            #{_idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="Assessment title *"
+                            value={item.title}
+                            onChange={(e) =>
+                              !item.isLocked &&
+                              !item.hasScores &&
+                              updateBatchEditItem(
+                                realIndex,
+                                "title",
+                                e.target.value,
+                              )
+                            }
+                            disabled={item.isLocked || item.hasScores}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#135bec] disabled:bg-gray-200 disabled:cursor-not-allowed"
+                            required
+                            maxLength={200}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Weight %"
+                            step="0.01"
+                            min="0.01"
+                            max="100"
+                            value={item.weight || ""}
+                            onChange={(e) =>
+                              !item.isLocked &&
+                              !item.hasScores &&
+                              updateBatchEditItem(
+                                realIndex,
+                                "weight",
+                                parseFloat(e.target.value) || 0,
+                              )
+                            }
+                            disabled={item.isLocked || item.hasScores}
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#135bec] disabled:bg-gray-200 disabled:cursor-not-allowed"
+                            required
+                          />
+                          {item.isLocked ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded">
+                              <span className="material-symbols-outlined text-sm leading-none">
+                                lock
+                              </span>
+                              Locked
+                            </span>
+                          ) : item.hasScores ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">
+                              <span className="material-symbols-outlined text-sm leading-none">
+                                grading
+                              </span>
+                              Graded
+                            </span>
+                          ) : item.isNew ? (
+                            <button
+                              type="button"
+                              onClick={() => removeBatchEditItem(realIndex)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Remove"
+                            >
+                              <span className="material-symbols-outlined text-base">
+                                close
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteFromBatchEdit(realIndex, item.title)
+                              }
+                              disabled={item.hasSubmissions || loading}
+                              title={
+                                item.hasSubmissions
+                                  ? "Cannot delete: students have already submitted"
+                                  : "Delete assessment"
+                              }
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors disabled:text-gray-300 disabled:cursor-not-allowed"
+                            >
+                              <span className="material-symbols-outlined text-base">
+                                delete
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                        {/* Row 2: isFinal, start date, deadline */}
+                        {!item.isLocked && !item.hasScores && (
+                          <>
+                            <div className="flex items-center gap-3 pl-8 flex-wrap">
+                              <label className="flex items-center gap-1.5 text-sm text-[#111318] cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={item.isFinal}
+                                  onChange={(e) =>
+                                    updateBatchEditItem(
+                                      realIndex,
+                                      "isFinal",
+                                      e.target.checked,
+                                    )
+                                  }
+                                  className="w-4 h-4 text-[#135bec] border-gray-300 rounded focus:ring-[#135bec]"
+                                />
+                                Final
+                              </label>
+                              <input
+                                type="datetime-local"
+                                value={item.startDate || ""}
+                                min={todayDateTimeLocal()}
+                                onChange={(e) =>
+                                  updateBatchEditItem(
+                                    realIndex,
+                                    "startDate",
+                                    e.target.value,
+                                  )
+                                }
+                                className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                                title="Start Date"
+                              />
+                              <input
+                                type="datetime-local"
+                                value={item.deadline || ""}
+                                min={todayDateTimeLocal()}
+                                onChange={(e) =>
+                                  updateBatchEditItem(
+                                    realIndex,
+                                    "deadline",
+                                    e.target.value,
+                                  )
+                                }
+                                className="px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                                title="Deadline"
+                              />
+                            </div>
+                            {/* Row 3: description */}
+                            <div className="pl-8">
+                              <input
+                                type="text"
+                                placeholder="Description (optional)"
+                                value={item.description || ""}
+                                onChange={(e) =>
+                                  updateBatchEditItem(
+                                    realIndex,
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#135bec]"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <button
+                type="button"
+                onClick={addBatchEditItem}
+                className="flex items-center gap-2 px-4 py-2 border border-[#135bec] text-[#135bec] rounded-lg hover:bg-[#f0f5ff] transition-colors mb-4 text-sm"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add Assessment
+              </button>
+
+              {/* Total weight */}
+              <div className="p-4 bg-gray-50 rounded-lg mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#111318]">
+                    Total Weight:
+                  </span>
+                  <span
+                    className={`text-xl font-bold ${
+                      getBatchEditTotalWeight() === 100
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {getBatchEditTotalWeight().toFixed(2)}%
+                  </span>
+                </div>
+                {getBatchEditTotalWeight() !== 100 && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Total must be exactly 100%. Currently{" "}
+                    {getBatchEditTotalWeight() > 100 ? "over by" : "under by"}{" "}
+                    {Math.abs(100 - getBatchEditTotalWeight()).toFixed(2)}%.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBatchEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-[#616f89] rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || getBatchEditTotalWeight() !== 100}
+                  className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Saving..." : "Save All"}
                 </button>
               </div>
             </form>
@@ -1057,7 +1364,7 @@ const AssessmentManagementContent: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || getCriteriaTotalWeight() !== 100}
                   className="flex-1 px-4 py-2 bg-[#135bec] text-white rounded-lg hover:bg-[#0d4cbd] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {loading ? "Saving..." : "Save Criteria"}
@@ -1242,16 +1549,18 @@ const AssessmentManagementContent: React.FC = () => {
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
             <div className="flex items-start gap-4 mb-4">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${confirmDialog.variant === "danger"
-                  ? "bg-red-100"
-                  : "bg-amber-100"
-                  }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  confirmDialog.variant === "danger"
+                    ? "bg-red-100"
+                    : "bg-amber-100"
+                }`}
               >
                 <span
-                  className={`material-symbols-outlined ${confirmDialog.variant === "danger"
-                    ? "text-red-600"
-                    : "text-amber-600"
-                    }`}
+                  className={`material-symbols-outlined ${
+                    confirmDialog.variant === "danger"
+                      ? "text-red-600"
+                      : "text-amber-600"
+                  }`}
                 >
                   {confirmDialog.variant === "danger" ? "delete" : "warning"}
                 </span>
@@ -1281,10 +1590,11 @@ const AssessmentManagementContent: React.FC = () => {
                   setConfirmDialog(null);
                 }}
                 disabled={confirmLoading}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${confirmDialog.variant === "danger"
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-amber-500 text-white hover:bg-amber-600"
-                  }`}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                  confirmDialog.variant === "danger"
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-amber-500 text-white hover:bg-amber-600"
+                }`}
               >
                 {confirmLoading ? "Processing..." : confirmDialog.confirmLabel}
               </button>
