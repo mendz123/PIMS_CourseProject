@@ -53,6 +53,20 @@ export interface BatchCreateCriteriaDto {
   criteria: CreateCriterionDto[];
 }
 
+export interface BatchCreateAssessmentItemDto {
+  title: string;
+  weight: number;
+  isFinal: boolean;
+  startDate?: string;
+  deadline?: string;
+  description?: string;
+}
+
+export interface BatchCreateAssessmentsDto {
+  semesterId: number;
+  assessments: BatchCreateAssessmentItemDto[];
+}
+
 export interface AssessmentWithCriteriaDto {
   assessmentId: number;
   semesterId: number;

@@ -62,6 +62,53 @@ public class AssessmentService : IAssessmentService
         return await MapToDto(assessment);
     }
 
+    public async Task<List<AssessmentDto>> BatchCreateAssessmentsAsync(BatchCreateAssessmentsDto dto, int userId)
+    {
+        // Validate semester exists
+        var semester = await _semesterRepository.GetByIdAsync(dto.SemesterId);
+        if (semester == null)
+        {
+            throw new KeyNotFoundException($"Semester with ID {dto.SemesterId} not found");
+        }
+
+        // Validate total weight of batch equals exactly 100
+        var totalWeight = dto.Assessments.Sum(a => a.Weight);
+        if (Math.Abs(totalWeight - 100m) > 0.01m)
+        {
+            throw new InvalidOperationException(
+                $"Total assessment weight must be exactly 100%. Currently: {totalWeight}%");
+        }
+
+        var createdAssessments = new List<Assessment>();
+        foreach (var item in dto.Assessments)
+        {
+            var assessment = new Assessment
+            {
+                SemesterId  = dto.SemesterId,
+                Title       = item.Title,
+                Weight      = item.Weight,
+                IsFinal     = item.IsFinal,
+                IsLocked    = false,
+                CreatedBy   = userId,
+                CreatedAt   = DateTime.UtcNow,
+                StartDate   = item.StartDate,
+                Deadline    = item.Deadline,
+                Description = item.Description
+            };
+            await _assessmentRepository.AddAsync(assessment);
+            createdAssessments.Add(assessment);
+        }
+
+        await _assessmentRepository.SaveChangesAsync();
+
+        var dtos = new List<AssessmentDto>();
+        foreach (var a in createdAssessments)
+        {
+            dtos.Add(await MapToDto(a));
+        }
+        return dtos;
+    }
+
     public async Task<AssessmentDto> UpdateAssessmentAsync(int assessmentId, UpdateAssessmentDto dto, int userId)
     {
         var assessment = await _assessmentRepository.GetAssessmentWithCriteriaAsync(assessmentId);
