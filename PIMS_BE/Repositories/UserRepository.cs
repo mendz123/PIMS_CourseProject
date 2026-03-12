@@ -9,6 +9,7 @@ public interface IUserRepository : IGenericRepository<User>
     Task<User?> GetByEmailAsync(string email);
     Task<User?> GetByIdWithDetailsAsync(int id);
     Task<PagedResult<User>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status);
+    Task<List<User>> SearchActiveUsersByEmailAsync(string query, string roleName, int limit);
 }
 
 public class UserRepository : GenericRepository<User>, IUserRepository
@@ -80,6 +81,21 @@ public class UserRepository : GenericRepository<User>, IUserRepository
             TotalCount = totalCount,
             Items = items
         };
+    }
+
+    public async Task<List<User>> SearchActiveUsersByEmailAsync(string query, string roleName, int limit)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(u => u.Role)
+            .Where(u =>
+                u.StatusId == 1 &&
+                u.Role != null && u.Role.RoleName == roleName &&
+                (EF.Functions.Like(u.Email, $"%{query}%") ||
+                 EF.Functions.Like(u.FullName, $"%{query}%")))
+            .OrderBy(u => u.Email)
+            .Take(limit)
+            .ToListAsync();
     }
 
 

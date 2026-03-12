@@ -162,4 +162,24 @@ public class UserController : BaseApiController
             return StatusCode(500, ApiResponse<UserInfo>.InternalError("Internal Server Error: " + ex.Message));
         }
     }
+
+    [HttpGet("suggest")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<UserSuggestionDto>>>> SuggestUsers(
+        [FromQuery] string q,
+        [FromQuery] string role)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return Ok(ApiResponse<List<UserSuggestionDto>>.Ok(new List<UserSuggestionDto>(), "No query provided."));
+        try
+        {
+            var suggestions = await _userService.SearchUserSuggestionsAsync(q.Trim(), role, 5);
+            return Ok(ApiResponse<List<UserSuggestionDto>>.Ok(suggestions, "Suggestions retrieved."));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<List<UserSuggestionDto>>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
 }
+

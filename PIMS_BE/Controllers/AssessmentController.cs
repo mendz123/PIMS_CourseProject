@@ -150,6 +150,49 @@ public class AssessmentController : ControllerBase
     }
 
     /// <summary>
+    /// Batch create assessments — total weight must equal 100%
+    /// </summary>
+    [HttpPost("batch")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
+    public async Task<ActionResult<ApiResponse<List<AssessmentDto>>>> BatchCreateAssessments([FromBody] BatchCreateAssessmentsDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<List<AssessmentDto>>.Unauthorized("Invalid user authentication"));
+            }
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} (ID: {UserId}) batch-creating {Count} assessments for semester {SemesterId}",
+                userName, userId, dto.Assessments.Count, dto.SemesterId);
+
+            var assessments = await _assessmentService.BatchCreateAssessmentsAsync(dto, userId);
+
+            _logger.LogInformation("{Count} assessments batch-created successfully by user {UserName}",
+                assessments.Count, userName);
+
+            return StatusCode(201, ApiResponse<List<AssessmentDto>>.Created(assessments, "Assessments created successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning("Batch create assessments failed - not found: {Message}", ex.Message);
+            return NotFound(ApiResponse<List<AssessmentDto>>.NotFound(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Batch create assessments failed - invalid operation: {Message}", ex.Message);
+            return BadRequest(ApiResponse<List<AssessmentDto>>.BadRequest(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error batch-creating assessments");
+            return StatusCode(500, ApiResponse<List<AssessmentDto>>.InternalError(ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Update assessment
     /// </summary>
     [HttpPut("{id}")]
