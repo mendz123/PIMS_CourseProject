@@ -41,6 +41,11 @@ const CriteriaGradingPage: React.FC = () => {
     const [groupComments, setGroupComments] = useState<{ [groupId: number]: string }>({});
     const [isSaving, setIsSaving] = useState(false);
 
+    // Pagination & Filters
+    const [currentPage, setCurrentPage] = useState(1);
+    const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'unsubmitted'>('all');
+    const groupsPerPage = 10;
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -152,7 +157,13 @@ const CriteriaGradingPage: React.FC = () => {
 
     useEffect(() => {
         fetchSemesterData();
+        setCurrentPage(1); // Reset page on semester change
     }, [selectedSemesterId]);
+
+    // Reset page when search or assessment filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, selectedAssessmentId, submissionFilter]);
 
     const toggleGroup = (groupId: number) => {
         setExpandedGroups(prev =>
@@ -337,6 +348,18 @@ const CriteriaGradingPage: React.FC = () => {
                                         ))}
                                     </select>
                                 </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-medium text-[#616f89]">Trạng thái nộp bài:</span>
+                                    <select
+                                        className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
+                                        value={submissionFilter}
+                                        onChange={(e) => setSubmissionFilter(e.target.value as any)}
+                                    >
+                                        <option value="all">Tất cả nhóm</option>
+                                        <option value="submitted">Đã nộp bài</option>
+                                        <option value="unsubmitted">Chưa nộp bài</option>
+                                    </select>
+                                </div>
                             </div>
                         </section>
 
@@ -363,77 +386,160 @@ const CriteriaGradingPage: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#dbdfe6]">
-                                            {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).map((group, groupIndex) => (
-                                                <React.Fragment key={group.groupId}>
-                                                    {/* Group Row */}
-                                                    <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
-                                                        <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary sticky left-0 bg-gray-50/50 hover:bg-gray-100 border-r z-10">
-                                                            <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
-                                                                keyboard_arrow_down
-                                                            </span>
-                                                            {group.groupName}
-                                                        </td>
-                                                        <td colSpan={(currentAssessment.criteria?.length || 0) + 1} className="px-6 py-4 text-right">
-                                                            {group.submittedDocs && group.submittedDocs.length > 0 ? (
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setViewingDocsGroup(group); }}
-                                                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                                                                >
-                                                                    <span className="material-symbols-outlined text-sm">description</span>
-                                                                    Xem tài liệu ({group.submittedDocs.length})
-                                                                </button>
-                                                            ) : (
-                                                                <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
+                                            {groups
+                                                .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                                .filter(group => {
+                                                    if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                    if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                    return true; // 'all'
+                                                })
+                                                .slice((currentPage - 1) * groupsPerPage, currentPage * groupsPerPage)
+                                                .map((group, groupIndex) => (
+                                                    <React.Fragment key={group.groupId}>
+                                                        {/* Group Row */}
+                                                        <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
+                                                            <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary sticky left-0 bg-gray-50/50 hover:bg-gray-100 border-r z-10">
+                                                                <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
+                                                                    keyboard_arrow_down
+                                                                </span>
+                                                                {group.groupName}
+                                                            </td>
+                                                            <td colSpan={(currentAssessment.criteria?.length || 0) + 1} className="px-6 py-4 text-right">
+                                                                {group.submittedDocs && group.submittedDocs.length > 0 ? (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); setViewingDocsGroup(group); }}
+                                                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-sm">description</span>
+                                                                        Xem tài liệu ({group.submittedDocs.length})
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
 
-                                                    {/* Students Rows */}
-                                                    {expandedGroups.includes(group.groupId) && group.students.map((student, studentIndex) => (
-                                                        <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
-                                                            <td className="px-10 py-4 text-sm font-medium border-r sticky left-0 bg-white z-10">{student.fullName}</td>
-                                                            {currentAssessment.criteria?.map(c => (
-                                                                <td key={c.criteriaId} className="px-4 py-4 text-center border-r">
-                                                                    <input
-                                                                        type="number" step="0.1" max="10" min="0" placeholder="0.0"
-                                                                        value={(student.criteriaScores[currentAssessment.assessmentId]?.[c.criteriaId]) ?? ''}
-                                                                        onChange={(e) => handleCriteriaScoreChange(currentAssessment.assessmentId, c.criteriaId, e.target.value, groupIndex, studentIndex)}
+                                                        {/* Students Rows */}
+                                                        {expandedGroups.includes(group.groupId) && group.students.map((student, studentIndex) => (
+                                                            <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
+                                                                <td className="px-10 py-4 text-sm font-medium border-r sticky left-0 bg-white z-10">{student.fullName}</td>
+                                                                {currentAssessment.criteria?.map(c => (
+                                                                    <td key={c.criteriaId} className="px-4 py-4 text-center border-r">
+                                                                        <input
+                                                                            type="number" step="0.1" max="10" min="0" placeholder="0.0"
+                                                                            value={(student.criteriaScores[currentAssessment.assessmentId]?.[c.criteriaId]) ?? ''}
+                                                                            onChange={(e) => handleCriteriaScoreChange(currentAssessment.assessmentId, c.criteriaId, e.target.value, groupIndex, studentIndex)}
+                                                                            disabled={!group.submittedDocs || group.submittedDocs.length === 0}
+                                                                            className={`w-[70px] px-2 py-1.5 border border-[#dbdfe6] rounded-md text-center focus:ring-2 focus:ring-primary outline-none transition-shadow ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}`}
+                                                                        />
+                                                                    </td>
+                                                                ))}
+
+                                                                {/* Preview Calculated Assessment Score */}
+                                                                <td className="px-4 py-4 border-r text-center font-bold text-orange-600 bg-orange-50/20">
+                                                                    {calculateCurrentAssessmentScore(student, currentAssessment)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+
+                                                        {/* Group Comment Row */}
+                                                        {expandedGroups.includes(group.groupId) && (
+                                                            <tr className="bg-blue-50/20">
+                                                                <td className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600 sticky left-0 bg-blue-50/20 z-10">
+                                                                    Nhận xét đợt {currentAssessment.title}:
+                                                                </td>
+                                                                <td colSpan={(currentAssessment.criteria?.length || 0) + 1} className="px-4 py-3">
+                                                                    <textarea
+                                                                        rows={2}
+                                                                        placeholder={`Nhập lời phê của Giảng viên cho đợt ${currentAssessment.title}...`}
+                                                                        value={groupComments[group.groupId] ?? ""}
+                                                                        onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
                                                                         disabled={!group.submittedDocs || group.submittedDocs.length === 0}
-                                                                        className={`w-[70px] px-2 py-1.5 border border-[#dbdfe6] rounded-md text-center focus:ring-2 focus:ring-primary outline-none transition-shadow ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}`}
+                                                                        className={`w-full p-3 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-shadow ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                                     />
                                                                 </td>
-                                                            ))}
-
-                                                            {/* Preview Calculated Assessment Score */}
-                                                            <td className="px-4 py-4 border-r text-center font-bold text-orange-600 bg-orange-50/20">
-                                                                {calculateCurrentAssessmentScore(student, currentAssessment)}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-
-                                                    {/* Group Comment Row */}
-                                                    {expandedGroups.includes(group.groupId) && (
-                                                        <tr className="bg-blue-50/20">
-                                                            <td className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600 sticky left-0 bg-blue-50/20 z-10">
-                                                                Nhận xét đợt {currentAssessment.title}:
-                                                            </td>
-                                                            <td colSpan={(currentAssessment.criteria?.length || 0) + 1} className="px-4 py-3">
-                                                                <textarea
-                                                                    rows={2}
-                                                                    placeholder={`Nhập lời phê của Giảng viên cho đợt ${currentAssessment.title}...`}
-                                                                    value={groupComments[group.groupId] ?? ""}
-                                                                    onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
-                                                                    disabled={!group.submittedDocs || group.submittedDocs.length === 0}
-                                                                    className={`w-full p-3 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-shadow ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                                />
-                                                            </td>
-                                                        </tr>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                ))}
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* Pagination Controls */}
+                                {groups
+                                    .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                    .filter(group => {
+                                        if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                        if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                        return true; // 'all'
+                                    })
+                                    .length > groupsPerPage && (
+                                        <div className="p-4 bg-gray-50 border-t border-[#dbdfe6] flex items-center justify-between">
+                                            <span className="text-sm text-[#616f89]">
+                                                Hiển thị {Math.min((currentPage - 1) * groupsPerPage + 1, groups
+                                                    .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                                    .filter(group => {
+                                                        if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                        if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                        return true; // 'all'
+                                                    }).length)} - {Math.min(currentPage * groupsPerPage, groups
+                                                        .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                                        .filter(group => {
+                                                            if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                            if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                            return true; // 'all'
+                                                        }).length)} trong tổng số {groups
+                                                            .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                                            .filter(group => {
+                                                                if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                                if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                                return true; // 'all'
+                                                            }).length} nhóm
+                                            </span>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                    disabled={currentPage === 1}
+                                                    className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Trước
+                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    {Array.from({
+                                                        length: Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
+                                                            if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                            if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                            return true; // 'all'
+                                                        }).length / groupsPerPage)
+                                                    }, (_, i) => i + 1).map(page => (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() => setCurrentPage(page)}
+                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === page ? 'bg-primary text-white' : 'text-[#616f89] hover:bg-white border border-[#dbdfe6] border-transparent hover:border-[#dbdfe6]'}`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
+                                                        if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                        if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                        return true; // 'all'
+                                                    }).length / groupsPerPage), p + 1))}
+                                                    disabled={currentPage === Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
+                                                        if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
+                                                        if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
+                                                        return true; // 'all'
+                                                    }).length / groupsPerPage)}
+                                                    className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Sau
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
 
                                 <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3 rounded-b-xl">
                                     <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white transition-colors">Hủy</button>

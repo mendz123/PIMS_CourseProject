@@ -31,15 +31,15 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       path: "/teacher/groups",
       active: currentPath === "/teacher/groups",
     },
-    {
-      icon: "trending_up",
-      label: "Group Progress",
-      path: "/teacher/progress",
-      active: currentPath === "/teacher/progress",
-    },
+    //{
+    //  icon: "trending_up",
+    //  label: "Group Progress",
+    //  path: "/teacher/progress",
+    //  active: currentPath === "/teacher/progress",
+    //},
     {
       icon: "grade",
-      label: "Grading",
+      label: "Total Grading",
       path: "/teacher/grading",
       active: currentPath === "/teacher/grading",
     },
