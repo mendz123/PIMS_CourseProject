@@ -25,7 +25,7 @@ namespace PIMS_BE.Services
         private const int MemberStatusLeft = 2;
         private const int UserStatusActive = 1;
         private const int MinMembersForForming = 4;
-        private const int MaxGroupMembers = 5;
+        private const int MaxGroupMembers = 6;
         private const int MentorRequestStatusPending = 1;
         private const int MentorRequestStatusAccepted = 2;
         private const int MentorRequestStatusRejected = 3;
@@ -676,7 +676,7 @@ namespace PIMS_BE.Services
             {
                 ProjectStatusApproved => "APPROVED",
                 ProjectStatusRejected => "REJECTED",
-                _ => "PENDING"
+                _ => "DRAFT"
             };
 
             return new ProjectDto

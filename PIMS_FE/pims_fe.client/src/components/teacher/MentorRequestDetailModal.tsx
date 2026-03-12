@@ -146,7 +146,7 @@ const MentorRequestDetailModal: React.FC<Props> = ({ requestId, onClose, onAccep
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-sm font-bold text-gray-800">Group Members</p>
                                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                        {detail.memberCount}/5
+                        {detail.memberCount}/6
                                     </span>
                                 </div>
                                 <div className="space-y-2">

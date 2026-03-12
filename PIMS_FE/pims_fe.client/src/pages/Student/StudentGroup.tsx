@@ -222,7 +222,7 @@ const StudentGroup: React.FC = () => {
                     )}
                   </div>
                   <p className="text-gray-500 text-sm mt-1">
-                    {group!.semesterName} &bull; {group!.memberCount}/5 members
+                    {group!.semesterName} &bull; {group!.memberCount}/6 members
                   </p>
                 </div>
               </div>
