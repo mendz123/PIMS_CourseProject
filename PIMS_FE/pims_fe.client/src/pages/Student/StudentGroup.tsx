@@ -13,7 +13,6 @@ import {
   Info,
   CheckCircle,
   Clock,
-  XCircle,
   LogOut,
 } from "lucide-react";
 import axios from "axios";
@@ -50,6 +49,7 @@ const StudentGroup: React.FC = () => {
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [project, setProject] = useState<ProjectDto | null>(null);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [detailRefetchCount, setDetailRefetchCount] = useState(0);
   const [selectedMember, setSelectedMember] = useState<GroupMemberDto | null>(
     null,
   );
@@ -57,21 +57,9 @@ const StudentGroup: React.FC = () => {
 
   const isTopicApproved = !!group && group.statusId >= 4;
   const isForming = !!group && group.statusId >= 2;
-  const hasRejectedTopic = !!project && project.statusId === 3;
-  const canRegisterTopic =
-    !!group &&
-    group.isLeader &&
-    group.statusId === 2 &&
-    !!group.mentorId &&
-    !hasRejectedTopic;
-  const canUpdateTopic =
-    !!group &&
-    group.isLeader &&
-    group.statusId === 2 &&
-    !!group.mentorId &&
-    hasRejectedTopic;
+  const canRegisterOrUpdateTopic = !!group && group.isLeader && group.statusId < 4;
   const canInviteMentor =
-    !!group && group.isLeader && isForming && !group.mentorId;
+    !!group && group.isLeader && group.statusId === 2 && !!project && !group.mentorId;
   const canInviteMember = !!group && group.isLeader && !isTopicApproved;
   const canLeaveGroup = !!group && !group.isLeader && !isTopicApproved;
 
@@ -92,7 +80,7 @@ const StudentGroup: React.FC = () => {
       })
       .catch(() => {})
       .finally(() => setMembersLoading(false));
-  }, [hasGroup, group?.memberCount, group?.statusId]);
+  }, [hasGroup, group?.memberCount, group?.statusId, detailRefetchCount]);
 
   const handleOpenModal = () => {
     setGroupName("");
@@ -271,27 +259,19 @@ const StudentGroup: React.FC = () => {
               icon={<BookOpen size={24} />}
               label="Topic"
               description={
-                canRegisterTopic
-                  ? "Register a topic for your group"
-                  : canUpdateTopic
-                    ? "Update rejected topic"
-                    : !group!.isLeader
-                      ? "Only the leader can register a topic"
-                      : !group!.mentorId
-                        ? "Invite a mentor before registering a topic"
-                        : group!.statusId > 2
-                          ? `Topic: ${group!.statusName}`
-                          : "Available when group has a mentor"
+                canRegisterOrUpdateTopic
+                  ? project
+                    ? "Update your registered topic"
+                    : "Register a topic for your group"
+                  : !group!.isLeader
+                    ? "Only the leader can register a topic"
+                    : "Topic is locked after approval"
               }
-              locked={!canRegisterTopic && !canUpdateTopic}
+              locked={!canRegisterOrUpdateTopic}
               lockReason={
                 !group!.isLeader
                   ? "Only the leader can perform this action"
-                  : !group!.mentorId
-                    ? "Group has no mentor yet"
-                    : group!.statusId > 2
-                      ? `Status: ${group!.statusName}`
-                      : "Available when group is FORMING + has a mentor"
+                  : "Topic is locked after approval"
               }
               onClick={() => setShowRegisterTopicModal(true)}
             />
@@ -320,10 +300,12 @@ const StudentGroup: React.FC = () => {
                 group!.mentorId
                   ? `Assigned: ${group!.mentorName || "Mentor"}`
                   : canInviteMentor
-                    ? "Invite a supervisor"
+                    ? "Invite a supervisor for your group"
                     : !group!.isLeader
                       ? "Leader only"
-                      : "Unlocks at 4–5 members (FORMING)"
+                      : !project
+                        ? "Register a topic first"
+                        : "Unlocks at 4–5 members (FORMING)"
               }
               locked={!canInviteMentor}
               lockReason={
@@ -331,7 +313,9 @@ const StudentGroup: React.FC = () => {
                   ? "Mentor already assigned"
                   : !group!.isLeader
                     ? "Leader only"
-                    : "Unlocks at FORMING status"
+                    : !project
+                      ? "Register a topic first"
+                      : "Unlocks at FORMING status with a registered topic"
               }
               onClick={() => setShowInviteMentorModal(true)}
             />
@@ -349,22 +333,22 @@ const StudentGroup: React.FC = () => {
                   className={`ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
                     project.statusId === 2
                       ? "bg-green-100 text-green-700"
-                      : project.statusId === 3
-                        ? "bg-red-100 text-red-700"
-                        : "bg-purple-100 text-purple-700"
+                      : group!.statusId === 3
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-gray-100 text-gray-600"
                   }`}
                 >
                   {project.statusId === 2 ? (
                     <>
                       <CheckCircle size={11} /> APPROVED
                     </>
-                  ) : project.statusId === 3 ? (
+                  ) : group!.statusId === 3 ? (
                     <>
-                      <XCircle size={11} /> REJECTED
+                      <Clock size={11} /> AWAITING MENTOR
                     </>
                   ) : (
                     <>
-                      <Clock size={11} /> PENDING REVIEW
+                      <BookOpen size={11} /> DRAFT
                     </>
                   )}
                 </span>
@@ -582,7 +566,7 @@ const StudentGroup: React.FC = () => {
         <RegisterTopicModal
           groupId={group.groupId}
           existingProject={
-            hasRejectedTopic && project
+            project
               ? {
                   title: project.title ?? "",
                   description: project.description ?? "",
@@ -593,10 +577,11 @@ const StudentGroup: React.FC = () => {
           onSuccess={() => {
             setShowRegisterTopicModal(false);
             toast.success(
-              hasRejectedTopic
-                ? "Cập nhật đề tài thành công! Đang chờ mentor xét duyệt."
-                : "Đăng ký đề tài thành công! Đang chờ mentor xét duyệt.",
+              project
+                ? "Đề tài đã được cập nhật thành công."
+                : "Đề tài đã được đăng ký thành công.",
             );
+            setDetailRefetchCount((c) => c + 1);
             refetchGroup();
           }}
         />
