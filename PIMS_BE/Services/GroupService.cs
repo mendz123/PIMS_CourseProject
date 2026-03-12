@@ -30,8 +30,8 @@ namespace PIMS_BE.Services
         private const int MentorRequestStatusAccepted = 2;
         private const int MentorRequestStatusRejected = 3;
         private const int ProjectStatusPending = 1;
-        private const int ProjectStatusApproved = 2;
-        private const int ProjectStatusRejected = 3;
+        private const int ProjectStatusApproved = 3;
+        private const int ProjectStatusRejected = 6;
 
         public GroupService(
             IGroupRepository groupRepository,
@@ -646,19 +646,16 @@ namespace PIMS_BE.Services
             if (group.LeaderId != leaderId)
                 throw new InvalidOperationException("Only the group leader can register a topic.");
 
-            if (group.StatusId >= StatusApproved)
-                throw new InvalidOperationException("Topic cannot be changed after the group has been approved.");
-
-            var existingProject = group.Projects
-                .OrderByDescending(p => p.ProjectId)
-                .FirstOrDefault(p => p.StatusId == ProjectStatusPending);
+            var existingProject = group.StatusId == StatusApproved
+                ? group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved)
+                : group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault();
 
             Project project;
             if (existingProject != null)
             {
                 existingProject.Title = dto.TopicName.Trim();
                 existingProject.Description = dto.Description.Trim();
-                await _projectRepository.UpdateAsync(existingProject);
+                _projectRepository.Update(existingProject);
                 project = existingProject;
             }
             else
@@ -675,6 +672,13 @@ namespace PIMS_BE.Services
 
             await _projectRepository.SaveChangesAsync();
 
+            var statusName = project.StatusId switch
+            {
+                ProjectStatusApproved => "APPROVED",
+                ProjectStatusRejected => "REJECTED",
+                _ => "PENDING"
+            };
+
             return new ProjectDto
             {
                 ProjectId = project.ProjectId,
@@ -682,7 +686,7 @@ namespace PIMS_BE.Services
                 Title = project.Title,
                 Description = project.Description,
                 StatusId = project.StatusId,
-                StatusName = "PENDING"
+                StatusName = statusName
             };
         }
 

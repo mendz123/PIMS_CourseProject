@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Users, Crown, Check, Loader2, UserCircle2, GraduationCap, MessageSquare, BookOpen } from 'lucide-react';
+import { X, Crown, Check, Loader2, UserCircle2, GraduationCap, MessageSquare, BookOpen } from 'lucide-react';
 import axios from 'axios';
 import { groupService } from '../../services/groupService';
 import type { MentorRequestDetailDto } from '../../types/group.types';

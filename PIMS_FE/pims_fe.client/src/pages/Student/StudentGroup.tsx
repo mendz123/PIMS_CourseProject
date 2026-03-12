@@ -56,8 +56,7 @@ const StudentGroup: React.FC = () => {
   const [showUserDrawer, setShowUserDrawer] = useState(false);
 
   const isTopicApproved = !!group && group.statusId >= 4;
-  const isForming = !!group && group.statusId >= 2;
-  const canRegisterOrUpdateTopic = !!group && group.isLeader && group.statusId < 4;
+  const canRegisterOrUpdateTopic = !!group && group.isLeader;
   const canInviteMentor =
     !!group && group.isLeader && group.statusId === 2 && !!project && !group.mentorId;
   const canInviteMember = !!group && group.isLeader && !isTopicApproved;
@@ -263,16 +262,10 @@ const StudentGroup: React.FC = () => {
                   ? project
                     ? "Update your registered topic"
                     : "Register a topic for your group"
-                  : !group!.isLeader
-                    ? "Only the leader can register a topic"
-                    : "Topic is locked after approval"
+                  : "Only the leader can register a topic"
               }
               locked={!canRegisterOrUpdateTopic}
-              lockReason={
-                !group!.isLeader
-                  ? "Only the leader can perform this action"
-                  : "Topic is locked after approval"
-              }
+              lockReason="Only the leader can perform this action"
               onClick={() => setShowRegisterTopicModal(true)}
             />
             <ActionButton
@@ -331,14 +324,14 @@ const StudentGroup: React.FC = () => {
                 </h4>
                 <span
                   className={`ml-auto flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-                    project.statusId === 2
+                    project.statusId === 3
                       ? "bg-green-100 text-green-700"
                       : group!.statusId === 3
                         ? "bg-purple-100 text-purple-700"
                         : "bg-gray-100 text-gray-600"
                   }`}
                 >
-                  {project.statusId === 2 ? (
+                  {project.statusId === 3 ? (
                     <>
                       <CheckCircle size={11} /> APPROVED
                     </>
