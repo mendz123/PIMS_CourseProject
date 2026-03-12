@@ -24,6 +24,7 @@ public class MentorRequestRepository : GenericRepository<MentorRequest>, IMentor
             .Include(r => r.Group).ThenInclude(g => g.Leader)
             .Include(r => r.Group).ThenInclude(g => g.GroupMembers).ThenInclude(m => m.User)
             .Include(r => r.Group).ThenInclude(g => g.GroupMembers).ThenInclude(m => m.Status)
+            .Include(r => r.Group).ThenInclude(g => g.Projects)
             .Include(r => r.User)
             .Include(r => r.Status)
             .FirstOrDefaultAsync(r => r.RequestId == requestId);

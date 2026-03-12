@@ -102,7 +102,8 @@ const InviteMentorModal: React.FC<Props> = ({ groupId, onClose, onSuccess }) => 
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5 text-xs text-amber-700 space-y-1">
                     <p className="font-semibold">Requirements to invite a mentor:</p>
                     <ul className="space-y-0.5 text-amber-600 list-disc list-inside">
-                        <li>Group must be in <strong>FORMING</strong> status (4–5 members)</li>
+                        <li>Group must be in <strong>FORMING</strong> status (at least 4 members)</li>
+                        <li>Group must have a <strong>registered topic</strong></li>
                         <li>Teacher must exist and have an active account</li>
                         <li>Group must not already have a mentor</li>
                         <li>No pending mentor invitation already sent</li>
