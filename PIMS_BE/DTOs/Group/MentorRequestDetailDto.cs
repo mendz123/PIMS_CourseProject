@@ -1,3 +1,5 @@
+using PIMS_BE.DTOs.Project;
+
 namespace PIMS_BE.DTOs.Group
 {
     public class MentorRequestDetailDto
@@ -12,5 +14,6 @@ namespace PIMS_BE.DTOs.Group
         public string? Message { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime? CreatedAt { get; set; }
+        public ProjectDto? Topic { get; set; }
     }
 }

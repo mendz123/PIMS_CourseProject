@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Users, Crown, Check, Loader2, UserCircle2, GraduationCap, MessageSquare } from 'lucide-react';
+import { X, Crown, Check, Loader2, UserCircle2, GraduationCap, MessageSquare, BookOpen } from 'lucide-react';
 import axios from 'axios';
 import { groupService } from '../../services/groupService';
 import type { MentorRequestDetailDto } from '../../types/group.types';
@@ -129,12 +129,24 @@ const MentorRequestDetailModal: React.FC<Props> = ({ requestId, onClose, onAccep
                                 </div>
                             )}
 
+                            {/* Registered Topic */}
+                            {detail.topic && (
+                                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <BookOpen size={14} className="text-purple-600" />
+                                        <p className="text-xs font-bold text-purple-700">Registered Topic</p>
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-900 mb-1">{detail.topic.title}</p>
+                                    <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{detail.topic.description}</p>
+                                </div>
+                            )}
+
                             {/* Members */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <p className="text-sm font-bold text-gray-800">Group Members</p>
                                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                        {detail.memberCount}/5
+                        {detail.memberCount}/6
                                     </span>
                                 </div>
                                 <div className="space-y-2">
