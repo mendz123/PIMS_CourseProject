@@ -24,8 +24,6 @@ namespace PIMS_BE.Services
         private const int MemberStatusActive = 1;
         private const int MemberStatusLeft = 2;
         private const int UserStatusActive = 1;
-        private const int MinMembersForForming = 4;
-        private const int MaxGroupMembers = 6;
         private const int MentorRequestStatusPending = 1;
         private const int MentorRequestStatusAccepted = 2;
         private const int MentorRequestStatusRejected = 3;
@@ -113,9 +111,11 @@ namespace PIMS_BE.Services
 
             var group = memberInfo.Group;
             var memberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
+            var minMembers = activeSemester.MinGroupSize
+                ?? throw new InvalidOperationException("Active semester does not have a minimum group size configured.");
 
             // Auto-transition to FORMING if the group has reached the minimum member count
-            if (group.StatusId == StatusCreated && memberCount >= MinMembersForForming)
+            if (group.StatusId == StatusCreated && memberCount >= minMembers)
             {
                 group.StatusId = StatusForming;
                 await _groupRepository.UpdateAsync(group);
@@ -308,9 +308,11 @@ namespace PIMS_BE.Services
             if (alreadyInGroup)
                 throw new InvalidOperationException("This user is already a member of a group in the current semester.");
 
+            var maxMembers = activeSemester.MaxGroupSize
+                ?? throw new InvalidOperationException("Active semester does not have a maximum group size configured.");
             var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
-            if (currentMemberCount >= MaxGroupMembers)
-                throw new InvalidOperationException($"The group already has {MaxGroupMembers} members.");
+            if (currentMemberCount >= maxMembers)
+                throw new InvalidOperationException($"The group already has {maxMembers} members.");
 
             var existingInvitation = await _invitationRepository.GetPendingInvitationByGroupAndUserAsync(groupId, invitedUserId);
             if (existingInvitation != null)
@@ -378,10 +380,14 @@ namespace PIMS_BE.Services
             if (alreadyInGroup)
                 throw new InvalidOperationException("You are already a member of a group in the current semester.");
 
+            var minMembers = activeSemester.MinGroupSize
+                ?? throw new InvalidOperationException("Active semester does not have a minimum group size configured.");
+            var maxMembers = activeSemester.MaxGroupSize
+                ?? throw new InvalidOperationException("Active semester does not have a maximum group size configured.");
             var group = invitation.Group;
             var currentMemberCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive);
-            if (currentMemberCount >= MaxGroupMembers)
-                throw new InvalidOperationException($"The group already has {MaxGroupMembers} members.");
+            if (currentMemberCount >= maxMembers)
+                throw new InvalidOperationException($"The group already has {maxMembers} members.");
 
             var newMember = new GroupMember
             {
@@ -396,7 +402,7 @@ namespace PIMS_BE.Services
             await _invitationRepository.UpdateAsync(invitation);
 
             var newMemberCount = currentMemberCount + 1;
-            if (group.StatusId == StatusCreated && newMemberCount >= MinMembersForForming)
+            if (group.StatusId == StatusCreated && newMemberCount >= minMembers)
             {
                 group.StatusId = StatusForming;
                 await _groupRepository.UpdateAsync(group);
@@ -468,7 +474,7 @@ namespace PIMS_BE.Services
                 throw new InvalidOperationException("Only the group leader can invite a mentor.");
 
             if (group.StatusId != StatusForming)
-                throw new InvalidOperationException("Group must be in FORMING status (at least 4 members) to invite a mentor.");
+                throw new InvalidOperationException("Group must be in FORMING status to invite a mentor.");
 
             if (group.MentorId != null)
                 throw new InvalidOperationException("This group already has a mentor assigned.");
@@ -806,6 +812,8 @@ namespace PIMS_BE.Services
             if (memberInfo == null)
                 throw new InvalidOperationException("You are not a member of any group in the current semester.");
 
+            var minMembers = activeSemester.MinGroupSize
+                ?? throw new InvalidOperationException("Active semester does not have a minimum group size configured.");
             var group = memberInfo.Group;
 
             if (group.LeaderId == userId)
@@ -818,7 +826,7 @@ namespace PIMS_BE.Services
             await _memberRepository.UpdateAsync(memberInfo);
 
             var remainingCount = group.GroupMembers.Count(m => m.StatusId == MemberStatusActive && m.UserId != userId);
-            if (remainingCount < MinMembersForForming && group.StatusId > StatusCreated)
+            if (remainingCount < minMembers && group.StatusId > StatusCreated)
             {
                 group.StatusId = StatusCreated;
                 await _groupRepository.UpdateAsync(group);
