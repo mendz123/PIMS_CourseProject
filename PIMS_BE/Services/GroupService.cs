@@ -235,6 +235,12 @@ namespace PIMS_BE.Services
             var group = await _groupRepository.GetGroupWithDetailsAsync(groupId);
             if (group == null) return null;
 
+            Project? activeProject;
+            if (group.StatusId == StatusApproved)
+                activeProject = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved);
+            else
+                activeProject = group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault(p => p.StatusId == ProjectStatusPending);
+
             return new GroupDetailDto
             {
                 GroupId = group.GroupId,
@@ -259,7 +265,16 @@ namespace PIMS_BE.Services
                     StatusId = m.StatusId,
                     StatusName = m.Status?.StatusName ?? "",
                     TotalScore = m.User?.StudentFinalResults?.FirstOrDefault(r => r.SemesterId == group.SemesterId)?.TotalScore
-                }).ToList()
+                }).ToList(),
+                Project = activeProject != null ? new ProjectDto
+                {
+                    ProjectId = activeProject.ProjectId,
+                    GroupId = activeProject.GroupId,
+                    Title = activeProject.Title,
+                    Description = activeProject.Description,
+                    StatusId = activeProject.StatusId,
+                    StatusName = activeProject.Status?.StatusName
+                } : null
             };
         }
 
@@ -671,6 +686,15 @@ namespace PIMS_BE.Services
             }
 
             await _projectRepository.SaveChangesAsync();
+
+            if (existingProject != null && group.MentorId != null)
+            {
+                await _notificationService.CreateNotificationAsync(group.MentorId.Value, new DTOs.Notification.CreateNotificationRequest
+                {
+                    Title = "Topic Updated",
+                    Content = $"Group '{group.GroupName}' has updated their topic.\nGroup ID: #{group.GroupId}"
+                });
+            }
 
             var statusName = project.StatusId switch
             {
