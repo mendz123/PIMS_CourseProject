@@ -1,12 +1,17 @@
 import React from "react";
 import StatCard from "./StatCard";
 
-const TeacherStats: React.FC = () => {
-    // These could eventually come from props or a custom hook
+interface TeacherStatsProps {
+    activeGroupsCount: number;
+    pendingProposalsCount: number;
+    unreviewedReportsCount: number;
+}
+
+const TeacherStats: React.FC<TeacherStatsProps> = ({ activeGroupsCount, pendingProposalsCount, unreviewedReportsCount }) => {
     const stats = [
-        { label: "Pending Proposals", value: "12", icon: "description", trend: { value: "2%", isUp: true } },
-        { label: "Active Groups", value: "24", icon: "groups_2", trend: { value: "1%", isUp: false }, iconColorClass: "text-orange-500" },
-        { label: "Unreviewed Reports", value: "08", icon: "pending_actions", trend: { value: "5%", isUp: true }, iconColorClass: "text-green-500" },
+        { label: "Pending Proposals", value: pendingProposalsCount.toString(), icon: "description" },
+        { label: "Active Groups", value: activeGroupsCount.toString(), icon: "groups_2", iconColorClass: "text-orange-500" },
+        { label: "Unreviewed Reports", value: unreviewedReportsCount.toString(), icon: "pending_actions", iconColorClass: "text-green-500" },
     ];
 
     return (
