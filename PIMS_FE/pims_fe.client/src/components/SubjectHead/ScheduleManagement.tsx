@@ -20,6 +20,7 @@ import {
     defenseScheduleService,
     type DefenseScheduleDto,
     type CreateDefenseScheduleDto,
+    type BulkCreateDefenseScheduleDto,
     type GroupInfo,
 } from "../../services/defenseScheduleService";
 import { councilService, type CouncilDto } from "../../services/councilService";
@@ -40,6 +41,7 @@ const fmtTime = (t: string | null) => {
 const statusBadge = (s: string | null) => {
     const map: Record<string, string> = {
         PENDING: "bg-amber-100 text-amber-700",
+        SCHEDULED: "bg-blue-100 text-blue-700",
         COMPLETED: "bg-green-100 text-green-700",
         CANCELLED: "bg-red-100 text-red-500",
     };
@@ -250,6 +252,227 @@ const AssignRoomModal: React.FC<AssignRoomModalProps> = ({ schedule, onClose, on
     );
 };
 
+// ─── Bulk Create Modal ───────────────────────────────────────────────────────
+
+interface BulkCreateModalProps {
+    open: boolean;
+    onClose: () => void;
+    onSubmit: (dto: BulkCreateDefenseScheduleDto) => Promise<void>;
+    loading: boolean;
+    councils: CouncilDto[];
+    groups: GroupInfo[];
+    rooms: RoomDto[];
+    filterSemesterId: number | "";
+}
+
+const BulkCreateModal: React.FC<BulkCreateModalProps> = ({
+    open, onClose, onSubmit, loading, councils, groups, rooms, filterSemesterId,
+}) => {
+    const [councilId, setCouncilId] = useState("");
+    const [defenseDate, setDefenseDate] = useState("");
+    const [windowStart, setWindowStart] = useState("");
+    const [windowEnd, setWindowEnd] = useState("");
+    const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+    const [slotMinutes, setSlotMinutes] = useState("");
+    const [roomId, setRoomId] = useState("");
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (open) {
+            setCouncilId(""); setDefenseDate(""); setWindowStart(""); setWindowEnd("");
+            setSelectedGroupIds([]); setSlotMinutes(""); setRoomId(""); setErrors({});
+        }
+    }, [open]);
+
+    const filteredCouncils = councils.filter(c =>
+        filterSemesterId === "" || c.semesterId === filterSemesterId
+    );
+
+    const toggleGroup = (gid: number) => {
+        setSelectedGroupIds(prev =>
+            prev.includes(gid) ? prev.filter(x => x !== gid) : [...prev, gid]
+        );
+    };
+
+    // Preview slots
+    const previewSlots = React.useMemo(() => {
+        if (!windowStart || !windowEnd || selectedGroupIds.length === 0) return [];
+        const [sh, sm] = windowStart.split(":").map(Number);
+        const [eh, em] = windowEnd.split(":").map(Number);
+        const totalMin = (eh * 60 + em) - (sh * 60 + sm);
+        if (totalMin <= 0) return [];
+        const slot = slotMinutes ? Number(slotMinutes) : Math.floor(totalMin / selectedGroupIds.length);
+        if (slot <= 0 || slot * selectedGroupIds.length > totalMin) return [];
+        return selectedGroupIds.map((gid, i) => {
+            const startMin = sh * 60 + sm + i * slot;
+            const endMin = startMin + slot;
+            const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+            const g = groups.find(x => x.groupId === gid);
+            return { gid, name: g?.groupName || `Group #${gid}`, start: fmt(startMin), end: fmt(endMin) };
+        });
+    }, [windowStart, windowEnd, selectedGroupIds, slotMinutes, groups]);
+
+    const validate = () => {
+        const e: Record<string, string> = {};
+        if (!councilId) e.councilId = "Council is required";
+        if (!defenseDate) e.defenseDate = "Date is required";
+        if (!windowStart) e.windowStart = "Start time is required";
+        if (!windowEnd) e.windowEnd = "End time is required";
+        if (windowStart && windowEnd && windowEnd <= windowStart) e.windowEnd = "End must be after start";
+        if (selectedGroupIds.length === 0) e.groups = "Select at least one group";
+        if (slotMinutes && isNaN(Number(slotMinutes))) e.slotMinutes = "Must be a number";
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validate()) return;
+        await onSubmit({
+            councilId: Number(councilId),
+            defenseDate,
+            windowStart,
+            windowEnd,
+            groupIds: selectedGroupIds,
+            slotMinutes: slotMinutes ? Number(slotMinutes) : undefined,
+            roomId: roomId ? Number(roomId) : undefined,
+        });
+    };
+
+    if (!open) return null;
+
+    const inputCls = (k: string) =>
+        `w-full px-3 py-2.5 text-sm rounded-xl border outline-none focus:ring-2 focus:ring-primary/30 transition-all ${errors[k] ? "border-red-400 bg-red-50" : "border-[#dbdfe6] focus:border-primary"
+        }`;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-[#dbdfe6] sticky top-0 bg-white z-10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 rounded-xl">
+                            <span className="material-symbols-outlined text-indigo-600 text-xl">event_upcoming</span>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-[#111318]">Bulk Schedule Defense Sessions</h2>
+                            <p className="text-xs text-[#616f89]">Assign multiple groups to a council with auto-split time slots</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-all">
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                    {/* Council & Date */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Council <span className="text-red-500">*</span></label>
+                            <select value={councilId} onChange={e => setCouncilId(e.target.value)} className={inputCls("councilId")}>
+                                <option value="">— Select council —</option>
+                                {filteredCouncils.map(c => (
+                                    <option key={c.councilId} value={c.councilId}>{c.councilName}</option>
+                                ))}
+                            </select>
+                            {errors.councilId && <p className="text-xs text-red-500 mt-1">{errors.councilId}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Defense Date <span className="text-red-500">*</span></label>
+                            <input type="date" value={defenseDate} onChange={e => setDefenseDate(e.target.value)} className={inputCls("defenseDate")} />
+                            {errors.defenseDate && <p className="text-xs text-red-500 mt-1">{errors.defenseDate}</p>}
+                        </div>
+                    </div>
+
+                    {/* Window & Slot */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Window Start <span className="text-red-500">*</span></label>
+                            <input type="time" value={windowStart} onChange={e => setWindowStart(e.target.value)} className={inputCls("windowStart")} />
+                            {errors.windowStart && <p className="text-xs text-red-500 mt-1">{errors.windowStart}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Window End <span className="text-red-500">*</span></label>
+                            <input type="time" value={windowEnd} onChange={e => setWindowEnd(e.target.value)} className={inputCls("windowEnd")} />
+                            {errors.windowEnd && <p className="text-xs text-red-500 mt-1">{errors.windowEnd}</p>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-[#111318] mb-1.5">Slot (min) <span className="text-[#b0b8c9] font-normal text-xs">optional</span></label>
+                            <input type="number" min={1} placeholder="Auto" value={slotMinutes} onChange={e => setSlotMinutes(e.target.value)} className={inputCls("slotMinutes")} />
+                            {errors.slotMinutes && <p className="text-xs text-red-500 mt-1">{errors.slotMinutes}</p>}
+                        </div>
+                    </div>
+
+                    {/* Group Selection */}
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-2">Select Groups <span className="text-red-500">*</span></label>
+                        {errors.groups && <p className="text-xs text-red-500 mb-2">{errors.groups}</p>}
+                        <div className="border border-[#dbdfe6] rounded-xl overflow-hidden">
+                            <div className="bg-[#f8f9fb] px-3 py-2 border-b border-[#dbdfe6] flex items-center justify-between">
+                                <span className="text-xs font-bold text-[#616f89] uppercase tracking-wide">{selectedGroupIds.length} selected</span>
+                                <button type="button" onClick={() => setSelectedGroupIds(groups.map(g => g.groupId))} className="text-xs font-bold text-primary hover:underline">Select All</button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto divide-y divide-[#f0f2f5]">
+                                {groups.map(g => (
+                                    <label key={g.groupId} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#f8f9fb] transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedGroupIds.includes(g.groupId)}
+                                            onChange={() => toggleGroup(g.groupId)}
+                                            className="w-4 h-4 rounded accent-primary"
+                                        />
+                                        <span className="text-sm text-[#111318] font-medium">{g.groupName || `Group #${g.groupId}`}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Room */}
+                    <div>
+                        <label className="block text-sm font-semibold text-[#111318] mb-1.5">Room (optional)</label>
+                        <select value={roomId} onChange={e => setRoomId(e.target.value)} className={inputCls("roomId")}>
+                            <option value="">— Assign later —</option>
+                            {rooms.map(r => (
+                                <option key={r.roomId} value={r.roomId}>{r.roomName}{r.building ? ` (${r.building})` : ""}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Preview */}
+                    {previewSlots.length > 0 && (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                            <p className="text-xs font-bold text-indigo-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-sm">preview</span>
+                                Schedule Preview
+                            </p>
+                            <div className="space-y-2">
+                                {previewSlots.map((s, i) => (
+                                    <div key={s.gid} className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-5 h-5 bg-indigo-200 text-indigo-700 rounded-md flex items-center justify-center font-black text-[10px]">{i + 1}</span>
+                                            <span className="font-semibold text-[#111318]">{s.name}</span>
+                                        </div>
+                                        <span className="font-mono font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-lg border border-indigo-100">{s.start} – {s.end}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-[#dbdfe6] text-[#616f89] hover:bg-[#f6f6f8]">Cancel</button>
+                        <button type="submit" disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                            {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            <span className="material-symbols-outlined text-lg">event_upcoming</span>
+                            Bulk Schedule ({selectedGroupIds.length})
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ScheduleManagement: React.FC = () => {
@@ -266,6 +489,8 @@ const ScheduleManagement: React.FC = () => {
     const [filterCouncil, setFilterCouncil] = useState<number | "">("");
     const [createOpen, setCreateOpen] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [bulkLoading, setBulkLoading] = useState(false);
     const [assignTarget, setAssignTarget] = useState<DefenseScheduleDto | null>(null);
     const [assignLoading, setAssignLoading] = useState(false);
 
@@ -325,6 +550,21 @@ const ScheduleManagement: React.FC = () => {
         }
     };
 
+    const handleBulkCreate = async (dto: BulkCreateDefenseScheduleDto) => {
+        setBulkLoading(true);
+        try {
+            const res = await defenseScheduleService.bulkCreate(dto);
+            const count = res.data?.length ?? 0;
+            toast.success(`${count} defense sessions scheduled!`);
+            setBulkOpen(false);
+            await fetchSchedules();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Failed to bulk create schedules");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
     const handleAssignRoom = async (roomId: number | null) => {
         if (!assignTarget) return;
         setAssignLoading(true);
@@ -380,6 +620,13 @@ const ScheduleManagement: React.FC = () => {
                             Calendar
                         </button>
                     </div>
+                    <button
+                        onClick={() => setBulkOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-md shadow-indigo-200"
+                    >
+                        <span className="material-symbols-outlined text-xl">event_upcoming</span>
+                        Bulk Schedule
+                    </button>
                     <button
                         onClick={() => setCreateOpen(true)}
                         className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 active:scale-95 transition-all shadow-md shadow-primary/20"
@@ -620,6 +867,7 @@ const ScheduleManagement: React.FC = () => {
             )}
 
             <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={createLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={filterSemester} />
+            <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkCreate} loading={bulkLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={filterSemester} />
             <AssignRoomModal schedule={assignTarget} onClose={() => setAssignTarget(null)} onSave={handleAssignRoom} loading={assignLoading} rooms={rooms} />
         </div>
     );

@@ -103,6 +103,107 @@ public class DefenseScheduleService : IDefenseScheduleService
         return MapToDto(created!);
     }
 
+    public async Task<IEnumerable<DefenseScheduleDto>> BulkCreateAsync(BulkCreateDefenseScheduleDto dto)
+    {
+        if (dto.WindowEnd <= dto.WindowStart)
+            throw new ArgumentException("WindowEnd must be after WindowStart");
+
+        if (dto.GroupIds == null || dto.GroupIds.Count == 0)
+            throw new ArgumentException("At least one group is required");
+
+        // Loại bỏ trùng lặp, giữ thứ tự
+        var groupIds = dto.GroupIds.Distinct().ToList();
+
+        // Tính tổng số phút trong khung giờ
+        int totalMinutes = (int)(dto.WindowEnd - dto.WindowStart).TotalMinutes;
+
+        // Tính thời lượng mỗi slot
+        int slotMinutes;
+        if (dto.SlotMinutes.HasValue)
+        {
+            slotMinutes = dto.SlotMinutes.Value;
+            if (slotMinutes <= 0)
+                throw new ArgumentException("SlotMinutes must be greater than 0");
+            if (slotMinutes * groupIds.Count > totalMinutes)
+                throw new ArgumentException(
+                    $"Not enough time: {groupIds.Count} groups × {slotMinutes} min = {slotMinutes * groupIds.Count} min, " +
+                    $"but window is only {totalMinutes} min ({dto.WindowStart}–{dto.WindowEnd})");
+        }
+        else
+        {
+            if (totalMinutes % groupIds.Count != 0)
+                throw new ArgumentException(
+                    $"Cannot divide {totalMinutes} minutes evenly among {groupIds.Count} groups. " +
+                    $"Please specify SlotMinutes explicitly.");
+            slotMinutes = totalMinutes / groupIds.Count;
+        }
+
+        // Validate Council tồn tại
+        _ = await _councilRepo.GetByIdAsync(dto.CouncilId)
+            ?? throw new KeyNotFoundException($"Council {dto.CouncilId} not found");
+
+        // Validate Room nếu có
+        if (dto.RoomId.HasValue)
+            _ = await _roomRepo.GetByIdAsync(dto.RoomId.Value)
+                ?? throw new KeyNotFoundException($"Room {dto.RoomId} not found");
+
+        // Chuẩn bị danh sách schedule để tạo
+        var schedulesToAdd = new List<DefenseSchedule>();
+
+        for (int i = 0; i < groupIds.Count; i++)
+        {
+            var groupId = groupIds[i];
+            var slotStart = dto.WindowStart.AddMinutes(i * slotMinutes);
+            var slotEnd   = dto.WindowStart.AddMinutes((i + 1) * slotMinutes);
+
+            // Validate Group tồn tại
+            _ = await _groupRepo.GetByIdAsync(groupId)
+                ?? throw new KeyNotFoundException($"Group {groupId} not found");
+
+            // Kiểm tra conflict hội đồng
+            bool councilConflict = await _scheduleRepo.IsTimeConflictAsync(
+                dto.CouncilId, dto.DefenseDate, slotStart, slotEnd);
+            if (councilConflict)
+                throw new InvalidOperationException(
+                    $"Time conflict for group {groupId}: council already has a session at {slotStart}–{slotEnd}");
+
+            // Kiểm tra conflict phòng
+            if (dto.RoomId.HasValue)
+            {
+                bool roomConflict = await _scheduleRepo.IsRoomTimeConflictAsync(
+                    dto.RoomId.Value, dto.DefenseDate, slotStart, slotEnd);
+                if (roomConflict)
+                    throw new InvalidOperationException(
+                        $"Time conflict for group {groupId}: room is already booked at {slotStart}–{slotEnd}");
+            }
+
+            schedulesToAdd.Add(new DefenseSchedule
+            {
+                CouncilId   = dto.CouncilId,
+                GroupId     = groupId,
+                DefenseDate = dto.DefenseDate,
+                StartTime   = slotStart,
+                EndTime     = slotEnd,
+                RoomId      = dto.RoomId,
+                Status      = "PENDING"
+            });
+        }
+
+        // Lưu tất cả 1 lần
+        foreach (var s in schedulesToAdd)
+            await _scheduleRepo.AddAsync(s);
+        await _scheduleRepo.SaveChangesAsync();
+
+        // Load lại đầy đủ thông tin để trả về
+        var results = new List<DefenseScheduleDto>();
+        foreach (var s in schedulesToAdd)
+        {
+            var full = await _scheduleRepo.GetWithDetailsAsync(s.ScheduleId);
+            results.Add(MapToDto(full!));
+        }
+        return results;
+    }
+
     public async Task<DefenseScheduleDto> AssignRoomAsync(int scheduleId, AssignRoomDto dto)
     {
         var schedule = await _scheduleRepo.GetWithDetailsAsync(scheduleId)
@@ -123,6 +224,8 @@ public class DefenseScheduleService : IDefenseScheduleService
         }
 
         schedule.RoomId = dto.RoomId;
+        // Tự động cập nhật status: gán phòng → SCHEDULED, xóa phòng → PENDING
+        schedule.Status = dto.RoomId.HasValue ? "SCHEDULED" : "PENDING";
         _scheduleRepo.Update(schedule);
         await _scheduleRepo.SaveChangesAsync();
 
