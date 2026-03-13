@@ -22,6 +22,24 @@ const SubjectHeadDashboard: React.FC = () => {
       "subject-overview"
     );
   });
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await notificationService.getUnreadCount();
+        if (response && response.success) {
+          setUnreadCount(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
@@ -127,6 +145,11 @@ const SubjectHeadDashboard: React.FC = () => {
                 notifications
               </span>
               <span className="text-sm">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
