@@ -9,6 +9,7 @@ import GroupListContent from "../../components/shared/GroupListContent";
 import CouncilManagement from "../../components/SubjectHead/CouncilManagement";
 import ScheduleManagement from "../../components/SubjectHead/ScheduleManagement";
 import LecturerListContent from "../../components/SubjectHead/LecturerListContent";
+import { notificationService } from "../../services/notificationService";
 
 const SubjectHeadDashboard: React.FC = () => {
   const { user, logout, loading: authLoading } = useAuth();
