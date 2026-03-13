@@ -314,20 +314,35 @@ namespace PIMS_BE.Services
             if (currentMemberCount >= maxMembers)
                 throw new InvalidOperationException($"The group already has {maxMembers} members.");
 
-            var existingInvitation = await _invitationRepository.GetPendingInvitationByGroupAndUserAsync(groupId, invitedUserId);
-            if (existingInvitation != null)
+            var existingInvitation = (await _invitationRepository.FindAsync(i =>
+                i.GroupId == groupId && i.InvitedUserId == invitedUserId)).FirstOrDefault();
+
+            if (existingInvitation?.Status == InvitationStatus.Pending)
                 throw new InvalidOperationException("This user already has a pending invitation from your group.");
 
-            var invitation = new GroupInvitation
+            GroupInvitation invitation;
+            if (existingInvitation != null)
             {
-                GroupId = groupId,
-                InvitedUserId = invitedUserId,
-                InvitedByUserId = leaderId,
-                Status = InvitationStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
+                existingInvitation.InvitedByUserId = leaderId;
+                existingInvitation.Status = InvitationStatus.Pending;
+                existingInvitation.CreatedAt = DateTime.UtcNow;
+                await _invitationRepository.UpdateAsync(existingInvitation);
+                invitation = existingInvitation;
+            }
+            else
+            {
+                invitation = new GroupInvitation
+                {
+                    GroupId = groupId,
+                    InvitedUserId = invitedUserId,
+                    InvitedByUserId = leaderId,
+                    Status = InvitationStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            await _invitationRepository.AddAsync(invitation);
+                await _invitationRepository.AddAsync(invitation);
+            }
+
             await _invitationRepository.SaveChangesAsync();
 
             await _notificationService.CreateNotificationAsync(invitedUserId, new DTOs.Notification.CreateNotificationRequest
@@ -667,6 +682,9 @@ namespace PIMS_BE.Services
             if (group.LeaderId != leaderId)
                 throw new InvalidOperationException("Only the group leader can register a topic.");
 
+            if (group.MentorId != null)
+                throw new InvalidOperationException("Topic is locked after mentor accepts the invitation.");
+
             var existingProject = group.StatusId == StatusApproved
                 ? group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved)
                 : group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault();
@@ -693,15 +711,6 @@ namespace PIMS_BE.Services
 
             await _projectRepository.SaveChangesAsync();
 
-            if (existingProject != null && group.MentorId != null)
-            {
-                await _notificationService.CreateNotificationAsync(group.MentorId.Value, new DTOs.Notification.CreateNotificationRequest
-                {
-                    Title = "Topic Updated",
-                    Content = $"Group '{group.GroupName}' has updated their topic.\nGroup ID: #{group.GroupId}"
-                });
-            }
-
             var statusName = project.StatusId switch
             {
                 ProjectStatusApproved => "APPROVED",
@@ -723,83 +732,6 @@ namespace PIMS_BE.Services
         public async Task<ProjectDto> UpdateTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto)
         {
             return await RegisterTopicAsync(leaderId, groupId, dto);
-        }
-
-        public async Task<List<TopicReviewDto>> GetPendingTopicRequestsAsync(int teacherUserId)
-        {
-            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
-            var activeSemester = semesters.FirstOrDefault()
-                ?? throw new InvalidOperationException("No active semester found.");
-
-            var groups = await _groupRepository.GetSubmittedGroupsByMentorAsync(activeSemester.SemesterId, teacherUserId);
-
-            var result = new List<TopicReviewDto>();
-            foreach (var group in groups)
-            {
-                var project = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusPending);
-                if (project == null) continue;
-
-                result.Add(new TopicReviewDto
-                {
-                    ProjectId = project.ProjectId,
-                    GroupId = group.GroupId,
-                    GroupName = group.GroupName ?? "",
-                    LeaderName = group.Leader?.FullName ?? "",
-                    TopicName = project.Title ?? "",
-                    Description = project.Description ?? ""
-                });
-            }
-
-            return result;
-        }
-
-        public async Task<GroupDto> ReviewTopicAsync(int teacherUserId, int groupId, bool approve)
-        {
-            var group = await _groupRepository.GetGroupWithDetailsAsync(groupId)
-                ?? throw new InvalidOperationException("Group not found.");
-
-            if (group.MentorId != teacherUserId)
-                throw new InvalidOperationException("You are not the mentor of this group.");
-
-            if (group.StatusId != StatusSubmitted)
-                throw new InvalidOperationException("This group does not have a topic pending review.");
-
-            var project = await _projectRepository.GetPendingTopicByGroupIdAsync(groupId)
-                ?? throw new InvalidOperationException("No pending topic found for this group.");
-
-            if (approve)
-            {
-                project.StatusId = ProjectStatusApproved;
-                group.StatusId = StatusApproved;
-
-                await _projectRepository.UpdateAsync(project);
-                await _groupRepository.UpdateAsync(group);
-                await _projectRepository.SaveChangesAsync();
-
-                await _notificationService.CreateNotificationAsync(group.LeaderId, new DTOs.Notification.CreateNotificationRequest
-                {
-                    Title = "Topic Approved",
-                    Content = $"Your topic '{project.Title}' for group '{group.GroupName}' has been approved by your mentor."
-                });
-            }
-            else
-            {
-                project.StatusId = ProjectStatusRejected;
-                group.StatusId = StatusForming;
-
-                await _projectRepository.UpdateAsync(project);
-                await _groupRepository.UpdateAsync(group);
-                await _projectRepository.SaveChangesAsync();
-
-                await _notificationService.CreateNotificationAsync(group.LeaderId, new DTOs.Notification.CreateNotificationRequest
-                {
-                    Title = "Topic Rejected",
-                    Content = $"Your topic '{project.Title}' for group '{group.GroupName}' has been rejected by your mentor. Please register a new topic."
-                });
-            }
-
-            var updatedGroup = await _groupRepository.GetGroupWithDetailsAsync(groupId);
-            return MapGroupToDto(updatedGroup!, teacherUserId);
         }
 
         public async Task LeaveGroupAsync(int userId)

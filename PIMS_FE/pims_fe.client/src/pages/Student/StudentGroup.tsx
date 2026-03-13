@@ -56,7 +56,8 @@ const StudentGroup: React.FC = () => {
   const [showUserDrawer, setShowUserDrawer] = useState(false);
 
   const isTopicApproved = !!group && group.statusId >= 4;
-  const canRegisterOrUpdateTopic = !!group && group.isLeader;
+  const isTopicLocked = !!group && !!group.mentorId;
+  const canRegisterOrUpdateTopic = !!group && group.isLeader && !isTopicLocked;
   const canInviteMentor =
     !!group && group.isLeader && group.statusId === 2 && !!project && !group.mentorId;
   const canInviteMember = !!group && group.isLeader && !isTopicApproved;
@@ -258,14 +259,20 @@ const StudentGroup: React.FC = () => {
               icon={<BookOpen size={24} />}
               label="Topic"
               description={
-                canRegisterOrUpdateTopic
+                  isTopicLocked
+                    ? "Locked after mentor accepts invitation"
+                    : canRegisterOrUpdateTopic
                   ? project
                     ? "Update your registered topic"
                     : "Register a topic for your group"
                   : "Only the leader can register a topic"
               }
               locked={!canRegisterOrUpdateTopic}
-              lockReason="Only the leader can perform this action"
+                lockReason={
+                  isTopicLocked
+                    ? "Mentor accepted invitation, topic cannot be updated"
+                    : "Only the leader can perform this action"
+                }
               onClick={() => setShowRegisterTopicModal(true)}
             />
             <ActionButton
