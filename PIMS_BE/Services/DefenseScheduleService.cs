@@ -224,6 +224,8 @@ public class DefenseScheduleService : IDefenseScheduleService
         }
 
         schedule.RoomId = dto.RoomId;
+        // Tự động cập nhật status: gán phòng → SCHEDULED, xóa phòng → PENDING
+        schedule.Status = dto.RoomId.HasValue ? "SCHEDULED" : "PENDING";
         _scheduleRepo.Update(schedule);
         await _scheduleRepo.SaveChangesAsync();
 

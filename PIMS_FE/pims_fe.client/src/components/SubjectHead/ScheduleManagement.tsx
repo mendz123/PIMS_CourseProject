@@ -41,6 +41,7 @@ const fmtTime = (t: string | null) => {
 const statusBadge = (s: string | null) => {
     const map: Record<string, string> = {
         PENDING: "bg-amber-100 text-amber-700",
+        SCHEDULED: "bg-blue-100 text-blue-700",
         COMPLETED: "bg-green-100 text-green-700",
         CANCELLED: "bg-red-100 text-red-500",
     };
