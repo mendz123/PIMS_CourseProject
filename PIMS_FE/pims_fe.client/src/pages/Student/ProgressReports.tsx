@@ -265,18 +265,18 @@ const ProgressReports = () => {
                     <div className="lg:col-span-2 space-y-8">
 
                         {/* 1. Noti Deadline */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {deadlines.map(dl => (
-                                <div key={dl.id} className="bg-white p-4 rounded-2xl border-l-4 border-l-rose-500 shadow-sm flex items-center gap-4">
-                                    <div className="p-3 bg-rose-50 text-rose-600 rounded-xl animate-pulse"><BellRing size={24} /></div>
-                                    <div>
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-[9px]">Sắp hết hạn</p>
-                                        <p className="font-bold text-gray-800 text-sm">{dl.title}</p>
-                                        <p className="text-rose-600 text-[10px] font-medium mt-1 italic">Còn {formatDistanceToNow(dl.date, { locale: vi })}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        {/*<div className="grid grid-cols-1 md:grid-cols-2 gap-4">*/}
+                        {/*    {deadlines.map(dl => (*/}
+                        {/*        <div key={dl.id} className="bg-white p-4 rounded-2xl border-l-4 border-l-rose-500 shadow-sm flex items-center gap-4">*/}
+                        {/*            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl animate-pulse"><BellRing size={24} /></div>*/}
+                        {/*            <div>*/}
+                        {/*                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-[9px]">Sắp hết hạn</p>*/}
+                        {/*                <p className="font-bold text-gray-800 text-sm">{dl.title}</p>*/}
+                        {/*                <p className="text-rose-600 text-[10px] font-medium mt-1 italic">Còn {formatDistanceToNow(dl.date, { locale: vi })}</p>*/}
+                        {/*            </div>*/}
+                        {/*        </div>*/}
+                        {/*    ))}*/}
+                        {/*</div>*/}
 
                         {/* 2. FORM Submit report */}
                         <section className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 relative overflow-hidden">

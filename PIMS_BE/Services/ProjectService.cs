@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PIMS_BE.DTOs;
 using PIMS_BE.DTOs.Project;
 using PIMS_BE.Models;
@@ -13,6 +13,7 @@ namespace PIMS_BE.Services
         private readonly IMemberRepository _memberRepo;
         private readonly IDriveFileService _driveFileService;
         private readonly IProjectSubmissionRepository _projectSubmission;
+        private readonly ISemesterRepository _semesterRepository;
         private readonly string _submissionsFolderId;
 
         public ProjectService(
@@ -20,12 +21,14 @@ namespace PIMS_BE.Services
             IMemberRepository memberRepo, 
             IProjectSubmissionRepository projectSubmission, 
             IDriveFileService driveFileService, 
+            ISemesterRepository semesterRepository,
             IConfiguration configuration)
         {
             _projectRepository = projectRepository;
             _memberRepo = memberRepo;
             _driveFileService = driveFileService;
             _projectSubmission = projectSubmission;
+            _semesterRepository = semesterRepository;
             _submissionsFolderId = configuration["GoogleDrive:SubmissionsFolderId"] ?? throw new Exception("Google Drive Folder ID is not configured.");
         }
 
@@ -39,7 +42,11 @@ namespace PIMS_BE.Services
                 throw new Exception($"Định dạng file không hỗ trợ. Vui lòng nộp: {string.Join(", ", allowedExtensions)}");
             }
 
-            var memberInfo = await _memberRepo.GetActiveMemberByUserIdAsync(studentId);
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault();
+            if (activeSemester == null) throw new Exception("Không có học kỳ nào đang mở.");
+
+            var memberInfo = await _memberRepo.GetActiveMemberWithGroupInSemesterAsync(studentId, activeSemester.SemesterId);
             if (memberInfo == null) throw new Exception("Bạn không ở trong nhóm nào để nộp báo cáo.");
 
             if (dto.ProjectId <= 0)
@@ -159,7 +166,12 @@ namespace PIMS_BE.Services
 
         public async Task<ApiResponse<List<SubmissionHistoryDto>>> GetSubmissionHistoryAsync(int studentId)
         {
-            var memberInfo = await _memberRepo.GetActiveMemberByUserIdAsync(studentId);
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault();
+            if (activeSemester == null)
+                return new ApiResponse<List<SubmissionHistoryDto>> { Success = false, Message = "Không có học kỳ nào đang mở." };
+
+            var memberInfo = await _memberRepo.GetActiveMemberWithGroupInSemesterAsync(studentId, activeSemester.SemesterId);
 
             if (memberInfo == null)
                 return new ApiResponse<List<SubmissionHistoryDto>> { Success = false, Message = "Bạn chưa gia nhập nhóm nào." };
@@ -189,7 +201,12 @@ namespace PIMS_BE.Services
 
         public async Task<ApiResponse<ProjectDto>> GetProjectByStudentIdAsync(int studentId)
         {
-            var memberInfo = await _memberRepo.GetActiveMemberByUserIdAsync(studentId);
+            var semesters = await _semesterRepository.FindAsync(s => s.IsActive == true);
+            var activeSemester = semesters.FirstOrDefault();
+            if (activeSemester == null)
+                return new ApiResponse<ProjectDto> { Success = false, Message = "Không có học kỳ nào đang mở." };
+
+            var memberInfo = await _memberRepo.GetActiveMemberWithGroupInSemesterAsync(studentId, activeSemester.SemesterId);
 
             if (memberInfo == null)
                 return new ApiResponse<ProjectDto> { Success = false, Message = "Bạn chưa gia nhập nhóm nào." };
