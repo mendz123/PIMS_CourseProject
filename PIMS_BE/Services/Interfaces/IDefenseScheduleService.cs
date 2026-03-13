@@ -8,5 +8,6 @@ public interface IDefenseScheduleService
     Task<DefenseScheduleDto?> GetByIdAsync(int id);
     Task<IEnumerable<DefenseScheduleDto>> GetByTeacherAsync(int userId);
     Task<DefenseScheduleDto> CreateAsync(CreateDefenseScheduleDto dto);
+    Task<IEnumerable<DefenseScheduleDto>> BulkCreateAsync(BulkCreateDefenseScheduleDto dto);
     Task<DefenseScheduleDto> AssignRoomAsync(int scheduleId, AssignRoomDto dto);
 }

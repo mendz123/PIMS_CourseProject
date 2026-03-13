@@ -31,6 +31,16 @@ export interface AssignRoomDto {
   roomId: number | null;
 }
 
+export interface BulkCreateDefenseScheduleDto {
+  councilId: number;
+  defenseDate: string;      // "YYYY-MM-DD"
+  windowStart: string;      // "HH:mm"
+  windowEnd: string;        // "HH:mm"
+  groupIds: number[];
+  slotMinutes?: number;
+  roomId?: number;
+}
+
 // GroupInfo — mirrors GroupDto from groupService but kept minimal
 export interface GroupInfo {
   groupId: number;
@@ -63,6 +73,18 @@ export const defenseScheduleService = {
     const response = await api.post<ApiResponse<DefenseScheduleDto>>(
       "/api/defense-schedule",
       dto,
+    );
+    return response.data;
+  },
+
+  bulkCreate: async (dto: BulkCreateDefenseScheduleDto) => {
+    const response = await api.post<ApiResponse<DefenseScheduleDto[]>>(
+      "/api/defense-schedule/bulk",
+      {
+        ...dto,
+        windowStart: dto.windowStart + ":00",
+        windowEnd: dto.windowEnd + ":00",
+      },
     );
     return response.data;
   },

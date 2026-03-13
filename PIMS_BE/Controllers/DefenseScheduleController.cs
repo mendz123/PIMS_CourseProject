@@ -102,6 +102,36 @@ public class DefenseScheduleController : ControllerBase
         }
     }
 
+    // UC23-BULK — Bulk schedule defense sessions (HeadOfSubject only)
+    [HttpPost("bulk")]
+    [Authorize(Roles = "SUBJECT_HEAD")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<DefenseScheduleDto>>>> BulkCreate(
+        [FromBody] BulkCreateDefenseScheduleDto dto)
+    {
+        try
+        {
+            var results = await _scheduleService.BulkCreateAsync(dto);
+            return Ok(ApiResponse<IEnumerable<DefenseScheduleDto>>.Ok(
+                results, $"{results.Count()} defense schedules created successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<IEnumerable<DefenseScheduleDto>>.NotFound(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<IEnumerable<DefenseScheduleDto>>.BadRequest(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<IEnumerable<DefenseScheduleDto>>.Conflict(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<IEnumerable<DefenseScheduleDto>>.InternalError(ex.Message));
+        }
+    }
+
     // UC24 — Assign room to defense session (HeadOfSubject only)
     [HttpPatch("{id}/room")]
     [Authorize(Roles = "SUBJECT_HEAD")]
