@@ -91,7 +91,10 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     }
         public async Task<IEnumerable<Assessment>> GetActiveAssessmentsAsync()
         {
-            return await _context.Assessments.Where(a => a.IsLocked != true).ToListAsync();
+            return await _context.Assessments
+                .Include(a => a.Semester)
+                .Where(a => a.IsLocked != true && a.Semester.IsActive == true)
+                .ToListAsync();
         }
 
     public async Task<StudentAssessmentRawData?> GetStudentAssessmentDataAsync(int userId)

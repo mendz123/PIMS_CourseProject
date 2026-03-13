@@ -5,6 +5,10 @@ import {
   defenseScheduleService,
   type DefenseScheduleDto,
 } from "../../services/defenseScheduleService";
+import {
+  councilService,
+  type CouncilMemberDto,
+} from "../../services/councilService";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -336,6 +340,17 @@ const DetailModal: React.FC<{
   onClose: () => void;
 }> = ({ schedule, onClose }) => {
   const cfg = getStatusCfg(schedule.status);
+  const [members, setMembers] = useState<CouncilMemberDto[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  useEffect(() => {
+    setMembersLoading(true);
+    councilService
+      .getCouncilById(schedule.councilId)
+      .then((res) => setMembers(res.data?.members ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
+  }, [schedule.councilId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -363,11 +378,60 @@ const DetailModal: React.FC<{
         {/* Body */}
         <div className="p-6 space-y-4">
           <DetailRow icon="groups" label="Group" value={schedule.groupName} />
-          <DetailRow
-            icon="gavel"
-            label="Council"
-            value={schedule.councilName}
-          />
+
+          {/* Council name + members */}
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[20px] text-[#616f89] shrink-0 mt-0.5">
+              gavel
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-[#616f89]">Council</span>
+                <span className="text-sm font-medium ml-4 text-right text-[#111318]">
+                  {schedule.councilName}
+                </span>
+              </div>
+              {/* Members list */}
+              <div className="mt-2 border border-[#dbdfe6] rounded-xl overflow-hidden">
+                {membersLoading ? (
+                  <div className="flex items-center justify-center py-3 gap-2 text-[#616f89] text-xs">
+                    <span className="material-symbols-outlined text-[16px] animate-spin">
+                      progress_activity
+                    </span>
+                    Loading members...
+                  </div>
+                ) : members.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic text-center py-3">
+                    No members found
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-[#dbdfe6]">
+                    {members.map((m) => (
+                      <li
+                        key={m.userId}
+                        className="flex items-center gap-2.5 px-3 py-2"
+                      >
+                        <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-primary text-[14px]">
+                            person
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[#111318] truncate">
+                            {m.fullName}
+                          </p>
+                          <p className="text-[11px] text-[#616f89] truncate">
+                            {m.email}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+
           <DetailRow
             icon="calendar_month"
             label="Date"

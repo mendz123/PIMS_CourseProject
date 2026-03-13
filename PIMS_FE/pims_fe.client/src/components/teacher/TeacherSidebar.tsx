@@ -52,15 +52,15 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       path: "/teacher/groups",
       active: currentPath === "/teacher/groups",
     },
-    {
-      icon: "trending_up",
-      label: "Group Progress",
-      path: "/teacher/progress",
-      active: currentPath === "/teacher/progress",
-    },
+    //{
+    //  icon: "trending_up",
+    //  label: "Group Progress",
+    //  path: "/teacher/progress",
+    //  active: currentPath === "/teacher/progress",
+    //},
     {
       icon: "grade",
-      label: "Grading",
+      label: "Total Grading",
       path: "/teacher/grading",
       active: currentPath === "/teacher/grading",
     },
@@ -75,6 +75,12 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       label: "Student List",
       path: "/teacher/students",
       active: currentPath === "/teacher/students",
+    },
+    {
+      icon: "event",
+      label: "Defense Schedule",
+      path: "/teacher/defense-schedule",
+      active: currentPath === "/teacher/defense-schedule",
     },
     {
       icon: "notifications",

@@ -29,9 +29,10 @@ namespace PIMS_BE.Repositories
         {
             return await _dbSet
                 .Include(s => s.Assessment)
+                    .ThenInclude(a => a.Semester)
                 .Include(s => s.Submitter)
                 .Include(s => s.Group)
-                .Where(s => s.GroupId == groupId)
+                .Where(s => s.GroupId == groupId && s.Assessment != null && s.Assessment.Semester.IsActive == true)
                 .OrderByDescending(s => s.SubmittedAt)
                 .ToListAsync();
         }
