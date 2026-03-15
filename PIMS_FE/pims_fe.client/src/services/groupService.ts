@@ -1,6 +1,6 @@
 import api from './api';
 import type { ApiResponse } from '../types';
-import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, MentorRequestDto, MentorRequestDetailDto, PaginatedResponse, RegisterTopicRequestDto, TopicReviewDto, ProjectDto } from '../types/group.types';
+import type { GroupDto, GroupDetailDto, InvitationDto, InvitationDetailDto, MentorRequestDto, MentorRequestDetailDto, PaginatedResponse, RegisterTopicRequestDto, ProjectDto } from '../types/group.types';
 export interface GroupSubmissionDto {
     id: number;
     name: string;
@@ -134,21 +134,6 @@ export const groupService = {
 
     async updateTopic(groupId: number, dto: RegisterTopicRequestDto): Promise<ApiResponse<ProjectDto>> {
         const response = await api.put<ApiResponse<ProjectDto>>(`/api/group/${groupId}/update-topic`, dto);
-        return response.data;
-    },
-
-    async getPendingTopicRequests(): Promise<ApiResponse<TopicReviewDto[]>> {
-        const response = await api.get<ApiResponse<TopicReviewDto[]>>('/api/group/topic-requests/pending');
-        return response.data;
-    },
-
-    async approveTopicRequest(groupId: number): Promise<ApiResponse<GroupDto>> {
-        const response = await api.post<ApiResponse<GroupDto>>(`/api/group/topic-requests/${groupId}/approve`);
-        return response.data;
-    },
-
-    async rejectTopicRequest(groupId: number): Promise<ApiResponse<GroupDto>> {
-        const response = await api.post<ApiResponse<GroupDto>>(`/api/group/topic-requests/${groupId}/reject`);
         return response.data;
     },
 

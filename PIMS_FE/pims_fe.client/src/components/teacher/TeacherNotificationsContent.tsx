@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Check, Bell, BellOff, GraduationCap, BookOpen, Eye, X, Loader2, Users, Crown } from "lucide-react";
+import { Check, Bell, BellOff, GraduationCap, Eye, X, Loader2, Users, Crown } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { notificationService } from "../../services/notificationService";
 import { groupService } from "../../services/groupService";
 import type { NotificationDto } from "../../types/notification.types";
 import type { MentorRequestDto } from "../../types/group.types";
 import MentorRequestDetailModal from "./MentorRequestDetailModal";
-import TopicReviewModal from "./TopicReviewModal";
-import TopicUpdatedModal from "./TopicUpdatedModal";
 
 function parseMentorRequestId(content: string | null): number | null {
     if (!content) return null;
@@ -17,36 +15,12 @@ function parseMentorRequestId(content: string | null): number | null {
     return match ? parseInt(match[1], 10) : null;
 }
 
-function parseTopicGroupId(content: string | null): number | null {
-    if (!content) return null;
-    const match = content.match(/Group ID: #(\d+)/);
-    return match ? parseInt(match[1], 10) : null;
-}
-
-function isTopicNotification(notif: NotificationDto): boolean {
-    return notif.title === "Topic Registration";
-}
-
-function isTopicUpdatedNotification(notif: NotificationDto): boolean {
-    return notif.title === "Topic Updated";
-}
-
-function parseTopicUpdatedContent(content: string | null): { groupId: number } | null {
-    if (!content) return null;
-    const match = content.match(/Group ID: #(\d+)/);
-    if (!match) return null;
-    return { groupId: parseInt(match[1], 10) };
-}
-
 const TeacherNotificationsContent: React.FC = () => {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(false);
     const [onlyUnread, setOnlyUnread] = useState(false);
     const [pendingRequests, setPendingRequests] = useState<Map<number, MentorRequestDto>>(new Map());
-    const [pendingTopicGroupIds, setPendingTopicGroupIds] = useState<Set<number>>(new Set());
     const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
-    const [selectedTopicGroupId, setSelectedTopicGroupId] = useState<number | null>(null);
-    const [selectedTopicUpdated, setSelectedTopicUpdated] = useState<number | null>(null);
 
     const fetchPendingRequests = useCallback(async () => {
         try {
@@ -55,17 +29,6 @@ const TeacherNotificationsContent: React.FC = () => {
                 const map = new Map<number, MentorRequestDto>();
                 res.data.forEach((r) => map.set(r.requestId, r));
                 setPendingRequests(map);
-            }
-        } catch {
-            // silently ignore
-        }
-    }, []);
-
-    const fetchPendingTopics = useCallback(async () => {
-        try {
-            const res = await groupService.getPendingTopicRequests();
-            if (res.success && res.data) {
-                setPendingTopicGroupIds(new Set(res.data.map((t) => t.groupId)));
             }
         } catch {
             // silently ignore
@@ -91,8 +54,7 @@ const TeacherNotificationsContent: React.FC = () => {
     useEffect(() => {
         fetchNotifications();
         fetchPendingRequests();
-        fetchPendingTopics();
-    }, [fetchNotifications, fetchPendingRequests, fetchPendingTopics]);
+    }, [fetchNotifications, fetchPendingRequests]);
 
     const handleMarkAll = async () => {
         await notificationService.markAllAsRead();
@@ -116,20 +78,6 @@ const TeacherNotificationsContent: React.FC = () => {
         toast.success("Mentor request declined.");
         fetchPendingRequests();
         fetchNotifications();
-    };
-
-    const handleTopicApproved = async () => {
-        setSelectedTopicGroupId(null);
-        toast.success("Topic approved! The group has been notified.");
-        await fetchNotifications();
-        await fetchPendingTopics();
-    };
-
-    const handleTopicRejected = async () => {
-        setSelectedTopicGroupId(null);
-        toast.success("Topic rejected. The group leader has been notified.");
-        await fetchNotifications();
-        await fetchPendingTopics();
     };
 
     return (
@@ -182,31 +130,6 @@ const TeacherNotificationsContent: React.FC = () => {
                     {!loading &&
                         notifications.map((notif) => {
                             const requestId = parseMentorRequestId(notif.content);
-                            const topicGroupId = isTopicNotification(notif) ? parseTopicGroupId(notif.content) : null;
-
-                            if (isTopicUpdatedNotification(notif)) {
-                                const topicData = parseTopicUpdatedContent(notif.content);
-                                return (
-                                    <TopicUpdatedNotificationCard
-                                        key={notif.notificationId}
-                                        notif={notif}
-                                    onViewDetail={() => topicData && setSelectedTopicUpdated(topicData.groupId)}
-                                        onMarkRead={() => handleMarkRead(notif.notificationId)}
-                                    />
-                                );
-                            }
-
-                            if (topicGroupId !== null) {
-                                return (
-                                    <TopicNotificationCard
-                                        key={notif.notificationId}
-                                        notif={notif}
-                                        isPending={pendingTopicGroupIds.has(topicGroupId)}
-                                        onReview={() => setSelectedTopicGroupId(topicGroupId)}
-                                        onMarkRead={() => handleMarkRead(notif.notificationId)}
-                                    />
-                                );
-                            }
 
                             if (requestId !== null) {
                                 const requestData = pendingRequests.get(requestId);
@@ -280,138 +203,9 @@ const TeacherNotificationsContent: React.FC = () => {
                     onRejected={handleRequestRejected}
                 />
             )}
-
-            {selectedTopicGroupId !== null && (
-                <TopicReviewModal
-                    groupId={selectedTopicGroupId}
-                    onClose={() => setSelectedTopicGroupId(null)}
-                    onApproved={handleTopicApproved}
-                    onRejected={handleTopicRejected}
-                />
-            )}
-
-            {selectedTopicUpdated !== null && (
-                <TopicUpdatedModal
-                    groupId={selectedTopicUpdated}
-                    onClose={() => setSelectedTopicUpdated(null)}
-                />
-            )}
         </div>
     );
 };
-
-/* ??? Topic Updated Notification Card ?????????????????????????????????????? */
-interface TopicUpdatedCardProps {
-    notif: NotificationDto;
-    onViewDetail: () => void;
-    onMarkRead: () => void;
-}
-
-const TopicUpdatedNotificationCard: React.FC<TopicUpdatedCardProps> = ({ notif, onViewDetail, onMarkRead }) => (
-    <div className={`p-5 transition-colors ${notif.isRead ? 'bg-white' : 'bg-purple-50/40'}`}>
-        <div className="flex items-start gap-4">
-            <div className="size-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                <BookOpen size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-gray-900">Topic Updated</p>
-                        <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                            Updated
-                        </span>
-                    </div>
-                    <span className="text-[10px] text-gray-400 shrink-0">
-                        {notif.createdAt
-                            ? formatDistanceToNow(new Date(notif.createdAt), { locale: enUS, addSuffix: true })
-                            : 'Just now'}
-                    </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">
-                    {notif.content?.split('\n')[0] ?? ''}
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                        onClick={onViewDetail}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-                    >
-                        <Eye size={12} />
-                        View Topic
-                    </button>
-                    {!notif.isRead && (
-                        <button
-                            onClick={onMarkRead}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                        >
-                            <Check size={12} />
-                            Mark Read
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-/* ??? Topic Notification Card ??????????????????????????????????????????????? */
-interface TopicCardProps {
-    notif: NotificationDto;
-    isPending: boolean;
-    onReview: () => void;
-    onMarkRead: () => void;
-}
-
-const TopicNotificationCard: React.FC<TopicCardProps> = ({ notif, isPending, onReview, onMarkRead }) => (
-    <div className={`p-5 transition-colors ${notif.isRead ? "bg-white" : "bg-purple-50/40"}`}>
-        <div className="flex items-start gap-4">
-            <div className="size-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                <BookOpen size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-gray-900">Topic Registration</p>
-                        {isPending ? (
-                            <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                Pending Review
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                                Reviewed
-                            </span>
-                        )}
-                    </div>
-                    <span className="text-[10px] text-gray-400 shrink-0">
-                        {notif.createdAt
-                            ? formatDistanceToNow(new Date(notif.createdAt), { locale: enUS, addSuffix: true })
-                            : "Just now"}
-                    </span>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">{notif.content}</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {isPending && (
-                        <button
-                            onClick={onReview}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-                        >
-                            <Eye size={12} />
-                            Review Topic
-                        </button>
-                    )}
-                    {!notif.isRead && (
-                        <button
-                            onClick={onMarkRead}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                        >
-                            <Check size={12} />
-                            Mark Read
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
-    </div>
-);
 
 /* ??? Mentor Request Notification Card ????????????????????????????????????? */
 interface MentorRequestCardProps {

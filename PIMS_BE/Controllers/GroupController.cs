@@ -455,68 +455,6 @@ namespace PIMS_BE.Controllers
             }
         }
 
-        [HttpGet("topic-requests/pending")]
-        [Authorize(Roles = "TEACHER")]
-        public async Task<ActionResult<ApiResponse<List<TopicReviewDto>>>> GetPendingTopicRequests()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null) return UnauthorizedResponse<List<TopicReviewDto>>("User information not found.");
-
-                var result = await _groupService.GetPendingTopicRequestsAsync(userId.Value);
-                return OkResponse(result, "Get pending topic requests successfully.");
-            }
-            catch (Exception ex)
-            {
-                return InternalErrorResponse<List<TopicReviewDto>>(ex.Message);
-            }
-        }
-
-        [HttpPost("topic-requests/{groupId}/approve")]
-        [Authorize(Roles = "TEACHER")]
-        public async Task<ActionResult<ApiResponse<GroupDto>>> ApproveTopicRequest(int groupId)
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
-
-                var group = await _groupService.ReviewTopicAsync(userId.Value, groupId, approve: true);
-                return OkResponse(group, "Topic approved. Group status updated to APPROVED.");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequestResponse<GroupDto>(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return InternalErrorResponse<GroupDto>(ex.Message);
-            }
-        }
-
-        [HttpPost("topic-requests/{groupId}/reject")]
-        [Authorize(Roles = "TEACHER")]
-        public async Task<ActionResult<ApiResponse<GroupDto>>> RejectTopicRequest(int groupId)
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null) return UnauthorizedResponse<GroupDto>("User information not found.");
-
-                var group = await _groupService.ReviewTopicAsync(userId.Value, groupId, approve: false);
-                return OkResponse(group, "Topic rejected. Group leader has been notified.");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequestResponse<GroupDto>(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return InternalErrorResponse<GroupDto>(ex.Message);
-            }
-        }
-
         [HttpPost("leave")]
         [Authorize(Roles = "STUDENT")]
         public async Task<ActionResult<ApiResponse<string>>> LeaveGroup()
