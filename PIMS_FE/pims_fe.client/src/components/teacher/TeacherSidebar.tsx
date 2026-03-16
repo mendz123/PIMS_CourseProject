@@ -40,12 +40,12 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       path: "/teacher/dashboard",
       active: currentPath === "/teacher/dashboard",
     },
-    {
-      icon: "fact_check",
-      label: "Project Approvals",
-      path: "/teacher/approvals",
-      active: currentPath === "/teacher/approvals",
-    },
+    // {
+    //   icon: "fact_check",
+    //   label: "Project Approvals",
+    //   path: "/teacher/approvals",
+    //   active: currentPath === "/teacher/approvals",
+    // },
     {
       icon: "groups",
       label: "Group Management",

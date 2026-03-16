@@ -75,7 +75,7 @@ const SubjectHeadDashboard: React.FC = () => {
               </span>
               <span className="text-sm">Subject Overview</span>
             </button>
-            <button
+            {/* <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "faculty-management" ? "bg-primary/10 text-primary" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("faculty-management")}
             >
@@ -83,7 +83,7 @@ const SubjectHeadDashboard: React.FC = () => {
                 groups
               </span>
               <span className="text-sm">Faculty Management</span>
-            </button>
+            </button> */}
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "lecturer-list" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("lecturer-list")}
@@ -129,7 +129,7 @@ const SubjectHeadDashboard: React.FC = () => {
               </span>
               <span className="text-sm">Syllabus &amp; Assessment</span>
             </button>
-            <a
+            {/* <a
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-colors"
               href="#"
             >
@@ -137,7 +137,7 @@ const SubjectHeadDashboard: React.FC = () => {
                 bar_chart
               </span>
               <span className="text-sm">Performance Analytics</span>
-            </a>
+            </a> */}
             <button
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all w-full ${activeTab === "notifications" ? "bg-primary/10 text-primary font-medium" : "text-[#616f89] hover:bg-[#f6f6f8]"}`}
               onClick={() => setActiveTab("notifications")}
