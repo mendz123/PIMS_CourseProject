@@ -1,5 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
+import React, { useState, useEffect } from "react";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import { assessmentService } from "../../services/assessmentService";
@@ -42,7 +41,6 @@ const GradingPage: React.FC = () => {
     // Grading State
     const [groupComments, setGroupComments] = useState<{ [groupId: number]: string }>({});
     const [studentScores, setStudentScores] = useState<{ [userId: number]: { [assessmentId: number]: number } }>({});
-    const [isSaving, setIsSaving] = useState(false);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -148,92 +146,7 @@ const GradingPage: React.FC = () => {
         );
     };
 
-    const handleScoreChange = (userId: number, assessmentId: number, score: string) => {
-        if (score === '') {
-            setStudentScores(prev => ({
-                ...prev,
-                [userId]: {
-                    ...prev[userId],
-                    [assessmentId]: '' as any
-                }
-            }));
-            return;
-        }
 
-        let numScore = parseFloat(score);
-        if (isNaN(numScore)) return;
-
-        if (numScore > 10) numScore = 10;
-        if (numScore < 0) numScore = 0;
-
-        setStudentScores(prev => ({
-            ...prev,
-            [userId]: {
-                ...prev[userId],
-                [assessmentId]: numScore
-            }
-        }));
-    };
-
-    const handleCommentChange = (groupId: number, comment: string) => {
-        setGroupComments(prev => ({
-            ...prev,
-            [groupId]: comment
-        }));
-    };
-
-    const handleSaveGrades = async () => {
-        setIsSaving(true);
-        try {
-            // Chuẩn bị payload cho từng nhóm đã được mở (hoặc tất cả), lọc theo search
-            const groupsToSave = searchQuery.trim() === '' ? groups : groups.filter(g => g.groupName.toLowerCase().includes(searchQuery.toLowerCase()));
-
-            let saveCount = 0;
-            const assessmentsToProcess = selectedAssessmentId === 'all'
-                ? assessments
-                : assessments.filter(a => a.assessmentId === selectedAssessmentId);
-
-            for (const group of groupsToSave) {
-                for (const assessment of assessmentsToProcess) {
-                    const groupScorePayload: any = {
-                        assessmentId: assessment.assessmentId,
-                        groupId: group.groupId,
-                        teacherComment: groupComments[group.groupId] || "",
-                        studentScores: []
-                    };
-
-                    group.students.forEach(student => {
-                        const mappedScore = studentScores[student.userId]?.[assessment.assessmentId];
-                        if (mappedScore !== undefined && mappedScore !== '' as any) {
-                            groupScorePayload.studentScores.push({
-                                userId: student.userId,
-                                score: parseFloat(mappedScore.toString())
-                            });
-                        }
-                    });
-
-                    // Chỉ lưu nếu có nhập điểm hoặc có nhận xét
-                    if (groupScorePayload.studentScores.length > 0 || groupScorePayload.teacherComment.trim() !== '') {
-                        await assessmentService.saveGrades(groupScorePayload);
-                        saveCount++;
-                    }
-                }
-            }
-            if (saveCount > 0) {
-                toast.success("Lưu điểm thành công!");
-                // Re-fetch data to reflect newly calculated total scores
-                await fetchSemesterData();
-            } else {
-                toast.error("Không có thay đổi nào để lưu hoặc nhóm chưa nộp bài! (Phải có bài nộp mới lưu được Nhận xét)");
-            }
-        }
-        catch (error) {
-            console.error("Lỗi khi lưu điểm:", error);
-            toast.error("Đã xảy ra lỗi khi lưu điểm.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318]">
@@ -346,23 +259,24 @@ const GradingPage: React.FC = () => {
                                                     <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
                                                         {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => {
+                                                            const score = studentScores[student.userId]?.[a.assessmentId];
                                                             const hasCriteriaGrades = student.criteriaScores && student.criteriaScores[a.assessmentId] && Object.keys(student.criteriaScores[a.assessmentId]).length > 0;
-                                                            const isDisabled = !group.submittedDocs || group.submittedDocs.length === 0;
 
                                                             return (
                                                                 <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
-                                                                    {hasCriteriaGrades ? (
-                                                                        <div className="w-16 mx-auto px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded text-center text-sm font-bold" title="Điểm đã được chấm chi tiết theo tiêu chí">
-                                                                            {studentScores[student.userId]?.[a.assessmentId] !== undefined ? studentScores[student.userId]?.[a.assessmentId] : '--'}
+                                                                    {score !== undefined ? (
+                                                                        <div 
+                                                                            className={`w-16 mx-auto px-2 py-1 border rounded text-center text-sm font-bold ${
+                                                                                hasCriteriaGrades 
+                                                                                ? "bg-green-50 border-green-200 text-green-700" 
+                                                                                : "bg-blue-50 border-blue-200 text-blue-700"
+                                                                            }`} 
+                                                                            title={hasCriteriaGrades ? "Điểm đã được chấm chi tiết theo tiêu chí" : "Điểm đánh giá trực tiếp"}
+                                                                        >
+                                                                            {score}
                                                                         </div>
                                                                     ) : (
-                                                                        <input
-                                                                            type="number" step="0.1" max="10" min="0" placeholder="0.0"
-                                                                            value={studentScores[student.userId]?.[a.assessmentId] ?? ''}
-                                                                            onChange={(e) => handleScoreChange(student.userId, a.assessmentId, e.target.value)}
-                                                                            disabled={isDisabled}
-                                                                            className={`w-16 px-2 py-1 border border-[#dbdfe6] rounded text-center focus:ring-1 focus:ring-primary outline-none ${isDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}`}
-                                                                        />
+                                                                        <span className="text-gray-400 font-medium">--</span>
                                                                     )}
                                                                 </td>
                                                             );
@@ -398,14 +312,9 @@ const GradingPage: React.FC = () => {
                                                             Nhận xét chung cho nhóm {group.groupName}:
                                                         </td>
                                                         <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
-                                                            <textarea
-                                                                rows={2}
-                                                                placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
-                                                                value={groupComments[group.groupId] ?? ""}
-                                                                onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
-                                                                disabled={!group.submittedDocs || group.submittedDocs.length === 0}
-                                                                className={`w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                            />
+                                                            <div className="w-full p-2 text-sm border border-orange-200 rounded-lg bg-white/50 min-h-[40px] text-gray-700">
+                                                                {groupComments[group.groupId] || <span className="text-gray-400 italic">Chưa có nhận xét</span>}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 )}
@@ -449,16 +358,6 @@ const GradingPage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-
-                            {/*<div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3">*/}
-                            {/*    <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white">Hủy</button>*/}
-                            {/*    <button*/}
-                            {/*        onClick={handleSaveGrades}*/}
-                            {/*        disabled={isSaving}*/}
-                            {/*        className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>*/}
-                            {/*        {isSaving ? "Đang lưu..." : "Lưu điểm"}*/}
-                            {/*    </button>*/}
-                            {/*</div>*/}
                         </div>
                     </div>
                 )}
