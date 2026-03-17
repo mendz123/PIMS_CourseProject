@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using PIMS_BE.DTOs.Auth;
 using PIMS_BE.DTOs.Notification;
 using PIMS_BE.DTOs.User;
@@ -311,6 +312,34 @@ public class UserService : IUserService
             FullName = u.FullName ?? "",
             AvatarUrl = u.AvatarUrl
         }).ToList();
+    }
+    public async Task<List<UserInfo>> ImportStudentListAsync(IFormFile file)
+    {
+        var students = new List<User>();
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+        using (var stream = new MemoryStream())
+        {
+            await file.CopyToAsync(stream);
+            using (var package = new ExcelPackage(stream))
+            {
+                var worksheet = package.Workbook.Worksheets[0];
+                int rowCount = worksheet.Dimension.Rows;
+                for (int row = 2; row <= rowCount; row++)
+                {
+                    var user = new User
+                    {
+                        Email = worksheet.Cells[row, 1].Text.Trim(),
+                        FullName = worksheet.Cells[row, 2].Text.Trim(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("defaultpassword"),
+                        RoleId = 3, // Assuming 3 is the RoleId for STUDENT
+                        StatusId = 1, // Assuming 1 is the StatusId for ACTIVE
+                        CreatedAt = DateTime.UtcNow
+                    };
+                }
+            }
+        }
+        
     }
 }
 
