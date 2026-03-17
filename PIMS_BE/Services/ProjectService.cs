@@ -32,7 +32,7 @@ namespace PIMS_BE.Services
             _submissionsFolderId = configuration["GoogleDrive:SubmissionsFolderId"] ?? throw new Exception("Google Drive Folder ID is not configured.");
         }
 
-        public async Task<ProjectSubmission> SubmitReportAsync(SubmitProjectReportDto dto, int studentId)
+        public async Task<SubmissionHistoryDto> SubmitReportAsync(SubmitProjectReportDto dto, int studentId)
         {
             var allowedExtensions = new[] { ".zip", ".rar", ".7z" };
             var extension = Path.GetExtension(dto.ReportFile.FileName).ToLower();
@@ -78,7 +78,8 @@ namespace PIMS_BE.Services
                 throw new Exception("Lỗi hệ thống khi lưu lịch sử nộp bài: " + (ex.InnerException?.Message ?? ex.Message));
             }
 
-            return submission;
+            var savedSubmission = await _projectSubmission.GetSubmissionByIdAsync(submission.SubmissionId);
+            return MapToSubmissionHistoryDto(savedSubmission!);
         }
 
         public async Task<ApiResponse<ProjectDto>> SubmitProjectAsync(SubmitProjectDto dto, int userId)
@@ -111,18 +112,18 @@ namespace PIMS_BE.Services
         }
 
         // UC30: Update Submission
-        public async Task<ApiResponse<ProjectSubmission>> UpdateSubmissionAsync(int submissionId, SubmitProjectReportDto dto, int userId)
+        public async Task<ApiResponse<SubmissionHistoryDto>> UpdateSubmissionAsync(int submissionId, SubmitProjectReportDto dto, int userId)
         {
             var existingSubmission = await _projectSubmission.GetSubmissionByIdAsync(submissionId);
             if (existingSubmission == null)
-                return new ApiResponse<ProjectSubmission> { Success = false, Message = "Submission not found" };
+                return new ApiResponse<SubmissionHistoryDto> { Success = false, Message = "Submission not found" };
 
             if (existingSubmission.SubmitterId != userId)
-                return new ApiResponse<ProjectSubmission> { Success = false, Message = "You don't have permission to update this" };
+                return new ApiResponse<SubmissionHistoryDto> { Success = false, Message = "You don't have permission to update this" };
 
             var extension = Path.GetExtension(dto.ReportFile.FileName).ToLower();
             if (extension != ".zip" && extension != ".rar" && extension != ".7z")
-                return new ApiResponse<ProjectSubmission> { Success = false, Message = "Unsupported file format" };
+                return new ApiResponse<SubmissionHistoryDto> { Success = false, Message = "Unsupported file format" };
 
             if (!string.IsNullOrEmpty(existingSubmission.FileResourceId))
             {
@@ -140,7 +141,8 @@ namespace PIMS_BE.Services
             await _projectSubmission.UpdateAsync(existingSubmission);
             await _projectSubmission.SaveAsync();
 
-            return new ApiResponse<ProjectSubmission> { Success = true, Message = "Report updated successfully", Data = existingSubmission };
+            var updatedSubmission = await _projectSubmission.GetSubmissionByIdAsync(submissionId);
+            return new ApiResponse<SubmissionHistoryDto> { Success = true, Message = "Report updated successfully", Data = MapToSubmissionHistoryDto(updatedSubmission!) };
         }
 
         // UC40: Withdraw Submission 
@@ -232,6 +234,23 @@ namespace PIMS_BE.Services
                 Title = project.Title,
                 Description = project.Description,
                 StatusId = project.StatusId
+            };
+        }
+
+        private SubmissionHistoryDto MapToSubmissionHistoryDto(ProjectSubmission s)
+        {
+            return new SubmissionHistoryDto
+            {
+                SubmissionId = s.SubmissionId,
+                FileName = s.FileName,
+                ReportUrl = s.ReportUrl,
+                SubmittedAt = s.SubmittedAt,
+                AssessmentId = s.AssessmentId,
+                AssessmentTitle = s.Assessment?.Title ?? "N/A",
+                SubmitterId = s.SubmitterId,
+                SubmitterName = s.Submitter?.FullName ?? "N/A",
+                GroupId = s.GroupId,
+                GroupName = s.Group?.GroupName ?? "N/A"
             };
         }
     }

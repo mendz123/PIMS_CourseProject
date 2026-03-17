@@ -64,6 +64,10 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IMentorRequestRepository, MentorRequestRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IDefenseScheduleRepository, DefenseScheduleRepository>();
+builder.Services.AddScoped<ICouncilCriteriaGradeRepository, CouncilCriteriaGradeRepository>();
+builder.Services.AddScoped<IAssessmentScoreRepository, AssessmentScoreRepository>();
+builder.Services.AddScoped<IStudentFinalResultRepository, StudentFinalResultRepository>();
+builder.Services.AddScoped<ICriteriaGradeRepository, CriteriaGradeRepository>();
 
 // Register Services
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();

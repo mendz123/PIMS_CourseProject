@@ -9,6 +9,7 @@ import {
   councilService,
   type CouncilMemberDto,
 } from "../../services/councilService";
+import CouncilGradingModal from "../../components/teacher/CouncilGradingModal";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ const TeacherDefenseSchedulePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSchedule, setSelectedSchedule] =
     useState<DefenseScheduleDto | null>(null);
+  const [gradingSchedule, setGradingSchedule] =
+    useState<DefenseScheduleDto | null>(null);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -103,6 +106,15 @@ const TeacherDefenseSchedulePage: React.FC = () => {
     };
     fetchSchedules();
   }, []);
+
+  const refreshSchedules = async () => {
+    try {
+      const res = await defenseScheduleService.getMySchedule();
+      setSchedules(res.data ?? []);
+    } catch (err) {
+      console.error("Error refreshing schedules:", err);
+    }
+  };
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = schedules.filter(
@@ -158,7 +170,7 @@ const TeacherDefenseSchedulePage: React.FC = () => {
                       <Th>Council</Th>
                       <Th>Room / Location</Th>
                       <Th>Status</Th>
-                      <Th align="right">Details</Th>
+                      <Th align="right">Actions</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dbdfe6]">
@@ -249,17 +261,30 @@ const TeacherDefenseSchedulePage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Detail */}
+                          {/* Actions */}
                           <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => setSelectedSchedule(s)}
-                              className="inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline"
-                            >
-                              View
-                              <span className="material-symbols-outlined text-[14px]">
-                                chevron_right
-                              </span>
-                            </button>
+                            <div className="flex items-center justify-end gap-3">
+                              {s.status?.toUpperCase() !== "COMPLETED" && (
+                                <button
+                                  onClick={() => setGradingSchedule(s)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    gavel
+                                  </span>
+                                  Grade
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setSelectedSchedule(s)}
+                                className="inline-flex items-center gap-1 text-[#616f89] text-xs font-semibold hover:text-[#111318] transition-colors"
+                              >
+                                View
+                                <span className="material-symbols-outlined text-[14px]">
+                                  chevron_right
+                                </span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -282,6 +307,15 @@ const TeacherDefenseSchedulePage: React.FC = () => {
         <DetailModal
           schedule={selectedSchedule}
           onClose={() => setSelectedSchedule(null)}
+        />
+      )}
+
+      {/* ── Grading Modal ── */}
+      {gradingSchedule && (
+        <CouncilGradingModal
+          schedule={gradingSchedule}
+          onClose={() => setGradingSchedule(null)}
+          onSuccess={refreshSchedules}
         />
       )}
     </div>

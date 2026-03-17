@@ -8,6 +8,7 @@ public interface ICouncilRepository : IGenericRepository<Council>
     Task<Council?> GetWithMembersAsync(int councilId);
     Task<IEnumerable<Council>> GetAllWithMembersAsync();
     Task<IEnumerable<Council>> GetBySemesterAsync(int semesterId);
+    Task<List<int>> GetMemberUserIdsAsync(int councilId);
 }
 
 public class CouncilRepository : GenericRepository<Council>, ICouncilRepository
@@ -33,4 +34,12 @@ public class CouncilRepository : GenericRepository<Council>, ICouncilRepository
                 .ThenInclude(m => m.User)
             .Where(c => c.SemesterId == semesterId)
             .ToListAsync();
+
+    public async Task<List<int>> GetMemberUserIdsAsync(int councilId)
+    {
+        return await _context.CouncilMembers
+            .Where(m => m.CouncilId == councilId)
+            .Select(m => m.UserId)
+            .ToListAsync();
+    }
 }
