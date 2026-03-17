@@ -101,6 +101,21 @@ export const userService = {
     );
     return response.data.data ?? [];
   },
+
+  importStudents: async (file: File): Promise<ApiResponse<UserInfo[]>> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post<ApiResponse<UserInfo[]>>(
+      "/api/user/import-students",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
 };
 
 export default userService;

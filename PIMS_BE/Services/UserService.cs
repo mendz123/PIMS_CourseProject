@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 using PIMS_BE.DTOs.Auth;
 using PIMS_BE.DTOs.Notification;
 using PIMS_BE.DTOs.User;
@@ -312,5 +313,69 @@ public class UserService : IUserService
             AvatarUrl = u.AvatarUrl
         }).ToList();
     }
+    public async Task<List<UserInfo>> ImportStudentListAsync(IFormFile file)
+{
+    var students = new List<User>();
+    var result = new List<UserInfo>();
+
+    ExcelPackage.License.SetNonCommercialPersonal("Akasaki");
+
+    using (var stream = new MemoryStream())
+    {
+        await file.CopyToAsync(stream);
+
+        using (var package = new ExcelPackage(stream))
+        {
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+
+if (worksheet == null)
+    throw new Exception("Excel file has no worksheet");
+
+if (worksheet.Dimension == null)
+    throw new Exception("Excel file is empty");
+
+int rowCount = worksheet.Dimension.Rows;
+
+            for (int row = 2; row <= rowCount; row++)
+            {
+                var email = worksheet.Cells[row, 2].Text.Trim();
+
+                var userExists = await _userRepository.GetByEmailAsync(email);
+
+                // ✅ FIX LOGIC
+                if (userExists == null)
+                {
+                    var user = new User
+                    {
+                        Email = email,
+                        FullName = worksheet.Cells[row, 3].Text.Trim(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("nopassword"),
+                        RoleId = 1,
+                        StatusId = 1,
+                        CreatedAt = DateTime.UtcNow,
+                        PhoneNumber = worksheet.Cells[row, 4].Text.Trim(),
+                    };
+
+                    students.Add(user);
+                }
+            }
+
+            if (students.Count > 0)
+            {
+                await _userRepository.AddRangeAsync(students);
+                await _userRepository.SaveChangesAsync();
+
+                // map sang UserInfo nếu cần
+                result = students.Select(s => new UserInfo
+                {
+                    Email = s.Email,
+                    FullName = s.FullName,
+                    PhoneNumber = s.PhoneNumber
+                }).ToList();
+            }
+        }
+    }
+    return result;
+}
 }
 
