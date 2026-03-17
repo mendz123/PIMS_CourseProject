@@ -17,6 +17,7 @@ public class CouncilRepository : GenericRepository<Council>, ICouncilRepository
 
     public async Task<Council?> GetWithMembersAsync(int councilId)
         => await _context.Councils
+            .Include(c => c.Semester)
             .Include(c => c.CouncilMembers)
                 .ThenInclude(m => m.User)
             .Include(c => c.DefenseSchedules)
@@ -24,12 +25,14 @@ public class CouncilRepository : GenericRepository<Council>, ICouncilRepository
 
     public async Task<IEnumerable<Council>> GetAllWithMembersAsync()
         => await _context.Councils
+            .Include(c => c.Semester)
             .Include(c => c.CouncilMembers)
                 .ThenInclude(m => m.User)
             .ToListAsync();
 
     public async Task<IEnumerable<Council>> GetBySemesterAsync(int semesterId)
         => await _context.Councils
+            .Include(c => c.Semester)
             .Include(c => c.CouncilMembers)
                 .ThenInclude(m => m.User)
             .Where(c => c.SemesterId == semesterId)

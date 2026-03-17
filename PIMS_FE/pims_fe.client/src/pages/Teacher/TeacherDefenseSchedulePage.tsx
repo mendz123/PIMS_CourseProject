@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import {
@@ -9,7 +9,6 @@ import {
   councilService,
   type CouncilMemberDto,
 } from "../../services/councilService";
-import CouncilGradingModal from "../../components/teacher/CouncilGradingModal";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -85,8 +84,6 @@ const TeacherDefenseSchedulePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSchedule, setSelectedSchedule] =
     useState<DefenseScheduleDto | null>(null);
-  const [gradingSchedule, setGradingSchedule] =
-    useState<DefenseScheduleDto | null>(null);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -106,15 +103,6 @@ const TeacherDefenseSchedulePage: React.FC = () => {
     };
     fetchSchedules();
   }, []);
-
-  const refreshSchedules = async () => {
-    try {
-      const res = await defenseScheduleService.getMySchedule();
-      setSchedules(res.data ?? []);
-    } catch (err) {
-      console.error("Error refreshing schedules:", err);
-    }
-  };
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filtered = schedules.filter(
@@ -264,17 +252,6 @@ const TeacherDefenseSchedulePage: React.FC = () => {
                           {/* Actions */}
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-3">
-                              {s.status?.toUpperCase() !== "COMPLETED" && (
-                                <button
-                                  onClick={() => setGradingSchedule(s)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm active:scale-95"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">
-                                    gavel
-                                  </span>
-                                  Grade
-                                </button>
-                              )}
                               <button
                                 onClick={() => setSelectedSchedule(s)}
                                 className="inline-flex items-center gap-1 text-[#616f89] text-xs font-semibold hover:text-[#111318] transition-colors"
@@ -307,15 +284,6 @@ const TeacherDefenseSchedulePage: React.FC = () => {
         <DetailModal
           schedule={selectedSchedule}
           onClose={() => setSelectedSchedule(null)}
-        />
-      )}
-
-      {/* ── Grading Modal ── */}
-      {gradingSchedule && (
-        <CouncilGradingModal
-          schedule={gradingSchedule}
-          onClose={() => setGradingSchedule(null)}
-          onSuccess={refreshSchedules}
         />
       )}
     </div>

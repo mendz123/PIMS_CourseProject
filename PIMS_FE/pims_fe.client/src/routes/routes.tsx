@@ -11,6 +11,7 @@ import {
   TeacherNotifications,
   TeacherDefenseSchedulePage,
   TeacherStudentListPage,
+  TeacherCouncilGradingPage,
 } from "../pages/Teacher";
 
 import {
@@ -118,6 +119,14 @@ export const router = createBrowserRouter([
       {
         path: "teacher/students",
         element: <TeacherStudentListPage />,
+      },
+      {
+        path: "teacher/council-grading",
+        element: <TeacherCouncilGradingPage />,
+      },
+      {
+        path: "teacher/council-grading/:councilId",
+        element: <TeacherCouncilGradingPage />,
       },
 
       {

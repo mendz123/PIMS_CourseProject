@@ -430,10 +430,17 @@ public class AssessmentService : IAssessmentService
                 foreach (var studentId in studentIds)
                 {
                     decimal totalScore = 0;
+                    bool failedFinal = false;
+
                     foreach (var a in assessmentsInSemester)
                     {
                         var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
                         totalScore += score * (a.Weight ?? 0) / 100m;
+                        
+                        if (a.IsFinal == true && score < 4)
+                        {
+                            failedFinal = true;
+                        }
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
@@ -441,6 +448,7 @@ public class AssessmentService : IAssessmentService
                     if (finalResult != null)
                     {
                         finalResult.TotalScore = totalScore;
+                        finalResult.IsPassed = totalScore >= 5 && !failedFinal;
                         _finalResultRepository.Update(finalResult);
                     }
                     else
@@ -449,7 +457,8 @@ public class AssessmentService : IAssessmentService
                         {
                             UserId = studentId,
                             SemesterId = semesterId,
-                            TotalScore = totalScore
+                            TotalScore = totalScore,
+                            IsPassed = totalScore >= 5 && !failedFinal
                         };
                         await _finalResultRepository.AddAsync(finalResult);
                     }
@@ -641,10 +650,17 @@ public class AssessmentService : IAssessmentService
             foreach (var studentId in studentIds)
             {
                 decimal finalSubjectScore = 0;
+                bool failedFinal = false;
+
                 foreach (var a in assessmentsInSemester)
                 {
                     var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
                     finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+
+                    if (a.IsFinal == true && score < 4)
+                    {
+                        failedFinal = true;
+                    }
                 }
 
                 var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
@@ -652,6 +668,7 @@ public class AssessmentService : IAssessmentService
                 if (finalResult != null)
                 {
                     finalResult.TotalScore = finalSubjectScore;
+                    finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
                     _finalResultRepository.Update(finalResult);
                 }
                 else
@@ -660,7 +677,8 @@ public class AssessmentService : IAssessmentService
                     {
                         UserId = studentId,
                         SemesterId = semesterId,
-                        TotalScore = finalSubjectScore
+                        TotalScore = finalSubjectScore,
+                        IsPassed = finalSubjectScore >= 5 && !failedFinal
                     };
                     await _finalResultRepository.AddAsync(finalResult);
                 }
@@ -754,7 +772,7 @@ public class AssessmentService : IAssessmentService
                     if (existingScore != null)
                     {
                         existingScore.Score = totalAverageAssessmentScore;
-                        existingScore.IsPassed = totalAverageAssessmentScore >= 5;
+                        existingScore.IsPassed = totalAverageAssessmentScore >= 4; // Final assessment pass threshold is 4
                         _assessmentScoreRepository.Update(existingScore);
                     }
                     else
@@ -764,7 +782,7 @@ public class AssessmentService : IAssessmentService
                             AssessmentId = dto.AssessmentId,
                             UserId = studentId,
                             Score = totalAverageAssessmentScore,
-                            IsPassed = totalAverageAssessmentScore >= 5
+                            IsPassed = totalAverageAssessmentScore >= 4 // Final assessment pass threshold is 4
                         };
                         await _assessmentScoreRepository.AddAsync(newScore);
                     }
@@ -790,10 +808,17 @@ public class AssessmentService : IAssessmentService
                 foreach (var studentId in studentIds)
                 {
                     decimal finalSubjectScore = 0;
+                    bool failedFinal = false;
+
                     foreach (var a in assessmentsInSemester)
                     {
                         var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
                         finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+
+                        if (a.IsFinal == true && score < 4)
+                        {
+                            failedFinal = true;
+                        }
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, assessment.SemesterId);
@@ -801,6 +826,7 @@ public class AssessmentService : IAssessmentService
                     if (finalResult != null)
                     {
                         finalResult.TotalScore = finalSubjectScore;
+                        finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
                         _finalResultRepository.Update(finalResult);
                     }
                     else
@@ -809,7 +835,8 @@ public class AssessmentService : IAssessmentService
                         {
                             UserId = studentId,
                             SemesterId = assessment.SemesterId,
-                            TotalScore = finalSubjectScore
+                            TotalScore = finalSubjectScore,
+                            IsPassed = finalSubjectScore >= 5 && !failedFinal
                         };
                         await _finalResultRepository.AddAsync(newFinalResult);
                     }
@@ -825,5 +852,19 @@ public class AssessmentService : IAssessmentService
             await transaction.RollbackAsync();
             throw new Exception("Error saving council grades: " + ex.Message);
         }
+    }
+    
+    public async Task<List<CouncilCriteriaGradeDto>> GetCouncilGradesAsync(int councilId, int groupId, int teacherId)
+    {
+        var grades = await _councilGradeRepository.GetGradesForGroupAsync(councilId, groupId);
+        return grades
+            .Where(g => g.TeacherId == teacherId)
+            .Select(g => new CouncilCriteriaGradeDto
+            {
+                UserId = g.UserId,
+                CriteriaId = g.CriteriaId,
+                Score = g.Score ?? 0
+            })
+            .ToList();
     }
 }

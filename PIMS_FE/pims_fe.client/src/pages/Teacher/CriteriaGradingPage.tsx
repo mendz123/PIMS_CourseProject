@@ -75,7 +75,8 @@ const CriteriaGradingPage: React.FC = () => {
         let currentAssessments: AssessmentWithCriteriaDto[] = [];
         try {
             const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
-            currentAssessments = assessmentRes.data || [];
+            // Bỏ các đợt chấm final/hội đồng vì đã có trang chấm hội đồng riêng
+            currentAssessments = (assessmentRes.data || []).filter(a => !a.isFinal);
             setAssessments(currentAssessments);
             if (currentAssessments.length > 0) {
                 // Tự động chọn đợt đầu tiên
