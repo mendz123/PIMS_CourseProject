@@ -10,6 +10,8 @@ public interface IUserRepository : IGenericRepository<User>
     Task<User?> GetByIdWithDetailsAsync(int id);
     Task<PagedResult<User>> GetUsersPagedAsync(int pageIndex, int pageSize, string? search, string? role, string? status);
     Task<List<User>> SearchActiveUsersByEmailAsync(string query, string roleName, int limit);
+    
+    Task AddRangeAsync(List<User> users);
 }
 
 public class UserRepository : GenericRepository<User>, IUserRepository
@@ -98,5 +100,8 @@ public class UserRepository : GenericRepository<User>, IUserRepository
             .ToListAsync();
     }
 
-
+    public async Task AddRangeAsync(List<User> users)
+    {
+        await _dbSet.AddRangeAsync(users);
+    }
 }

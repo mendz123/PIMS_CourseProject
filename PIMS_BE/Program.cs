@@ -13,6 +13,7 @@ using PIMS_BE.Repositories;
 using PIMS_BE.Middlewares;
 using PIMS_BE.Helpers;
 using Serilog;
+using OfficeOpenXml;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -32,6 +33,9 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     Log.Information("Starting PIMS Backend Application");
+
+    // Set EPPlus License Context
+    ExcelPackage.License.SetNonCommercialPersonal("Akasaki");
 
 var builder = WebApplication.CreateBuilder(args);
 
