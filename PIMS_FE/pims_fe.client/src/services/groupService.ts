@@ -12,6 +12,8 @@ export interface GroupSubmissionDto {
 export interface TeacherGroupDto {
     groupId: number;
     groupName: string;
+    semesterName?: string;
+    topicName?: string;
     memberCount: number;
     students: {
         userId: number;

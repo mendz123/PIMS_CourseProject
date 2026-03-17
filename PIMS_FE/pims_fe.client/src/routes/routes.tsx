@@ -10,7 +10,9 @@ import {
   GroupListPage,
   TeacherNotifications,
   TeacherDefenseSchedulePage,
+  TeacherStudentListPage,
 } from "../pages/Teacher";
+
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -113,6 +115,11 @@ export const router = createBrowserRouter([
         path: "teacher/settings",
         element: <TeacherSettingsPage />,
       },
+      {
+        path: "teacher/students",
+        element: <TeacherStudentListPage />,
+      },
+
       {
         path: "subject-head",
         element: (

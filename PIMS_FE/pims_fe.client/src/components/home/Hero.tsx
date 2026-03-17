@@ -25,12 +25,12 @@ const Hero: React.FC = () => {
                 <span className="material-symbols-outlined text-[16px]">
                   school
                 </span>
-                Academic Semester 2024
+                Spring 2026
               </div>
               <h1 className="text-6xl md:text-7xl font-extrabold leading-[1.05] tracking-tight text-slate-900">
-                Streamline Your <br />
+                Course Project Management <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-slate-950">
-                  Course Projects.
+                  System
                 </span>
               </h1>
               <p className="text-xl text-slate-500 max-w-[520px] leading-relaxed">
