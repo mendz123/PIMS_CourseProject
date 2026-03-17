@@ -105,6 +105,8 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
             .Include(g => g.GroupMembers)
                 .ThenInclude(gm => gm.User)
                     .ThenInclude(u => u.CriteriaGradeUsers)
+    .ThenInclude(cg => cg.Criteria)
+
             .Include(g => g.GroupMembers)
                 .ThenInclude(gm => gm.User)
                     .ThenInclude(u => u.StudentFinalResults)
