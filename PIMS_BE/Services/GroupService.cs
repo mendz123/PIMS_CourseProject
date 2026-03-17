@@ -1,4 +1,4 @@
-﻿using PIMS_BE.DTOs.Group;
+using PIMS_BE.DTOs.Group;
 using PIMS_BE.DTOs.Project;
 using PIMS_BE.Models;
 using PIMS_BE.Repositories;
@@ -830,7 +830,9 @@ namespace PIMS_BE.Services
                 var teacherGroup = new TeacherGroupDto
                 {
                     GroupId = group.GroupId,
-                    GroupName = group.GroupName ?? $"NhÃ³m {group.GroupId}",
+                    GroupName = group.GroupName ?? $"Nhóm {group.GroupId}",
+                    SemesterName = group.Semester?.SemesterName,
+                    TopicName = group.Projects.OrderByDescending(p => p.ProjectId).FirstOrDefault(p => p.StatusId == 3)?.Title,
                     MemberCount = group.GroupMembers.Count(m => m.StatusId == 1),
                     Students = group.GroupMembers
                         .Where(m => m.StatusId == 1)
