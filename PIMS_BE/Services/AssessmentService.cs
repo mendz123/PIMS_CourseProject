@@ -1,4 +1,4 @@
-﻿using PIMS_BE.DTOs.Assessment;
+using PIMS_BE.DTOs.Assessment;
 using PIMS_BE.Models;
 using PIMS_BE.Repositories;
 using PIMS_BE.Services.Interfaces;
@@ -11,17 +11,38 @@ public class AssessmentService : IAssessmentService
     private readonly IAssessmentRepository _assessmentRepository;
     private readonly IAssessmentCriterionRepository _criterionRepository;
     private readonly ISemesterRepository _semesterRepository;
+    private readonly IProjectSubmissionRepository _submissionRepository;
+    private readonly ICouncilRepository _councilRepository;
+    private readonly ICouncilCriteriaGradeRepository _councilGradeRepository;
+    private readonly IAssessmentScoreRepository _assessmentScoreRepository;
+    private readonly IStudentFinalResultRepository _finalResultRepository;
+    private readonly IDefenseScheduleRepository _defenseScheduleRepository;
+    private readonly ICriteriaGradeRepository _criteriaGradeRepository;
     private readonly PimsDbContext _context;
 
     public AssessmentService(
         IAssessmentRepository assessmentRepository,
         IAssessmentCriterionRepository criterionRepository,
         ISemesterRepository semesterRepository,
+        IProjectSubmissionRepository submissionRepository,
+        ICouncilRepository councilRepository,
+        ICouncilCriteriaGradeRepository councilGradeRepository,
+        IAssessmentScoreRepository assessmentScoreRepository,
+        IStudentFinalResultRepository finalResultRepository,
+        IDefenseScheduleRepository defenseScheduleRepository,
+        ICriteriaGradeRepository criteriaGradeRepository,
         PimsDbContext context)
     {
         _assessmentRepository = assessmentRepository;
         _criterionRepository = criterionRepository;
         _semesterRepository = semesterRepository;
+        _submissionRepository = submissionRepository;
+        _councilRepository = councilRepository;
+        _councilGradeRepository = councilGradeRepository;
+        _assessmentScoreRepository = assessmentScoreRepository;
+        _finalResultRepository = finalResultRepository;
+        _defenseScheduleRepository = defenseScheduleRepository;
+        _criteriaGradeRepository = criteriaGradeRepository;
         _context = context;
     }
 
@@ -359,26 +380,24 @@ public class AssessmentService : IAssessmentService
         try
         {
             // 1. Update ProjectSubmission Comment
-            var submission = await _context.ProjectSubmissions
-                .FirstOrDefaultAsync(ps => ps.GroupId == dto.GroupId && ps.AssessmentId == dto.AssessmentId);
+            var submission = await _submissionRepository.GetByGroupAndAssessmentAsync(dto.GroupId, dto.AssessmentId);
 
             if (submission != null && !string.IsNullOrEmpty(dto.TeacherComment))
             {
                 submission.TeacherComment = dto.TeacherComment;
-                _context.ProjectSubmissions.Update(submission);
+                _submissionRepository.Update(submission);
             }
 
             // 2. Update AssessmentScores
             foreach (var studentScore in dto.StudentScores)
             {
-                var existingScore = await _context.AssessmentScores
-                    .FirstOrDefaultAsync(s => s.AssessmentId == dto.AssessmentId && s.UserId == studentScore.UserId);
+                var existingScore = await _assessmentScoreRepository.GetByAssessmentAndUserAsync(dto.AssessmentId, studentScore.UserId);
 
                 if (existingScore != null)
                 {
                     existingScore.Score = studentScore.Score;
-                    existingScore.IsPassed = studentScore.Score >= 5; // Assuming 5 is pass
-                    _context.AssessmentScores.Update(existingScore);
+                    existingScore.IsPassed = studentScore.Score >= 5;
+                    _assessmentScoreRepository.Update(existingScore);
                 }
                 else
                 {
@@ -389,44 +408,48 @@ public class AssessmentService : IAssessmentService
                         Score = studentScore.Score,
                         IsPassed = studentScore.Score >= 5
                     };
-                    await _context.AssessmentScores.AddAsync(newScore);
+                    await _assessmentScoreRepository.AddAsync(newScore);
                 }
             }
 
-            // Save first to ensure the new scores are in the context/DB before recalculating
-            await _context.SaveChangesAsync();
+            await _assessmentRepository.SaveChangesAsync();
 
             // 3. Recalculate Total Score for modified students in the current semester
-            var assessment = await _context.Assessments.FindAsync(dto.AssessmentId);
+            var assessment = await _assessmentRepository.GetByIdAsync(dto.AssessmentId);
             if (assessment != null)
             {
                 var semesterId = assessment.SemesterId;
-                var assessmentsInSemester = await _context.Assessments
-                    .Where(a => a.SemesterId == semesterId)
-                    .ToListAsync();
+                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId);
 
                 var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
 
-                var allScoresForStudents = await _context.AssessmentScores
-                    .Where(s => studentIds.Contains(s.UserId) && assessmentsInSemester.Select(a => a.AssessmentId).Contains(s.AssessmentId))
-                    .ToListAsync();
+                var allScoresForStudents = await _assessmentScoreRepository.GetByAssessmentsAndUsersAsync(
+                    assessmentsInSemester.Select(a => a.AssessmentId).ToList(), 
+                    studentIds);
 
                 foreach (var studentId in studentIds)
                 {
                     decimal totalScore = 0;
+                    bool failedFinal = false;
+
                     foreach (var a in assessmentsInSemester)
                     {
                         var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
                         totalScore += score * (a.Weight ?? 0) / 100m;
+                        
+                        if (a.IsFinal == true && score < 4)
+                        {
+                            failedFinal = true;
+                        }
                     }
 
-                    var finalResult = await _context.StudentFinalResults
-                        .FirstOrDefaultAsync(r => r.UserId == studentId && r.SemesterId == semesterId);
+                    var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
 
                     if (finalResult != null)
                     {
                         finalResult.TotalScore = totalScore;
-                        _context.StudentFinalResults.Update(finalResult);
+                        finalResult.IsPassed = totalScore >= 5 && !failedFinal;
+                        _finalResultRepository.Update(finalResult);
                     }
                     else
                     {
@@ -434,21 +457,22 @@ public class AssessmentService : IAssessmentService
                         {
                             UserId = studentId,
                             SemesterId = semesterId,
-                            TotalScore = totalScore
+                            TotalScore = totalScore,
+                            IsPassed = totalScore >= 5 && !failedFinal
                         };
-                        await _context.StudentFinalResults.AddAsync(finalResult);
+                        await _finalResultRepository.AddAsync(finalResult);
                     }
                 }
             }
 
-            await _context.SaveChangesAsync();
+            await _assessmentRepository.SaveChangesAsync();
 
             // 4. Auto-lock assessment when grades are saved
             if (assessment != null && assessment.IsLocked != true)
             {
                 assessment.IsLocked = true;
-                _context.Assessments.Update(assessment);
-                await _context.SaveChangesAsync();
+                _assessmentRepository.Update(assessment);
+                await _assessmentRepository.SaveChangesAsync();
             }
 
             await transaction.CommitAsync();
@@ -538,9 +562,7 @@ public class AssessmentService : IAssessmentService
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            var assessment = await _context.Assessments
-                .Include(a => a.AssessmentCriteria)
-                .FirstOrDefaultAsync(a => a.AssessmentId == dto.AssessmentId);
+            var assessment = await _assessmentRepository.GetAssessmentWithCriteriaAsync(dto.AssessmentId);
 
             if (assessment == null)
                 throw new Exception("Assessment not found");
@@ -548,13 +570,12 @@ public class AssessmentService : IAssessmentService
             var criteriaDict = assessment.AssessmentCriteria.ToDictionary(c => c.CriteriaId, c => c.Weight ?? 0);
 
             // 1. Cập nhật Comment của Giáo viên vào Submission
-            var submission = await _context.ProjectSubmissions
-                .FirstOrDefaultAsync(ps => ps.GroupId == dto.GroupId && ps.AssessmentId == dto.AssessmentId);
+            var submission = await _submissionRepository.GetByGroupAndAssessmentAsync(dto.GroupId, dto.AssessmentId);
 
             if (submission != null && !string.IsNullOrEmpty(dto.TeacherComment))
             {
                 submission.TeacherComment = dto.TeacherComment;
-                _context.ProjectSubmissions.Update(submission);
+                _submissionRepository.Update(submission);
             }
 
             // 2. Cập nhật Điểm tiêu chí và tính Tổng điểm đợt (AssessmentScore)
@@ -565,14 +586,13 @@ public class AssessmentService : IAssessmentService
                 foreach (var (criteriaId, score) in studentData.CriteriaScores)
                 {
                     // Lưu/Cập nhật CriteriaGrade (Bảng điểm cho từng tiêu chí)
-                    var existingCriteriaGrade = await _context.CriteriaGrades
-                        .FirstOrDefaultAsync(cg => cg.UserId == studentData.UserId && cg.CriteriaId == criteriaId);
+                    var existingCriteriaGrade = await _criteriaGradeRepository.GetByUserAndCriteriaAsync(studentData.UserId, criteriaId);
 
                     if (existingCriteriaGrade != null)
                     {
                         existingCriteriaGrade.Score = score;
                         existingCriteriaGrade.TeacherId = teacherId;
-                        _context.CriteriaGrades.Update(existingCriteriaGrade);
+                        _criteriaGradeRepository.Update(existingCriteriaGrade);
                     }
                     else
                     {
@@ -583,7 +603,7 @@ public class AssessmentService : IAssessmentService
                             TeacherId = teacherId,
                             Score = score
                         };
-                        await _context.CriteriaGrades.AddAsync(newCriteriaGrade);
+                        await _criteriaGradeRepository.AddAsync(newCriteriaGrade);
                     }
 
                     // Cộng dồn vào tổng điểm đợt (Nhân hệ số tiêu chí)
@@ -594,14 +614,13 @@ public class AssessmentService : IAssessmentService
                 }
 
                 // Lưu/Cập nhật AssessmentScore (Tổng điểm của đợt)
-                var existingAssessmentScore = await _context.AssessmentScores
-                    .FirstOrDefaultAsync(s => s.AssessmentId == dto.AssessmentId && s.UserId == studentData.UserId);
+                var existingAssessmentScore = await _assessmentScoreRepository.GetByAssessmentAndUserAsync(dto.AssessmentId, studentData.UserId);
 
                 if (existingAssessmentScore != null)
                 {
                     existingAssessmentScore.Score = totalAssessmentScore;
                     existingAssessmentScore.IsPassed = totalAssessmentScore >= 5;
-                    _context.AssessmentScores.Update(existingAssessmentScore);
+                    _assessmentScoreRepository.Update(existingAssessmentScore);
                 }
                 else
                 {
@@ -612,41 +631,45 @@ public class AssessmentService : IAssessmentService
                         Score = totalAssessmentScore,
                         IsPassed = totalAssessmentScore >= 5
                     };
-                    await _context.AssessmentScores.AddAsync(newScore);
+                    await _assessmentScoreRepository.AddAsync(newScore);
                 }
             }
 
-            // Lưu thay đổi để hàm tính tổng môn (StudentFinalResult) lấy được dữ liệu chuẩn
-            await _context.SaveChangesAsync();
+            await _assessmentRepository.SaveChangesAsync();
 
             // 3. Tính lại Tổng Kết Môn (StudentFinalResult)
             var semesterId = assessment.SemesterId;
-            var assessmentsInSemester = await _context.Assessments
-                .Where(a => a.SemesterId == semesterId)
-                .ToListAsync();
+            var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId);
 
             var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
 
-            var allScoresForStudents = await _context.AssessmentScores
-                .Where(s => studentIds.Contains(s.UserId) && assessmentsInSemester.Select(a => a.AssessmentId).Contains(s.AssessmentId))
-                .ToListAsync();
+            var allScoresForStudents = await _assessmentScoreRepository.GetByAssessmentsAndUsersAsync(
+                assessmentsInSemester.Select(a => a.AssessmentId).ToList(), 
+                studentIds);
 
             foreach (var studentId in studentIds)
             {
                 decimal finalSubjectScore = 0;
+                bool failedFinal = false;
+
                 foreach (var a in assessmentsInSemester)
                 {
                     var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
                     finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+
+                    if (a.IsFinal == true && score < 4)
+                    {
+                        failedFinal = true;
+                    }
                 }
 
-                var finalResult = await _context.StudentFinalResults
-                    .FirstOrDefaultAsync(r => r.UserId == studentId && r.SemesterId == semesterId);
+                var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
 
                 if (finalResult != null)
                 {
                     finalResult.TotalScore = finalSubjectScore;
-                    _context.StudentFinalResults.Update(finalResult);
+                    finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                    _finalResultRepository.Update(finalResult);
                 }
                 else
                 {
@@ -654,13 +677,14 @@ public class AssessmentService : IAssessmentService
                     {
                         UserId = studentId,
                         SemesterId = semesterId,
-                        TotalScore = finalSubjectScore
+                        TotalScore = finalSubjectScore,
+                        IsPassed = finalSubjectScore >= 5 && !failedFinal
                     };
-                    await _context.StudentFinalResults.AddAsync(finalResult);
+                    await _finalResultRepository.AddAsync(finalResult);
                 }
             }
 
-            await _context.SaveChangesAsync();
+            await _assessmentRepository.SaveChangesAsync();
             await transaction.CommitAsync();
             return true;
         }
@@ -669,5 +693,178 @@ public class AssessmentService : IAssessmentService
             await transaction.RollbackAsync();
             throw new Exception("Error saving grades by criteria: " + ex.Message);
         }
+    }
+
+    public async Task<bool> SaveCouncilGradesAsync(SaveCouncilGradesDto dto, int teacherId)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var assessment = await _assessmentRepository.GetAssessmentWithCriteriaAsync(dto.AssessmentId);
+
+            if (assessment == null)
+                throw new Exception("Assessment not found");
+
+            var criteriaDict = assessment.AssessmentCriteria.ToDictionary(c => c.CriteriaId, c => c.Weight ?? 0);
+
+            // 1. Lưu điểm của Giảng viên này vào CouncilCriteriaGrade
+            foreach (var studentData in dto.StudentScores)
+            {
+                foreach (var (criteriaId, score) in studentData.CriteriaScores)
+                {
+                    var existingGrade = await _councilGradeRepository.GetGradeAsync(dto.CouncilId, dto.GroupId, studentData.UserId, teacherId, criteriaId);
+
+                    if (existingGrade != null)
+                    {
+                        existingGrade.Score = score;
+                        _councilGradeRepository.Update(existingGrade);
+                    }
+                    else
+                    {
+                        var newGrade = new CouncilCriteriaGrade
+                        {
+                            CouncilId = dto.CouncilId,
+                            GroupId = dto.GroupId,
+                            UserId = studentData.UserId,
+                            TeacherId = teacherId,
+                            CriteriaId = criteriaId,
+                            Score = score
+                        };
+                        await _councilGradeRepository.AddAsync(newGrade);
+                    }
+                }
+            }
+
+            await _assessmentRepository.SaveChangesAsync(); // Using any repository's SaveChangesAsync is fine as they share the context
+
+            // 2. Kiểm tra xem tất cả thành viên hội đồng đã chấm xong chưa
+            var councilMemberIds = await _councilRepository.GetMemberUserIdsAsync(dto.CouncilId);
+            var teachersWhoGraded = await _councilGradeRepository.GetTeachersWhoGradedAsync(dto.CouncilId, dto.GroupId);
+
+            bool allMembersGraded = councilMemberIds.All(m => teachersWhoGraded.Contains(m));
+
+            if (allMembersGraded)
+            {
+                // 3. Tính điểm trung bình và cập nhật AssessmentScore
+                var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
+                var allCouncilGrades = await _councilGradeRepository.GetGradesForGroupAsync(dto.CouncilId, dto.GroupId);
+
+                foreach (var studentId in studentIds)
+                {
+                    decimal totalAverageAssessmentScore = 0;
+
+                    foreach (var criteria in assessment.AssessmentCriteria)
+                    {
+                        var gradesForCriteria = allCouncilGrades
+                            .Where(g => g.UserId == studentId && g.CriteriaId == criteria.CriteriaId)
+                            .Select(g => g.Score ?? 0)
+                            .ToList();
+
+                        if (gradesForCriteria.Any())
+                        {
+                            decimal avgCriteriaScore = gradesForCriteria.Average();
+                            totalAverageAssessmentScore += avgCriteriaScore * ((criteria.Weight ?? 0) / 100m);
+                        }
+                    }
+
+                    var existingScore = await _assessmentScoreRepository.GetByAssessmentAndUserAsync(dto.AssessmentId, studentId);
+
+                    if (existingScore != null)
+                    {
+                        existingScore.Score = totalAverageAssessmentScore;
+                        existingScore.IsPassed = totalAverageAssessmentScore >= 4; // Final assessment pass threshold is 4
+                        _assessmentScoreRepository.Update(existingScore);
+                    }
+                    else
+                    {
+                        var newScore = new AssessmentScore
+                        {
+                            AssessmentId = dto.AssessmentId,
+                            UserId = studentId,
+                            Score = totalAverageAssessmentScore,
+                            IsPassed = totalAverageAssessmentScore >= 4 // Final assessment pass threshold is 4
+                        };
+                        await _assessmentScoreRepository.AddAsync(newScore);
+                    }
+                }
+
+                // 4. Cập nhật trạng thái DefenseSchedule
+                var schedules = await _defenseScheduleRepository.GetByCouncilAsync(dto.CouncilId);
+                var schedule = schedules.FirstOrDefault(s => s.GroupId == dto.GroupId);
+                if (schedule != null)
+                {
+                    schedule.Status = "COMPLETED";
+                    _defenseScheduleRepository.Update(schedule);
+                }
+
+                await _assessmentRepository.SaveChangesAsync();
+
+                // 5. Tính lại Tổng Kết Môn
+                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(assessment.SemesterId);
+                var assessmentIdsInSemester = assessmentsInSemester.Select(a => a.AssessmentId).ToList();
+
+                var allScoresForStudents = await _assessmentScoreRepository.GetByAssessmentsAndUsersAsync(assessmentIdsInSemester, studentIds);
+
+                foreach (var studentId in studentIds)
+                {
+                    decimal finalSubjectScore = 0;
+                    bool failedFinal = false;
+
+                    foreach (var a in assessmentsInSemester)
+                    {
+                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
+                        finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+
+                        if (a.IsFinal == true && score < 4)
+                        {
+                            failedFinal = true;
+                        }
+                    }
+
+                    var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, assessment.SemesterId);
+
+                    if (finalResult != null)
+                    {
+                        finalResult.TotalScore = finalSubjectScore;
+                        finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                        _finalResultRepository.Update(finalResult);
+                    }
+                    else
+                    {
+                        var newFinalResult = new StudentFinalResult
+                        {
+                            UserId = studentId,
+                            SemesterId = assessment.SemesterId,
+                            TotalScore = finalSubjectScore,
+                            IsPassed = finalSubjectScore >= 5 && !failedFinal
+                        };
+                        await _finalResultRepository.AddAsync(newFinalResult);
+                    }
+                }
+                await _assessmentRepository.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new Exception("Error saving council grades: " + ex.Message);
+        }
+    }
+    
+    public async Task<List<CouncilCriteriaGradeDto>> GetCouncilGradesAsync(int councilId, int groupId, int teacherId)
+    {
+        var grades = await _councilGradeRepository.GetGradesForGroupAsync(councilId, groupId);
+        return grades
+            .Where(g => g.TeacherId == teacherId)
+            .Select(g => new CouncilCriteriaGradeDto
+            {
+                UserId = g.UserId,
+                CriteriaId = g.CriteriaId,
+                Score = g.Score ?? 0
+            })
+            .ToList();
     }
 }

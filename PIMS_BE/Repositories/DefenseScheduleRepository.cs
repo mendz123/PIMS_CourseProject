@@ -57,11 +57,14 @@ public class DefenseScheduleRepository
     public async Task<IEnumerable<Models.DefenseSchedule>> GetByTeacherAsync(int userId)
         => await _context.DefenseSchedules
             .Include(ds => ds.Council)
+                .ThenInclude(c => c.Semester)
+            .Include(ds => ds.Council)
                 .ThenInclude(c => c.CouncilMembers)
             .Include(ds => ds.Group)
             .Include(ds => ds.Room)
             .Where(ds => ds.Council.CouncilMembers.Any(m => m.UserId == userId))
-            .OrderBy(ds => ds.DefenseDate)
+            .OrderByDescending(ds => ds.Council.Semester.IsActive == true)
+            .ThenByDescending(ds => ds.DefenseDate)
             .ThenBy(ds => ds.StartTime)
             .ToListAsync();
 

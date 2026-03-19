@@ -131,6 +131,23 @@ export const assessmentService = {
     );
     return response.data;
   },
+
+  // Save council grades for final defense
+  saveCouncilGrades: async (dto: any) => {
+    const response = await api.post<ApiResponse<object>>(
+      "/api/assessment/save-council-grades",
+      dto,
+    );
+    return response.data;
+  },
+
+  // Get council grades for a specific teacher, council, and group
+  getCouncilGrades: async (councilId: number, groupId: number) => {
+    const response = await api.get<ApiResponse<any[]>>(
+      `/api/assessment/council-grades?councilId=${councilId}&groupId=${groupId}`,
+    );
+    return response.data;
+  },
 };
 
 // Criteria APIs

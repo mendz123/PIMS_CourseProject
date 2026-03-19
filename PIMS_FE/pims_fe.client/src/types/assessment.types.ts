@@ -96,6 +96,18 @@ export interface SaveGradesDto {
   studentScores: StudentScoreDto[];
 }
 
+export interface CouncilStudentScoreDto {
+  userId: number;
+  criteriaScores: { [criteriaId: number]: number };
+}
+
+export interface SaveCouncilGradesDto {
+  councilId: number;
+  groupId: number;
+  assessmentId: number;
+  studentScores: CouncilStudentScoreDto[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   statusCode: number;

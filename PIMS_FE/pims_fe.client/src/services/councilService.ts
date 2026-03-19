@@ -11,6 +11,7 @@ export interface CouncilDto {
     councilId: number;
     councilName: string;
     semesterId: number;
+    semesterName: string;
     members: CouncilMemberDto[];
 }
 
