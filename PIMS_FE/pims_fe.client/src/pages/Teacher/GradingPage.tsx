@@ -261,17 +261,20 @@ const GradingPage: React.FC = () => {
                                                         {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => {
                                                             const score = studentScores[student.userId]?.[a.assessmentId];
                                                             const hasCriteriaGrades = student.criteriaScores && student.criteriaScores[a.assessmentId] && Object.keys(student.criteriaScores[a.assessmentId]).length > 0;
+                                                            const isFailedFinalScore = a.isFinal && score !== undefined && score !== null && score < 4;
 
                                                             return (
                                                                 <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
                                                                     {score !== undefined ? (
                                                                         <div 
                                                                             className={`w-16 mx-auto px-2 py-1 border rounded text-center text-sm font-bold ${
-                                                                                hasCriteriaGrades 
-                                                                                ? "bg-green-50 border-green-200 text-green-700" 
+                                                                                isFailedFinalScore
+                                                                                ? "bg-rose-50 border-rose-200 text-rose-700"
+                                                                                : hasCriteriaGrades 
+                                                                                ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
                                                                                 : "bg-blue-50 border-blue-200 text-blue-700"
                                                                             }`} 
-                                                                            title={hasCriteriaGrades ? "Điểm đã được chấm chi tiết theo tiêu chí" : "Điểm đánh giá trực tiếp"}
+                                                                            title={isFailedFinalScore ? "Điểm thi Final thấp hơn ngưỡng đạt (4.0)" : (hasCriteriaGrades ? "Điểm đã được chấm chi tiết theo tiêu chí" : "Điểm đánh giá trực tiếp")}
                                                                         >
                                                                             {score}
                                                                         </div>
@@ -290,14 +293,28 @@ const GradingPage: React.FC = () => {
                                                         {/*</td>*/}
                                                         <td className="px-6 py-4 text-right">
                                                             {student.totalScore !== undefined && student.totalScore !== null ? (
-                                                                <div className="flex flex-col items-end gap-1">
-                                                                    <span className={`font-bold ${student.totalScore < 5 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                                        {student.totalScore.toFixed(2)}
-                                                                    </span>
-                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${student.totalScore < 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                                        {student.totalScore < 5 ? 'Failed' : 'Passed'}
-                                                                    </span>
-                                                                </div>
+                                                                (() => {
+                                                                    const hasFailedFinal = (student.criteriaScores && Object.keys(student.criteriaScores).some(aId => {
+                                                                        const a = assessments.find(ax => ax.assessmentId === Number(aId));
+                                                                        return a?.isFinal && (studentScores[student.userId]?.[Number(aId)] ?? 0) < 4;
+                                                                    })) || assessments.some(a => a.isFinal && (studentScores[student.userId]?.[a.assessmentId] ?? 0) < 4);
+                                                                    
+                                                                    const isPassed = student.totalScore >= 5 && !hasFailedFinal;
+                                                                    
+                                                                    return (
+                                                                        <div className="flex flex-col items-end gap-1">
+                                                                            <span className={`font-bold ${!isPassed ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                                                {student.totalScore.toFixed(2)}
+                                                                            </span>
+                                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${!isPassed ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                                                {!isPassed ? 'Failed' : 'Passed'}
+                                                                            </span>
+                                                                            {hasFailedFinal && (
+                                                                                <span className="text-[9px] text-red-400 font-bold italic text-right break-words max-w-[80px]">Final {"<"} 4.0</span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()
                                                             ) : (
                                                                 <span className="font-bold text-gray-400">--</span>
                                                             )}

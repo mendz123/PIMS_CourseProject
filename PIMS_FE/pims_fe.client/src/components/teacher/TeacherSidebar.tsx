@@ -71,6 +71,12 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({
       active: currentPath === "/teacher/grading-criteria",
     },
     {
+      icon: "gavel",
+      label: "Council Grading",
+      path: "/teacher/council-grading",
+      active: currentPath.startsWith("/teacher/council-grading"),
+    },
+    {
       icon: "group",
       label: "Student List",
       path: "/teacher/students",

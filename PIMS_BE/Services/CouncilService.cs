@@ -133,6 +133,7 @@ public class CouncilService : ICouncilService
         CouncilId   = c.CouncilId,
         CouncilName = c.CouncilName ?? string.Empty,
         SemesterId  = c.SemesterId,
+        SemesterName = c.Semester?.SemesterName ?? "Unknown Semester",
         Members     = c.CouncilMembers.Select(m => new CouncilMemberDto
         {
             UserId   = m.UserId,

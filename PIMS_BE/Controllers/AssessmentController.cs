@@ -436,4 +436,56 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Save council member grades for a group's final assessment defense
+    /// </summary>
+    [HttpPost("save-council-grades")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<object>>> SaveCouncilGrades([FromBody] SaveCouncilGradesDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int teacherId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
+
+            var success = await _assessmentService.SaveCouncilGradesAsync(dto, teacherId);
+            
+            if (success)
+            {
+                return Ok(ApiResponse<object>.Ok(new { }, "Lưu điểm hội đồng thành công"));
+            }
+            
+            return BadRequest(ApiResponse<object>.BadRequest("Không thể lưu điểm hội đồng"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving council grades for council {CouncilId}, group {GroupId}", dto.CouncilId, dto.GroupId);
+            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
+        }
+    }
+
+    [HttpGet("council-grades")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<List<CouncilCriteriaGradeDto>>>> GetCouncilGrades([FromQuery] int councilId, [FromQuery] int groupId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int teacherId))
+            {
+                return Unauthorized(ApiResponse<List<CouncilCriteriaGradeDto>>.Unauthorized("Invalid user authentication"));
+            }
+
+            var grades = await _assessmentService.GetCouncilGradesAsync(councilId, groupId, teacherId);
+            return Ok(ApiResponse<List<CouncilCriteriaGradeDto>>.Ok(grades, "Criteria grades retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving council grades for council {CouncilId}, group {GroupId}", councilId, groupId);
+            return StatusCode(500, ApiResponse<List<CouncilCriteriaGradeDto>>.InternalError(ex.Message));
+        }
+    }
 }

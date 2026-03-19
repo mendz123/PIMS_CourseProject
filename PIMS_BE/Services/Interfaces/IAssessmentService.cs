@@ -22,4 +22,6 @@ public interface IAssessmentService
 
     Task<bool> SaveGradesAsync(SaveGradesDto dto, int teacherId);
     Task<bool> SaveGradesByCriteriaAsync(SaveGradesByCriteriaDto dto, int teacherId);
+    Task<bool> SaveCouncilGradesAsync(SaveCouncilGradesDto dto, int teacherId);
+    Task<List<CouncilCriteriaGradeDto>> GetCouncilGradesAsync(int councilId, int groupId, int teacherId);
 }

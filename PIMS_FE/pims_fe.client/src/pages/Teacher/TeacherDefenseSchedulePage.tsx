@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import {
@@ -158,7 +158,7 @@ const TeacherDefenseSchedulePage: React.FC = () => {
                       <Th>Council</Th>
                       <Th>Room / Location</Th>
                       <Th>Status</Th>
-                      <Th align="right">Details</Th>
+                      <Th align="right">Actions</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#dbdfe6]">
@@ -249,17 +249,19 @@ const TeacherDefenseSchedulePage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Detail */}
+                          {/* Actions */}
                           <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => setSelectedSchedule(s)}
-                              className="inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline"
-                            >
-                              View
-                              <span className="material-symbols-outlined text-[14px]">
-                                chevron_right
-                              </span>
-                            </button>
+                            <div className="flex items-center justify-end gap-3">
+                              <button
+                                onClick={() => setSelectedSchedule(s)}
+                                className="inline-flex items-center gap-1 text-[#616f89] text-xs font-semibold hover:text-[#111318] transition-colors"
+                              >
+                                View
+                                <span className="material-symbols-outlined text-[14px]">
+                                  chevron_right
+                                </span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
