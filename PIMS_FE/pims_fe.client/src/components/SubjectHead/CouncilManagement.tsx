@@ -450,7 +450,8 @@ const CouncilManagement: React.FC = () => {
     const [semesters, setSemesters] = useState<SemesterDto[]>([]);
     const [teachers, setTeachers] = useState<TeacherInfo[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filterSemester, setFilterSemester] = useState<number | "">("");
+    const [activeSemesterId, setActiveSemesterId] = useState<number | undefined>(undefined);
+    const [activeSemesterName, setActiveSemesterName] = useState<string>("");
     const [createOpen, setCreateOpen] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<CouncilDto | null>(null);
@@ -462,21 +463,28 @@ const CouncilManagement: React.FC = () => {
         setLoading(true);
         try {
             const [councilRes, semesterRes, teacherRes] = await Promise.all([
-                councilService.getAllCouncils(
-                    filterSemester !== "" ? filterSemester : undefined
-                ),
-                semesterService.getAllSemesters(),
+                councilService.getAllCouncils(),
+                semesterService.getActiveSemester(),
                 councilService.getTeachers(),
             ]);
-            setCouncils(councilRes.data ?? []);
-            setSemesters(semesterRes.data ?? []);
+            const sem = semesterRes.data;
+            if (sem) {
+                setActiveSemesterId(sem.semesterId);
+                setActiveSemesterName(sem.semesterName ?? "");
+                setSemesters([sem]);
+                // Re-fetch councils filtered by active semester
+                const filtered = await councilService.getAllCouncils(sem.semesterId);
+                setCouncils(filtered.data ?? []);
+            } else {
+                setCouncils(councilRes.data ?? []);
+            }
             setTeachers(teacherRes.data ?? []);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to load data");
         } finally {
             setLoading(false);
         }
-    }, [filterSemester]);
+    }, []);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -543,19 +551,17 @@ const CouncilManagement: React.FC = () => {
                 </button>
             </div>
 
-            {/* Filter bar */}
+            {/* Active Semester Badge */}
             <div className="bg-white p-4 rounded-2xl border border-[#f0f2f5] shadow-sm flex items-center gap-3 flex-wrap">
-                <span className="material-symbols-outlined text-[#616f89] text-xl">filter_list</span>
-                <select
-                    value={filterSemester}
-                    onChange={e => setFilterSemester(e.target.value ? Number(e.target.value) : "")}
-                    className="px-4 py-2 text-sm rounded-xl border border-[#f0f2f5] focus:border-primary outline-none bg-[#fafafa] min-w-[160px] font-medium"
-                >
-                    <option value="">All Semesters</option>
-                    {semesters.map(s => (
-                        <option key={s.semesterId} value={s.semesterId}>{s.semesterName}</option>
-                    ))}
-                </select>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-xl text-green-700 border border-green-100">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Active Semester</span>
+                </div>
+                {activeSemesterName ? (
+                    <span className="text-sm font-semibold text-[#111318]">{activeSemesterName}</span>
+                ) : (
+                    <span className="text-sm text-[#b0b8c9] italic">No active semester</span>
+                )}
                 <div className="ml-auto flex items-center gap-2">
                     <span className="text-xs font-semibold text-[#616f89]">
                         {councils.length} council{councils.length !== 1 ? "s" : ""}
