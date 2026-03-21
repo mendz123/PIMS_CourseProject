@@ -18,6 +18,8 @@ public interface IDefenseScheduleRepository : IGenericRepository<Models.DefenseS
         TimeOnly start, TimeOnly end, int? excludeScheduleId = null);
     /// <summary>Return the scheduleId that uses this room (for TC-ROOM-07 error message)</summary>
     Task<int?> GetScheduleIdByRoomAsync(int roomId);
+    /// <summary>Check if a (council, group, date) schedule already exists — allows retakes on different days</summary>
+    Task<bool> ExistsByCouncilGroupAndDateAsync(int councilId, int groupId, DateOnly date, int? excludeScheduleId = null);
 }
 
 public class DefenseScheduleRepository
@@ -108,4 +110,12 @@ public class DefenseScheduleRepository
             .FirstOrDefaultAsync();
         return schedule?.ScheduleId;
     }
+
+    public async Task<bool> ExistsByCouncilGroupAndDateAsync(int councilId, int groupId, DateOnly date, int? excludeScheduleId = null)
+        => await _context.DefenseSchedules
+            .AnyAsync(ds =>
+                ds.CouncilId   == councilId &&
+                ds.GroupId     == groupId   &&
+                ds.DefenseDate == date      &&
+                (!excludeScheduleId.HasValue || ds.ScheduleId != excludeScheduleId.Value));
 }

@@ -24,7 +24,7 @@ import {
     type GroupInfo,
 } from "../../services/defenseScheduleService";
 import { councilService, type CouncilDto } from "../../services/councilService";
-import { semesterService, type SemesterDto } from "../../services/semesterService";
+import { semesterService } from "../../services/semesterService";
 import { roomService, type RoomDto } from "../../services/roomService";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -476,17 +476,15 @@ const BulkCreateModal: React.FC<BulkCreateModalProps> = ({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ScheduleManagement: React.FC = () => {
-    const [viewMode, setViewMode] = useState<"table" | "calendar">("calendar");
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [schedules, setSchedules] = useState<DefenseScheduleDto[]>([]);
     const [councils, setCouncils] = useState<CouncilDto[]>([]);
     const [groups, setGroups] = useState<GroupInfo[]>([]);
     const [rooms, setRooms] = useState<RoomDto[]>([]);
-    const [semesters, setSemesters] = useState<SemesterDto[]>([]);
+    const [activeSemesterId, setActiveSemesterId] = useState<number | undefined>(undefined);
+    const [activeSemesterName, setActiveSemesterName] = useState<string>("");
     const [loading, setLoading] = useState(true);
-    const [filterSemester, setFilterSemester] = useState<number | "">("");
-    const [filterCouncil, setFilterCouncil] = useState<number | "">("");
     const [createOpen, setCreateOpen] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
@@ -494,46 +492,43 @@ const ScheduleManagement: React.FC = () => {
     const [assignTarget, setAssignTarget] = useState<DefenseScheduleDto | null>(null);
     const [assignLoading, setAssignLoading] = useState(false);
 
-    // Filter Logic
-    const filteredSchedules = useMemo(() => {
-        return schedules.filter(s => {
-            const matchCouncil = filterCouncil === "" || s.councilId === filterCouncil;
-            // Note: filterSemester is applied at the API level mostly, but we can double check here
-            return matchCouncil;
-        });
-    }, [schedules, filterCouncil]);
+    // Schedules are already filtered by active semester at the API level
+    const filteredSchedules = schedules;
 
-    const fetchSchedules = useCallback(async () => {
+    const fetchSchedules = useCallback(async (semId?: number) => {
         setLoading(true);
         try {
-            const res = await defenseScheduleService.getAll(
-                filterSemester !== "" ? filterSemester : undefined,
-                filterCouncil !== "" ? filterCouncil : undefined,
-            );
+            const res = await defenseScheduleService.getAll(semId, undefined);
             setSchedules(res.data ?? []);
         } catch {
             toast.error("Failed to load schedules");
         } finally {
             setLoading(false);
         }
-    }, [filterSemester, filterCouncil]);
+    }, []);
 
     const fetchSupport = useCallback(async () => {
         try {
-            const [c, g, r, s] = await Promise.all([
+            const [c, g, r, activeSem] = await Promise.all([
                 councilService.getAllCouncils(),
                 defenseScheduleService.getGroups(),
                 roomService.getAllRooms(),
-                semesterService.getAllSemesters(),
+                semesterService.getActiveSemester(),
             ]);
             setCouncils(c.data ?? []);
             setGroups(g.data ?? []);
             setRooms(r.data ?? []);
-            setSemesters(s.data ?? []);
+            const sem = activeSem.data;
+            if (sem) {
+                setActiveSemesterId(sem.semesterId);
+                setActiveSemesterName(sem.semesterName ?? "");
+                await fetchSchedules(sem.semesterId);
+            } else {
+                await fetchSchedules(undefined);
+            }
         } catch { /* silent */ }
-    }, []);
+    }, [fetchSchedules]);
 
-    useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
     useEffect(() => { fetchSupport(); }, [fetchSupport]);
 
     const handleCreate = async (dto: CreateDefenseScheduleDto) => {
@@ -542,7 +537,7 @@ const ScheduleManagement: React.FC = () => {
             await defenseScheduleService.create(dto);
             toast.success("Defense session scheduled!");
             setCreateOpen(false);
-            await fetchSchedules();
+            await fetchSchedules(activeSemesterId);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to create schedule");
         } finally {
@@ -557,7 +552,7 @@ const ScheduleManagement: React.FC = () => {
             const count = res.data?.length ?? 0;
             toast.success(`${count} defense sessions scheduled!`);
             setBulkOpen(false);
-            await fetchSchedules();
+            await fetchSchedules(activeSemesterId);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to bulk create schedules");
         } finally {
@@ -572,7 +567,7 @@ const ScheduleManagement: React.FC = () => {
             await defenseScheduleService.assignRoom(assignTarget.scheduleId, roomId);
             toast.success("Room updated!");
             setAssignTarget(null);
-            await fetchSchedules();
+            await fetchSchedules(activeSemesterId);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to assign room");
         } finally {
@@ -604,22 +599,6 @@ const ScheduleManagement: React.FC = () => {
                     <p className="text-[#616f89] mt-1 text-sm">Manage defense sessions for students.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="bg-[#f0f2f5] p-1 rounded-xl flex items-center shadow-inner">
-                        <button
-                            onClick={() => setViewMode("table")}
-                            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all ${viewMode === "table" ? "bg-white text-primary shadow-sm" : "text-[#616f89] hover:text-[#111318]"}`}
-                        >
-                            <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
-                            Table
-                        </button>
-                        <button
-                            onClick={() => setViewMode("calendar")}
-                            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold transition-all ${viewMode === "calendar" ? "bg-white text-primary shadow-sm" : "text-[#616f89] hover:text-[#111318]"}`}
-                        >
-                            <span className="material-symbols-outlined text-lg">calendar_month</span>
-                            Calendar
-                        </button>
-                    </div>
                     <button
                         onClick={() => setBulkOpen(true)}
                         className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-md shadow-indigo-200"
@@ -637,30 +616,17 @@ const ScheduleManagement: React.FC = () => {
                 </div>
             </div>
 
-            {/* Filters */}
+            {/* Active Semester Badge */}
             <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-2xl border border-[#dbdfe6] shadow-sm">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f6f6f8] rounded-xl text-[#616f89]">
-                    <span className="material-symbols-outlined text-lg">filter_list</span>
-                    <span className="text-xs font-bold uppercase tracking-wider">Filters</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-xl text-green-700 border border-green-100">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Active Semester</span>
                 </div>
-                <select
-                    value={filterSemester}
-                    onChange={e => { setFilterSemester(e.target.value ? Number(e.target.value) : ""); setFilterCouncil(""); }}
-                    className="px-3 py-2 text-sm rounded-xl border border-[#dbdfe6] focus:border-primary outline-none bg-white transition-all min-w-[150px]"
-                >
-                    <option value="">All Semesters</option>
-                    {semesters.map(s => <option key={s.semesterId} value={s.semesterId}>{s.semesterName}</option>)}
-                </select>
-                <select
-                    value={filterCouncil}
-                    onChange={e => setFilterCouncil(e.target.value ? Number(e.target.value) : "")}
-                    className="px-3 py-2 text-sm rounded-xl border border-[#dbdfe6] focus:border-primary outline-none bg-white transition-all min-w-[150px]"
-                >
-                    <option value="">All Councils</option>
-                    {councils.filter(c => filterSemester === "" || c.semesterId === filterSemester).map(c => (
-                        <option key={c.councilId} value={c.councilId}>{c.councilName}</option>
-                    ))}
-                </select>
+                {activeSemesterName ? (
+                    <span className="text-sm font-semibold text-[#111318]">{activeSemesterName}</span>
+                ) : (
+                    <span className="text-sm text-[#b0b8c9] italic">No active semester</span>
+                )}
                 <div className="ml-auto flex items-center gap-2 text-[#616f89] text-xs font-medium">
                     <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                     {filteredSchedules.length} session{filteredSchedules.length !== 1 ? "s" : ""} found
@@ -671,85 +637,6 @@ const ScheduleManagement: React.FC = () => {
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                     <p className="text-[#616f89] text-sm animate-pulse">Loading schedule data…</p>
-                </div>
-            ) : viewMode === "table" ? (
-                /* ─── Table View ─── */
-                <div className="bg-white border border-[#dbdfe6] rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
-                    <table className="w-full text-sm border-collapse">
-                        <thead className="bg-[#f8f9fb] border-b border-[#dbdfe6]">
-                            <tr>
-                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Group</th>
-                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Council</th>
-                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Schedule</th>
-                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Location</th>
-                                <th className="text-left px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Status</th>
-                                <th className="text-right px-5 py-4 text-xs font-bold text-[#616f89] uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#dbdfe6]">
-                            {filteredSchedules.map(s => (
-                                <tr key={s.scheduleId} className="hover:bg-[#f8f9fb]/50 transition-colors group">
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold">
-                                                {s.groupName?.[0] || "#"}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-[#111318]">{s.groupName || `Group #${s.groupId}`}</p>
-                                                <p className="text-[10px] text-[#616f89] font-medium tracking-wide">ID: {s.groupId}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-2 py-1 px-2.5 bg-[#f0f2f5] rounded-lg w-fit">
-                                            <span className="material-symbols-outlined text-[14px] text-primary">gavel</span>
-                                            <span className="text-xs font-bold text-[#111318]">{s.councilName}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-semibold text-[#111318]">{fmtDate(s.defenseDate)}</span>
-                                            <span className="text-xs text-[#616f89]">{fmtTime(s.startTime)} – {fmtTime(s.endTime)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        {s.roomName ? (
-                                            <div className="flex items-center gap-1.5 text-[#111318]">
-                                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                                                <span className="font-medium">{s.roomName}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs italic text-[#b0b8c9]">Assigning room...</span>
-                                        )}
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-tight uppercase ${statusBadge(s.status)}`}>
-                                            {s.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <button
-                                            onClick={() => setAssignTarget(s)}
-                                            className="p-2 rounded-xl text-[#616f89] hover:bg-primary/10 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
-                                            title="Assign Room"
-                                        >
-                                            <span className="material-symbols-outlined">meeting_room</span>
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredSchedules.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="py-20 text-center">
-                                        <div className="flex flex-col items-center gap-2 opacity-30">
-                                            <span className="material-symbols-outlined text-6xl">event_busy</span>
-                                            <p className="font-bold">No sessions found</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
                 </div>
             ) : (
                 /* ─── Calendar View ─── */
@@ -866,8 +753,8 @@ const ScheduleManagement: React.FC = () => {
                 </div>
             )}
 
-            <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={createLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={filterSemester} />
-            <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkCreate} loading={bulkLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={filterSemester} />
+            <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={createLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={activeSemesterId ?? ""} />
+            <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkCreate} loading={bulkLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={activeSemesterId ?? ""} />
             <AssignRoomModal schedule={assignTarget} onClose={() => setAssignTarget(null)} onSave={handleAssignRoom} loading={assignLoading} rooms={rooms} />
         </div>
     );

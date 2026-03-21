@@ -68,6 +68,12 @@ public class DefenseScheduleService : IDefenseScheduleService
             _ = await _roomRepo.GetByIdAsync(dto.RoomId.Value)
                 ?? throw new KeyNotFoundException($"Room {dto.RoomId} not found");
 
+        // Kiểm tra trùng lặp (CouncilId, GroupId, Date) — cho phép thi lại ngày khác
+        bool alreadyExists = await _scheduleRepo.ExistsByCouncilGroupAndDateAsync(dto.CouncilId, dto.GroupId, dto.DefenseDate);
+        if (alreadyExists)
+            throw new InvalidOperationException(
+                $"Group {dto.GroupId} already has a defense schedule with council {dto.CouncilId} on {dto.DefenseDate}");
+
         // Kiểm tra trùng giờ trong cùng hội đồng + ngày
         bool hasConflict = await _scheduleRepo.IsTimeConflictAsync(
             dto.CouncilId, dto.DefenseDate, dto.StartTime, dto.EndTime);
@@ -159,6 +165,13 @@ public class DefenseScheduleService : IDefenseScheduleService
             // Validate Group tồn tại
             _ = await _groupRepo.GetByIdAsync(groupId)
                 ?? throw new KeyNotFoundException($"Group {groupId} not found");
+
+            // Kiểm tra trùng (CouncilId, GroupId, Date) — cho phép thi lại ngày khác
+            bool alreadyExists = await _scheduleRepo.ExistsByCouncilGroupAndDateAsync(dto.CouncilId, groupId, dto.DefenseDate);
+            if (alreadyExists)
+                throw new InvalidOperationException(
+                    $"Group {groupId} has already been scheduled with council {dto.CouncilId} on {dto.DefenseDate}. " +
+                    "Please choose a different date or remove this group from the selection.");
 
             // Kiểm tra conflict hội đồng
             bool councilConflict = await _scheduleRepo.IsTimeConflictAsync(
