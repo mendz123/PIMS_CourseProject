@@ -20,6 +20,12 @@ public interface IDefenseScheduleRepository : IGenericRepository<Models.DefenseS
     Task<int?> GetScheduleIdByRoomAsync(int roomId);
     /// <summary>Check if a (council, group, date) schedule already exists — allows retakes on different days</summary>
     Task<bool> ExistsByCouncilGroupAndDateAsync(int councilId, int groupId, DateOnly date, int? excludeScheduleId = null);
+    /// <summary>Count how many defense schedules a group has in a given semester</summary>
+    Task<int> CountByGroupInSemesterAsync(int groupId, int semesterId, int? excludeScheduleId = null);
+    /// <summary>Get existing schedules for a group in a semester (ordered by date)</summary>
+    Task<List<Models.DefenseSchedule>> GetSchedulesByGroupInSemesterAsync(int groupId, int semesterId);
+    /// <summary>Get groups eligible for defense scheduling (not all members passed)</summary>
+    Task<List<Group>> GetEligibleGroupsAsync(int semesterId);
 }
 
 public class DefenseScheduleRepository
@@ -118,4 +124,48 @@ public class DefenseScheduleRepository
                 ds.GroupId     == groupId   &&
                 ds.DefenseDate == date      &&
                 (!excludeScheduleId.HasValue || ds.ScheduleId != excludeScheduleId.Value));
+
+    public async Task<int> CountByGroupInSemesterAsync(int groupId, int semesterId, int? excludeScheduleId = null)
+    {
+        return await _context.DefenseSchedules
+            .Where(ds =>
+                ds.GroupId == groupId &&
+                ds.Council.SemesterId == semesterId &&
+                (!excludeScheduleId.HasValue || ds.ScheduleId != excludeScheduleId.Value))
+            .CountAsync();
+    }
+
+    public async Task<List<Models.DefenseSchedule>> GetSchedulesByGroupInSemesterAsync(int groupId, int semesterId)
+    {
+        return await _context.DefenseSchedules
+            .Include(ds => ds.Council)
+            .Include(ds => ds.Group)
+            .Where(ds => ds.GroupId == groupId && ds.Council.SemesterId == semesterId)
+            .OrderBy(ds => ds.DefenseDate)
+            .ToListAsync();
+    }
+
+    public async Task<List<Group>> GetEligibleGroupsAsync(int semesterId)
+    {
+        // Get all groups in this semester
+        // Exclude groups where ALL active members have IsPassed == true
+        return await _context.Groups
+            .Include(g => g.GroupMembers)
+            .Where(g => g.SemesterId == semesterId)
+            .Where(g =>
+                // Nhóm phải có thành viên
+                g.GroupMembers.Any() &&
+                // Ít nhất 1 thành viên chưa pass (hoặc chưa có kết quả)
+                g.GroupMembers.Any(gm =>
+                    !_context.StudentFinalResults.Any(sfr =>
+                        sfr.UserId == gm.UserId &&
+                        sfr.SemesterId == semesterId &&
+                        sfr.IsPassed == true
+                    )
+                )
+            )
+            .OrderBy(g => g.GroupId)
+            .ToListAsync();
+    }
 }
+

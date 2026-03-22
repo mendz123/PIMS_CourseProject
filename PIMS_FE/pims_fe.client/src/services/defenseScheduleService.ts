@@ -27,6 +27,15 @@ export interface CreateDefenseScheduleDto {
   roomId?: number;
 }
 
+export interface UpdateDefenseScheduleDto {
+  councilId: number;
+  groupId: number;
+  defenseDate: string;
+  startTime: string;
+  endTime: string;
+  roomId?: number;
+}
+
 export interface AssignRoomDto {
   roomId: number | null;
 }
@@ -77,6 +86,21 @@ export const defenseScheduleService = {
     return response.data;
   },
 
+  update: async (id: number, dto: UpdateDefenseScheduleDto) => {
+    const response = await api.put<ApiResponse<DefenseScheduleDto>>(
+      `/api/defense-schedule/${id}`,
+      dto,
+    );
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    const response = await api.delete<void>(
+      `/api/defense-schedule/${id}`,
+    );
+    return response.data;
+  },
+
   bulkCreate: async (dto: BulkCreateDefenseScheduleDto) => {
     const response = await api.post<ApiResponse<DefenseScheduleDto[]>>(
       "/api/defense-schedule/bulk",
@@ -101,6 +125,15 @@ export const defenseScheduleService = {
   getMySchedule: async () => {
     const response = await api.get<ApiResponse<DefenseScheduleDto[]>>(
       "/api/defense-schedule/my-schedule",
+    );
+    return response.data;
+  },
+
+  /** Fetch eligible groups for scheduling (filters out groups where all members passed) */
+  getEligibleGroups: async (semesterId: number): Promise<ApiResponse<GroupInfo[]>> => {
+    const response = await api.get<ApiResponse<GroupInfo[]>>(
+      "/api/defense-schedule/eligible-groups",
+      { params: { semesterId } },
     );
     return response.data;
   },

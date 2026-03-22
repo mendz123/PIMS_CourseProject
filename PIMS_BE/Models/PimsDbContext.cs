@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -231,8 +231,6 @@ public partial class PimsDbContext : DbContext
             entity.HasIndex(e => e.CouncilId, "IX_Defense_Council");
 
             entity.HasIndex(e => e.GroupId, "IX_Defense_Group");
-
-            entity.HasIndex(e => new { e.CouncilId, e.GroupId }, "UQ_Council_Group").IsUnique();
 
             entity.Property(e => e.Location).HasMaxLength(255);
             entity.Property(e => e.Status)
