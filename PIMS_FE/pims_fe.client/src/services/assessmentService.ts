@@ -148,6 +148,16 @@ export const assessmentService = {
     );
     return response.data;
   },
+
+  // Get users who passed a final assessment previously
+  getUsersPassedFinal: async (groupId: number, excludeAssessmentId?: number) => {
+    let url = `/api/assessment/group/${groupId}/passed-final`;
+    if (excludeAssessmentId) {
+      url += `?excludeAssessmentId=${excludeAssessmentId}`;
+    }
+    const response = await api.get<ApiResponse<number[]>>(url);
+    return response.data;
+  },
 };
 
 // Criteria APIs

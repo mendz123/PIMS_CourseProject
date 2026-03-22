@@ -488,4 +488,35 @@ public class AssessmentController : ControllerBase
             return StatusCode(500, ApiResponse<List<CouncilCriteriaGradeDto>>.InternalError(ex.Message));
         }
     }
+
+    [HttpGet("debug/council/{councilId}/group/{groupId}")]
+    [AllowAnonymous]
+    public async Task<ActionResult> DebugCouncilProcessing(int councilId, int groupId, [FromServices] PIMS_BE.Repositories.ICouncilRepository councilRepo, [FromServices] PIMS_BE.Repositories.ICouncilCriteriaGradeRepository gradeRepo)
+    {
+        var councilMemberIds = await councilRepo.GetMemberUserIdsAsync(councilId);
+        var teachersWhoGraded = await gradeRepo.GetTeachersWhoGradedAsync(councilId, groupId);
+        bool allMembersGraded = councilMemberIds.All(m => teachersWhoGraded.Contains(m));
+
+        return Ok(new {
+            CouncilMemberIds = councilMemberIds,
+            TeachersWhoGraded = teachersWhoGraded,
+            AllMembersGraded = allMembersGraded
+        });
+    }
+
+    [HttpGet("group/{groupId}/passed-final")]
+    [Authorize(Roles = "TEACHER,SUBJECT_HEAD,ADMIN")]
+    public async Task<ActionResult<ApiResponse<List<int>>>> GetUsersPassedFinal(int groupId, [FromQuery] int? excludeAssessmentId = null)
+    {
+        try
+        {
+            var passedUserIds = await _assessmentService.GetUsersPassedFinalAsync(groupId, excludeAssessmentId);
+            return Ok(ApiResponse<List<int>>.Ok(passedUserIds, "Passed users retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving passed users for group {GroupId}", groupId);
+            return StatusCode(500, ApiResponse<List<int>>.InternalError(ex.Message));
+        }
+    }
 }

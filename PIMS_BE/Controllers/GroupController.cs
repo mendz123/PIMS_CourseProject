@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PIMS_BE.DTOs;
 using PIMS_BE.DTOs.Group;
@@ -62,6 +62,23 @@ namespace PIMS_BE.Controllers
             catch (Exception ex)
             {
                 return InternalErrorResponse<PaginatedResponse<GroupDto>>(ex.Message);
+            }
+        }
+
+        [HttpGet("eligible-for-retake")]
+        [Authorize(Roles = "SUBJECT_HEAD,ADMIN")]
+        public async Task<ActionResult<ApiResponse<List<GroupDto>>>> GetGroupsForRetake(
+            [FromQuery] int semesterId,
+            [FromQuery] int lan1AssessmentId)
+        {
+            try
+            {
+                var groups = await _groupService.GetGroupsForRetakeAsync(semesterId, lan1AssessmentId);
+                return OkResponse(groups, "Get groups eligible for retake successfully.");
+            }
+            catch (Exception ex)
+            {
+                return InternalErrorResponse<List<GroupDto>>(ex.Message);
             }
         }
 

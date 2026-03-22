@@ -867,4 +867,19 @@ public class AssessmentService : IAssessmentService
             })
             .ToList();
     }
+
+    public async Task<List<int>> GetUsersPassedFinalAsync(int groupId, int? excludeAssessmentId = null)
+    {
+        var passedUserIds = await _context.AssessmentScores
+            .Include(s => s.Assessment)
+            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true && (!excludeAssessmentId.HasValue || s.AssessmentId != excludeAssessmentId.Value))
+            .Join(_context.GroupMembers.Where(gm => gm.GroupId == groupId),
+                  score => score.UserId,
+                  member => member.UserId,
+                  (score, member) => score.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        return passedUserIds;
+    }
 }

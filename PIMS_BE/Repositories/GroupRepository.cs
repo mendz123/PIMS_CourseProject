@@ -11,6 +11,7 @@ public interface IGroupRepository : IGenericRepository<Group>
     
     Task<(List<Group> Items, int TotalCount)> GetGroupsInActiveSemesterAsync(int semesterId, string? search, int pageNumber, int pageSize);
     Task<List<Group>> GetGroupsByTeacherAsync(int teacherId, int semesterId);
+    Task<List<Group>> GetGroupsForRetakeAsync(int semesterId, int lan1AssessmentId);
 }
 
 public class GroupRepository : GenericRepository<Group>, IGroupRepository
@@ -114,6 +115,24 @@ public class GroupRepository : GenericRepository<Group>, IGroupRepository
                 .ThenInclude(ps => ps.Submitter)
             .Where(g => g.MentorId == teacherId && g.SemesterId == semesterId && g.StatusId == 4)
             .OrderBy(g => g.GroupId)
+            .ToListAsync();
+    }
+
+    public async Task<List<Group>> GetGroupsForRetakeAsync(int semesterId, int lan1AssessmentId)
+    {
+        return await _dbSet
+            .Include(g => g.Status)
+            .Include(g => g.Semester)
+            .Include(g => g.Leader)
+            .Include(g => g.Mentor)
+            .Include(g => g.GroupMembers)
+                .ThenInclude(gm => gm.User)
+                    .ThenInclude(u => u.AssessmentScores)
+            .Where(g => g.SemesterId == semesterId && g.StatusId == 4) // Only approved/active projects
+            .Where(g => g.GroupMembers.Any(gm => 
+                gm.User.AssessmentScores.Any(score => 
+                    score.AssessmentId == lan1AssessmentId && 
+                    score.IsPassed == false)))
             .ToListAsync();
     }
 }

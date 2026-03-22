@@ -21,6 +21,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const [council, setCouncil] = useState<CouncilDto | null>(null);
     const [schedules, setSchedules] = useState<DefenseScheduleDto[]>([]);
     const [assessment, setAssessment] = useState<AssessmentWithCriteriaDto | null>(null);
+    const [assessments, setAssessments] = useState<AssessmentWithCriteriaDto[]>([]);
+    const [passedUserIds, setPassedUserIds] = useState<number[]>([]);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
     const [groupMembers, setGroupMembers] = useState<GroupMemberDto[]>([]);
@@ -64,17 +66,18 @@ const TeacherCouncilGradingPage: React.FC = () => {
                 const assessmentsRes = await assessmentService.getAssessmentsWithCriteria(councilRes.data.semesterId);
                 const allAssessments = assessmentsRes.data ?? [];
                 
-                const final = allAssessments.find(a => a.isFinal) || 
-                             allAssessments.find(a => {
-                                 const title = a.title?.toLowerCase() || "";
-                                 return title.includes("final") || 
-                                        title.includes("hội đồng") || 
-                                        title.includes("kết thúc") ||
-                                        title.includes("bảo vệ") ||
-                                        title.includes("tổng kết") ||
-                                        title.includes("cuối kỳ");
-                             }) || 
-                             allAssessments[allAssessments.length - 1]; // Fallback to the last assessment if nothing matches
+                const finalAssessments = allAssessments.filter(a => a.isFinal) || [];
+                setAssessments(finalAssessments);
+                
+                const final = finalAssessments.find(a => {
+                    const title = a.title?.toLowerCase() || "";
+                    return title.includes("final") || 
+                           title.includes("hội đồng") || 
+                           title.includes("kết thúc") ||
+                           title.includes("bảo vệ") ||
+                           title.includes("tổng kết") ||
+                           title.includes("cuối kỳ");
+                }) || finalAssessments[finalAssessments.length - 1]; // Fallback to the last assessment if nothing matches
                 
                 if (final) {
                     setAssessment(final);
@@ -124,6 +127,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
                 const res = await groupService.getGroupDetail(selectedGroupId);
                 const members = res.data?.members ?? [];
                 setGroupMembers(members);
+
+                // Fetch passed users
+                try {
+                    const passedRes = await assessmentService.getUsersPassedFinal(selectedGroupId, assessment.assessmentId);
+                    setPassedUserIds(passedRes.data || []);
+                } catch(e) { console.error("Error fetching passed users", e); }
 
                 // Fetch existing scores for this group and council
                 let existingScoresMap: Record<number, Record<number, number>> = {};
@@ -197,10 +206,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
 
         setSubmitting(true);
         try {
-            const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(studentScores).map(([userIdStr, criteriaScores]) => ({
-                userId: parseInt(userIdStr),
-                criteriaScores
-            }));
+            const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(studentScores)
+                .filter(([userIdStr]) => !passedUserIds.includes(parseInt(userIdStr)))
+                .map(([userIdStr, criteriaScores]) => ({
+                    userId: parseInt(userIdStr),
+                    criteriaScores
+                }));
 
             const payload: SaveCouncilGradesDto = {
                 councilId: council.councilId,
@@ -400,10 +411,21 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                     {currentSchedule?.status || "PENDING"}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-500 max-w-2xl">
-                                                Vui lòng nhập điểm chi tiết dựa trên các tiêu chí đánh giá final. 
-                                                Điểm cuối cùng được tính bằng cách lấy trung bình cộng điểm của tất cả các giáo viên trong hội đồng.
-                                            </p>
+                                            <div className="mt-4 flex items-center gap-3">
+                                                <p className="text-sm font-semibold text-blue-900">Bài kiểm tra (Assessment):</p>
+                                                <select 
+                                                    value={assessment?.assessmentId || ""} 
+                                                    onChange={(e) => {
+                                                        const selected = assessments.find(a => a.assessmentId === Number(e.target.value));
+                                                        if (selected) setAssessment(selected);
+                                                    }}
+                                                    className="px-4 py-2 text-sm rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm bg-white text-gray-800 font-medium min-w-[250px] transition-all"
+                                                >
+                                                    {assessments.map(a => (
+                                                        <option key={a.assessmentId} value={a.assessmentId}>{a.title}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
                                         <button
                                             onClick={handleSubmit}
@@ -450,7 +472,14 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                                         {member.fullName.charAt(0)}
                                                                     </div>
                                                                     <div>
-                                                                        <h4 className="font-bold text-gray-900">{member.fullName}</h4>
+                                                                        <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                                                                            {member.fullName}
+                                                                            {passedUserIds.includes(member.userId) && (
+                                                                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200 uppercase tracking-wide">
+                                                                                    Passed Lần 1
+                                                                                </span>
+                                                                            )}
+                                                                        </h4>
                                                                         <p className="text-[11px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{member.email}</p>
                                                                     </div>
                                                                 </div>
@@ -488,9 +517,10 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                                                 step="0.1"
                                                                                 min="0"
                                                                                 max="10"
+                                                                                disabled={passedUserIds.includes(member.userId)}
                                                                                 value={studentScores[member.userId]?.[criteria.criteriaId] ?? ""}
                                                                                 onChange={(e) => handleScoreChange(member.userId, criteria.criteriaId, e.target.value)}
-                                                                                className="w-full h-12 px-4 bg-gray-50 border border-[#dbdfe6] rounded-2xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-black text-gray-900 group-hover/input:border-primary/30"
+                                                                                className={`w-full h-12 px-4 bg-gray-50 border border-[#dbdfe6] rounded-2xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-black text-gray-900 group-hover/input:border-primary/30 ${passedUserIds.includes(member.userId) ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
                                                                                 placeholder="0.0"
                                                                             />
                                                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-300">/ 10</span>
