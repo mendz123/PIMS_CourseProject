@@ -72,6 +72,22 @@ public class DefenseScheduleController : ControllerBase
         }
     }
 
+    /// <summary>Get groups eligible for defense scheduling (filters out groups where all members passed)</summary>
+    [HttpGet("eligible-groups")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<GroupInfoDto>>>> GetEligibleGroups(
+        [FromQuery] int semesterId)
+    {
+        try
+        {
+            var result = await _scheduleService.GetEligibleGroupsAsync(semesterId);
+            return Ok(ApiResponse<IEnumerable<GroupInfoDto>>.Ok(result, "Eligible groups retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<IEnumerable<GroupInfoDto>>.InternalError(ex.Message));
+        }
+    }
+
     // UC23 — Schedule defense session (HeadOfSubject only)
     [HttpPost]
     [Authorize(Roles = "SUBJECT_HEAD")]
@@ -129,6 +145,55 @@ public class DefenseScheduleController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, ApiResponse<IEnumerable<DefenseScheduleDto>>.InternalError(ex.Message));
+        }
+    }
+
+    // UC23-UPDATE — Update defense schedule (HeadOfSubject only)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "SUBJECT_HEAD")]
+    public async Task<ActionResult<ApiResponse<DefenseScheduleDto>>> Update(
+        int id, [FromBody] UpdateDefenseScheduleDto dto)
+    {
+        try
+        {
+            var result = await _scheduleService.UpdateAsync(id, dto);
+            return Ok(ApiResponse<DefenseScheduleDto>.Ok(result, "Defense schedule updated successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<DefenseScheduleDto>.NotFound(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<DefenseScheduleDto>.BadRequest(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<DefenseScheduleDto>.Conflict(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<DefenseScheduleDto>.InternalError(ex.Message));
+        }
+    }
+
+    // UC23-DELETE — Delete defense schedule (HeadOfSubject only)
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "SUBJECT_HEAD")]
+    public async Task<ActionResult> Delete(int id)
+    {
+        try
+        {
+            await _scheduleService.DeleteAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.NotFound(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
         }
     }
 

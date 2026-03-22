@@ -20,6 +20,7 @@ import {
     defenseScheduleService,
     type DefenseScheduleDto,
     type CreateDefenseScheduleDto,
+    type UpdateDefenseScheduleDto,
     type BulkCreateDefenseScheduleDto,
     type GroupInfo,
 } from "../../services/defenseScheduleService";
@@ -51,15 +52,16 @@ const statusBadge = (s: string | null) => {
 
 // ─── Components ──────────────────────────────────────────────────────────────
 
-interface CreateModalProps {
+interface ScheduleFormProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (dto: CreateDefenseScheduleDto) => Promise<void>;
+    onSubmit: (dto: CreateDefenseScheduleDto | UpdateDefenseScheduleDto) => Promise<void>;
     loading: boolean;
     councils: CouncilDto[];
     groups: GroupInfo[];
     rooms: RoomDto[];
     filterSemesterId: number | "";
+    editData?: DefenseScheduleDto | null;
 }
 
 interface FormState {
@@ -80,15 +82,31 @@ const EMPTY: FormState = {
     roomId: "",
 };
 
-const CreateModal: React.FC<CreateModalProps> = ({
-    open, onClose, onSubmit, loading, councils, groups, rooms, filterSemesterId,
+const ScheduleFormModal: React.FC<ScheduleFormProps> = ({
+    open, onClose, onSubmit, loading, councils, groups, rooms, filterSemesterId, editData,
 }) => {
     const [form, setForm] = useState<FormState>(EMPTY);
     const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
+    const isEdit = !!editData;
+
     useEffect(() => {
-        if (open) { setForm(EMPTY); setErrors({}); }
-    }, [open]);
+        if (open) {
+            if (editData) {
+                setForm({
+                    councilId: String(editData.councilId),
+                    groupId: String(editData.groupId),
+                    defenseDate: editData.defenseDate ?? "",
+                    startTime: editData.startTime ? editData.startTime.substring(0, 5) : "",
+                    endTime: editData.endTime ? editData.endTime.substring(0, 5) : "",
+                    roomId: editData.roomId ? String(editData.roomId) : "",
+                });
+            } else {
+                setForm(EMPTY);
+            }
+            setErrors({});
+        }
+    }, [open, editData]);
 
     const filteredCouncils = councils.filter(c =>
         filterSemesterId === "" || c.semesterId === filterSemesterId
@@ -131,12 +149,18 @@ const CreateModal: React.FC<CreateModalProps> = ({
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between p-6 border-b border-[#dbdfe6] sticky top-0 bg-white z-10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <span className="material-symbols-outlined text-primary text-xl">event</span>
+                        <div className={`p-2 rounded-xl ${isEdit ? "bg-amber-50" : "bg-primary/10"}`}>
+                            <span className={`material-symbols-outlined text-xl ${isEdit ? "text-amber-600" : "text-primary"}`}>
+                                {isEdit ? "edit_calendar" : "event"}
+                            </span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-[#111318]">Schedule Defense Session</h2>
-                            <p className="text-xs text-[#616f89]">Set date, time and council for a group</p>
+                            <h2 className="text-lg font-bold text-[#111318]">
+                                {isEdit ? "Edit Defense Session" : "Schedule Defense Session"}
+                            </h2>
+                            <p className="text-xs text-[#616f89]">
+                                {isEdit ? "Update date, time and council for this session" : "Set date, time and council for a group"}
+                            </p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-lg text-[#616f89] hover:bg-[#f6f6f8] transition-all">
@@ -200,9 +224,9 @@ const CreateModal: React.FC<CreateModalProps> = ({
 
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-[#dbdfe6] text-[#616f89] hover:bg-[#f6f6f8]">Cancel</button>
-                        <button type="submit" disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-60 flex items-center justify-center gap-2">
+                        <button type="submit" disabled={loading} className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-white disabled:opacity-60 flex items-center justify-center gap-2 ${isEdit ? "bg-amber-600 hover:bg-amber-700" : "bg-primary hover:bg-primary/90"}`}>
                             {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            Create Schedule
+                            {isEdit ? "Update Schedule" : "Create Schedule"}
                         </button>
                     </div>
                 </form>
@@ -246,6 +270,45 @@ const AssignRoomModal: React.FC<AssignRoomModalProps> = ({ schedule, onClose, on
                     <button onClick={() => onSave(roomId ? Number(roomId) : null)} disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 flex items-center justify-center gap-2">
                         {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Delete Confirm Modal ────────────────────────────────────────────────────
+
+interface DeleteConfirmModalProps {
+    schedule: DefenseScheduleDto | null;
+    onClose: () => void;
+    onConfirm: () => Promise<void>;
+    loading: boolean;
+}
+
+const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ schedule, onClose, onConfirm, loading }) => {
+    if (!schedule) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-50 rounded-xl">
+                        <span className="material-symbols-outlined text-red-600 text-xl">delete_forever</span>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-[#111318]">Delete Schedule</h3>
+                        <p className="text-xs text-[#616f89] mt-0.5">This action cannot be undone</p>
+                    </div>
+                </div>
+                <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">
+                    Are you sure you want to delete the defense schedule for <strong>{schedule.groupName}</strong> on <strong>{fmtDate(schedule.defenseDate)}</strong>?
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-[#dbdfe6] text-[#616f89] hover:bg-[#f6f6f8]">Cancel</button>
+                    <button onClick={onConfirm} disabled={loading} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                        {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                        Delete
                     </button>
                 </div>
             </div>
@@ -492,6 +555,11 @@ const ScheduleManagement: React.FC = () => {
     const [bulkLoading, setBulkLoading] = useState(false);
     const [assignTarget, setAssignTarget] = useState<DefenseScheduleDto | null>(null);
     const [assignLoading, setAssignLoading] = useState(false);
+    // Edit & Delete state
+    const [editTarget, setEditTarget] = useState<DefenseScheduleDto | null>(null);
+    const [editLoading, setEditLoading] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<DefenseScheduleDto | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     // Retake Mode States
     const [isRetakeMode, setIsRetakeMode] = useState(false);
@@ -515,19 +583,20 @@ const ScheduleManagement: React.FC = () => {
 
     const fetchSupport = useCallback(async () => {
         try {
-            const activeSem = await semesterService.getActiveSemester();
+            const [c, r, activeSem] = await Promise.all([
+                councilService.getAllCouncils(),
+                roomService.getAllRooms(),
+                semesterService.getActiveSemester(),
+            ]);
+            setCouncils(c.data ?? []);
+            setRooms(r.data ?? []);
             const sem = activeSem.data;
             if (sem) {
                 setActiveSemesterId(sem.semesterId);
                 setActiveSemesterName(sem.semesterName ?? "");
-                const [c, g, r] = await Promise.all([
-                    councilService.getAllCouncils(sem.semesterId),
-                    defenseScheduleService.getGroups(sem.semesterId),
-                    roomService.getAllRooms(),
-                ]);
-                setCouncils(c.data ?? []);
-                setGroups((g.data as any) ?? []);
-                setRooms(r.data ?? []);
+                // Use eligible groups (filters out groups where all members passed)
+                const eligibleRes = await defenseScheduleService.getEligibleGroups(sem.semesterId);
+                setGroups(eligibleRes.data ?? []);
                 await fetchSchedules(sem.semesterId);
             } else {
                 setCouncils([]);
@@ -574,10 +643,55 @@ const ScheduleManagement: React.FC = () => {
             toast.success("Defense session scheduled!");
             setCreateOpen(false);
             await fetchSchedules(activeSemesterId);
+            // Refresh eligible groups
+            if (activeSemesterId) {
+                const eligibleRes = await defenseScheduleService.getEligibleGroups(activeSemesterId);
+                setGroups(eligibleRes.data ?? []);
+            }
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to create schedule");
         } finally {
             setCreateLoading(false);
+        }
+    };
+
+    const handleEdit = async (dto: UpdateDefenseScheduleDto) => {
+        if (!editTarget) return;
+        setEditLoading(true);
+        try {
+            await defenseScheduleService.update(editTarget.scheduleId, dto);
+            toast.success("Defense session updated!");
+            setEditTarget(null);
+            await fetchSchedules(activeSemesterId);
+            // Refresh eligible groups
+            if (activeSemesterId) {
+                const eligibleRes = await defenseScheduleService.getEligibleGroups(activeSemesterId);
+                setGroups(eligibleRes.data ?? []);
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Failed to update schedule");
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleteLoading(true);
+        try {
+            await defenseScheduleService.delete(deleteTarget.scheduleId);
+            toast.success("Defense session deleted!");
+            setDeleteTarget(null);
+            await fetchSchedules(activeSemesterId);
+            // Refresh eligible groups
+            if (activeSemesterId) {
+                const eligibleRes = await defenseScheduleService.getEligibleGroups(activeSemesterId);
+                setGroups(eligibleRes.data ?? []);
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Failed to delete schedule");
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -589,6 +703,11 @@ const ScheduleManagement: React.FC = () => {
             toast.success(`${count} defense sessions scheduled!`);
             setBulkOpen(false);
             await fetchSchedules(activeSemesterId);
+            // Refresh eligible groups
+            if (activeSemesterId) {
+                const eligibleRes = await defenseScheduleService.getEligibleGroups(activeSemesterId);
+                setGroups(eligibleRes.data ?? []);
+            }
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Failed to bulk create schedules");
         } finally {
@@ -787,7 +906,15 @@ const ScheduleManagement: React.FC = () => {
                                                     {s.roomName || "No room assigned"}
                                                 </div>
                                             </div>
-                                            <div className="mt-3 pt-3 border-t border-[#f0f2f5] flex justify-end">
+                                            <div className="mt-3 pt-3 border-t border-[#f0f2f5] flex justify-end gap-3">
+                                                <button onClick={() => setEditTarget(s)} className="text-[10px] font-bold text-amber-600 flex items-center gap-1 hover:underline">
+                                                    <span className="material-symbols-outlined text-[12px]">edit</span>
+                                                    Edit
+                                                </button>
+                                                <button onClick={() => setDeleteTarget(s)} className="text-[10px] font-bold text-red-500 flex items-center gap-1 hover:underline">
+                                                    <span className="material-symbols-outlined text-[12px]">delete</span>
+                                                    Delete
+                                                </button>
                                                 <button onClick={() => setAssignTarget(s)} className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline">
                                                     Assign Room
                                                     <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
@@ -807,9 +934,39 @@ const ScheduleManagement: React.FC = () => {
                 </div>
             )}
 
-            <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={createLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={activeSemesterId ?? ""} />
+            {/* Create Modal */}
+            <ScheduleFormModal
+                open={createOpen}
+                onClose={() => setCreateOpen(false)}
+                onSubmit={handleCreate}
+                loading={createLoading}
+                councils={councils}
+                groups={groups}
+                rooms={rooms}
+                filterSemesterId={activeSemesterId ?? ""}
+            />
+
+            {/* Edit Modal */}
+            <ScheduleFormModal
+                open={!!editTarget}
+                onClose={() => setEditTarget(null)}
+                onSubmit={handleEdit}
+                loading={editLoading}
+                councils={councils}
+                groups={groups}
+                rooms={rooms}
+                filterSemesterId={activeSemesterId ?? ""}
+                editData={editTarget}
+            />
+
+            {/* Bulk Create Modal */}
             <BulkCreateModal open={bulkOpen} onClose={() => setBulkOpen(false)} onSubmit={handleBulkCreate} loading={bulkLoading} councils={councils} groups={groups} rooms={rooms} filterSemesterId={activeSemesterId ?? ""} />
+
+            {/* Assign Room Modal */}
             <AssignRoomModal schedule={assignTarget} onClose={() => setAssignTarget(null)} onSave={handleAssignRoom} loading={assignLoading} rooms={rooms} />
+
+            {/* Delete Confirm Modal */}
+            <DeleteConfirmModal schedule={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
         </div>
     );
 };
