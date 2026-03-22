@@ -71,11 +71,13 @@ public class DefenseScheduleService : IDefenseScheduleService
         // Kiểm tra ngày thi nằm trong kì học
         ValidateDefenseDateInSemester(dto.DefenseDate, councilEntity.Semester);
 
-        // Kiểm tra max 2 lịch thi/nhóm/kì
-        int currentCount = await _scheduleRepo.CountByGroupInSemesterAsync(dto.GroupId, councilEntity.SemesterId);
-        if (currentCount >= 2)
+        // Kiểm tra lịch thi hiện tại của nhóm trong kì và các business rules
+        var existingSchedules = await _scheduleRepo.GetSchedulesByGroupInSemesterAsync(dto.GroupId, councilEntity.SemesterId);
+        if (existingSchedules.Count >= 2)
             throw new InvalidOperationException(
-                $"Group {dto.GroupId} already has {currentCount} defense schedule(s) in this semester. Maximum is 2.");
+                $"Group {dto.GroupId} already has {existingSchedules.Count} defense schedule(s) in this semester. Maximum is 2.");
+
+        ValidateGroupSchedulesBusinessRules(dto.DefenseDate, dto.StartTime, existingSchedules);
 
         // Kiểm tra trùng lặp (CouncilId, GroupId, Date) — cho phép thi lại ngày khác
         bool alreadyExists = await _scheduleRepo.ExistsByCouncilGroupAndDateAsync(dto.CouncilId, dto.GroupId, dto.DefenseDate);
@@ -142,11 +144,14 @@ public class DefenseScheduleService : IDefenseScheduleService
         // Kiểm tra ngày thi nằm trong kì học
         ValidateDefenseDateInSemester(dto.DefenseDate, councilEntity.Semester);
 
-        // Kiểm tra max 2 lịch thi/nhóm/kì (exclude current)
-        int currentCount = await _scheduleRepo.CountByGroupInSemesterAsync(dto.GroupId, councilEntity.SemesterId, scheduleId);
+        // Kiểm tra lịch thi hiện tại của nhóm trong kì và các business rules (exclude current)
+        var existingSchedules = await _scheduleRepo.GetSchedulesByGroupInSemesterAsync(dto.GroupId, councilEntity.SemesterId);
+        int currentCount = existingSchedules.Count(s => s.ScheduleId != scheduleId);
         if (currentCount >= 2)
             throw new InvalidOperationException(
                 $"Group {dto.GroupId} already has {currentCount} defense schedule(s) in this semester. Maximum is 2.");
+
+        ValidateGroupSchedulesBusinessRules(dto.DefenseDate, dto.StartTime, existingSchedules, scheduleId);
 
         // Kiểm tra trùng lặp (CouncilId, GroupId, Date) — exclude current
         bool alreadyExists = await _scheduleRepo.ExistsByCouncilGroupAndDateAsync(
@@ -257,11 +262,13 @@ public class DefenseScheduleService : IDefenseScheduleService
             _ = await _groupRepo.GetByIdAsync(groupId)
                 ?? throw new KeyNotFoundException($"Group {groupId} not found");
 
-            // Kiểm tra max 2 lịch thi/nhóm/kì
-            int currentCount = await _scheduleRepo.CountByGroupInSemesterAsync(groupId, councilEntity.SemesterId);
-            if (currentCount >= 2)
+            // Kiểm tra lịch thi hiện tại của nhóm trong kì và các business rules
+            var existingSchedules = await _scheduleRepo.GetSchedulesByGroupInSemesterAsync(groupId, councilEntity.SemesterId);
+            if (existingSchedules.Count >= 2)
                 throw new InvalidOperationException(
-                    $"Group {groupId} already has {currentCount} defense schedule(s) in this semester. Maximum is 2.");
+                    $"Group {groupId} already has {existingSchedules.Count} defense schedule(s) in this semester. Maximum is 2.");
+
+            ValidateGroupSchedulesBusinessRules(dto.DefenseDate, slotStart, existingSchedules);
 
             // Kiểm tra trùng (CouncilId, GroupId, Date) — cho phép thi lại ngày khác
             bool alreadyExists = await _scheduleRepo.ExistsByCouncilGroupAndDateAsync(dto.CouncilId, groupId, dto.DefenseDate);
@@ -367,6 +374,57 @@ public class DefenseScheduleService : IDefenseScheduleService
             throw new ArgumentException(
                 $"Defense date {defenseDate} is after the semester end date ({semester.EndDate.Value}). " +
                 $"Please choose a date within the semester '{semester.SemesterName}'.");
+    }
+
+    private static void ValidateGroupSchedulesBusinessRules(DateOnly newDate, TimeOnly startTime, List<DefenseSchedule> existingSchedules, int? currentScheduleId = null)
+    {
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var currentTime = TimeOnly.FromDateTime(now);
+
+        // 1. Không được tạo/sửa lịch ở ngày quá khứ
+        if (newDate < today)
+            throw new ArgumentException("Cannot schedule a defense session in the past.");
+            
+        if (newDate == today && startTime <= currentTime)
+            throw new ArgumentException("Cannot schedule a defense session that has already started (time is in the past).");
+
+        var otherSchedules = existingSchedules
+            .Where(s => s.ScheduleId != currentScheduleId)
+            .OrderBy(s => s.DefenseDate)
+            .ToList();
+
+        if (otherSchedules.Count > 0)
+        {
+            var firstExisting = otherSchedules[0];
+
+            if (currentScheduleId == null)
+            {
+                // Hành động là CREATE (hoặc BULK CREATE) lịch thứ 2
+                // Lịch 1 là firstExisting. Lịch đang tạo là lịch 2.
+
+                // 2. Lịch thứ 2 chỉ được tạo khi lịch 1 đã bảo vệ xong
+                bool isFirstFinished = today > firstExisting.DefenseDate || 
+                                       (today == firstExisting.DefenseDate && currentTime > firstExisting.EndTime);
+
+                if (!isFirstFinished)
+                    throw new InvalidOperationException(
+                        "Cannot schedule a retake session before the first defense session has finished. " +
+                        $"The first session is scheduled on {firstExisting.DefenseDate} at {firstExisting.StartTime}-{firstExisting.EndTime}.");
+
+                // 3. Lịch thứ 2 phải ở ngày sau lịch 1
+                if (newDate <= firstExisting.DefenseDate)
+                    throw new ArgumentException(
+                        $"The retake session must be scheduled on a later date than the first session ({firstExisting.DefenseDate}).");
+            }
+            else
+            {
+                // Hành động là UPDATE
+                // Đảm bảo không trùng ngày với các lịch khác của cùng nhóm
+                if (otherSchedules.Any(s => s.DefenseDate == newDate))
+                    throw new ArgumentException("Group already has another defense session on this date.");
+            }
+        }
     }
 
     private static DefenseScheduleDto MapToDto(DefenseSchedule ds) => new()
