@@ -21,9 +21,9 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [assessment, setAssessment] = useState<AssessmentWithCriteriaDto | null>(
-    null,
-  );
+  const [assessments, setAssessments] = useState<AssessmentWithCriteriaDto[]>([]);
+  const [assessment, setAssessment] = useState<AssessmentWithCriteriaDto | null>(null);
+  const [passedUserIds, setPassedUserIds] = useState<number[]>([]);
   const [members, setMembers] = useState<GroupMemberDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -42,29 +42,24 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
         const groupMembers = groupRes.data?.members ?? [];
         setMembers(groupMembers);
 
-        // 2. Find the Final Assessment for this semester
+        // 2. Find the Final Assessments for this semester
         const semesterId = groupRes.data?.semesterId;
         if (semesterId) {
           const assessmentsRes = await assessmentService.getAssessmentsWithCriteria(
             semesterId,
           );
-          const finalAssessment = assessmentsRes.data?.find((a) => a.isFinal);
-          if (finalAssessment) {
-            setAssessment(finalAssessment);
-
-            // Initialize scores state
-            const initialScores: Record<number, Record<number, number>> = {};
-            groupMembers.forEach((m) => {
-              initialScores[m.userId] = {};
-              finalAssessment.criteria.forEach((c) => {
-                initialScores[m.userId][c.criteriaId] = 0;
-              });
-            });
-            setStudentScores(initialScores);
+          const finalAssessments = assessmentsRes.data?.filter((a) => a.isFinal) || [];
+          setAssessments(finalAssessments);
+          if (finalAssessments.length > 0) {
+            setAssessment(finalAssessments[0]);
           } else {
-            toast.error("Final assessment not found for this semester.");
+            toast.error("No final assessments found for this semester.");
           }
         }
+
+        // 3. Fetch users who passed a final assessment previously
+        const passedRes = await assessmentService.getUsersPassedFinal(schedule.groupId);
+        setPassedUserIds(passedRes.data || []);
       } catch (error) {
         console.error("Error fetching grading data:", error);
         toast.error("Failed to load grading information.");
@@ -74,6 +69,19 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
     };
     fetchData();
   }, [schedule.groupId]);
+
+  useEffect(() => {
+    if (assessment && members.length > 0) {
+      const initialScores: Record<number, Record<number, number>> = {};
+      members.forEach((m) => {
+        initialScores[m.userId] = {};
+        assessment.criteria.forEach((c) => {
+          initialScores[m.userId][c.criteriaId] = 0;
+        });
+      });
+      setStudentScores(initialScores);
+    }
+  }, [assessment, members]);
 
   const handleScoreChange = (
     userId: number,
@@ -100,12 +108,12 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
 
     setSubmitting(true);
     try {
-      const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(
-        studentScores,
-      ).map(([userIdStr, criteriaScores]) => ({
-        userId: parseInt(userIdStr),
-        criteriaScores: criteriaScores,
-      }));
+      const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(studentScores)
+        .filter(([userIdStr]) => !passedUserIds.includes(parseInt(userIdStr)))
+        .map(([userIdStr, criteriaScores]) => ({
+          userId: parseInt(userIdStr),
+          criteriaScores: criteriaScores,
+        }));
 
       const payload: SaveCouncilGradesDto = {
         councilId: schedule.councilId,
@@ -192,18 +200,34 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
         {/* Body */}
         <div className="p-8 overflow-y-auto space-y-10">
             {/* Criteria Info */}
-            <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 flex items-start gap-4">
-                <span className="material-symbols-outlined text-blue-500 mt-0.5">info</span>
-                <div className="space-y-2">
-                    <p className="text-sm font-semibold text-blue-900">Final Defense Criteria: {assessment.title}</p>
-                    <div className="flex flex-wrap gap-3">
-                        {assessment.criteria.map(c => (
+            <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-blue-500 mt-0.5">info</span>
+                    <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3">
+                            <p className="text-sm font-semibold text-blue-900">Grading Assessment:</p>
+                            <select 
+                                value={assessment.assessmentId} 
+                                onChange={(e) => {
+                                    const selected = assessments.find(a => a.assessmentId === Number(e.target.value));
+                                    if (selected) setAssessment(selected);
+                                }}
+                                className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 focus:border-blue-500 outline-none shadow-sm bg-white text-blue-900 font-medium min-w-[200px]"
+                            >
+                                {assessments.map(a => (
+                                    <option key={a.assessmentId} value={a.assessmentId}>{a.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            {assessment.criteria.map(c => (
                             <span key={c.criteriaId} className="px-2 py-1 bg-white border border-blue-200 rounded-lg text-[11px] font-medium text-blue-700">
                                 {c.criteriaName} ({c.weight}%)
                             </span>
                         ))}
                     </div>
-                    <p className="text-[11px] text-blue-600 italic">Please enter scores from 0 to 10 for each criterion. The final score will be automatically calculated as an average of all council members' entries.</p>
+                    <p className="text-[11px] text-blue-600 italic">Please enter scores from 0 to 10 for each criterion. Students who have 'Passed' previously are locked and cannot be graded.</p>
+                </div>
                 </div>
             </div>
 
@@ -215,7 +239,14 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
                     {member.fullName.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#111318]">{member.fullName}</h4>
+                    <h4 className="text-sm font-bold text-[#111318] flex items-center gap-2">
+                        {member.fullName}
+                        {passedUserIds.includes(member.userId) && (
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-md border border-green-200 uppercase tracking-wide">
+                                Passed Lần 1
+                            </span>
+                        )}
+                    </h4>
                     <p className="text-[11px] text-[#616f89]">{member.email}</p>
                   </div>
                 </div>
@@ -239,6 +270,7 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
                           step="0.1"
                           min="0"
                           max="10"
+                          disabled={passedUserIds.includes(member.userId)}
                           value={studentScores[member.userId]?.[criteria.criteriaId] ?? ""}
                           onChange={(e) =>
                             handleScoreChange(
@@ -247,7 +279,7 @@ const CouncilGradingModal: React.FC<CouncilGradingModalProps> = ({
                               e.target.value,
                             )
                           }
-                          className="w-full px-4 py-2 text-sm font-bold border border-[#dbdfe6] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                          className={`w-full px-4 py-2 text-sm font-bold border border-[#dbdfe6] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all ${passedUserIds.includes(member.userId) ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
                           placeholder="0.0"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">

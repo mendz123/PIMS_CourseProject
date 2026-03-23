@@ -873,5 +873,28 @@ namespace PIMS_BE.Services
 
             return result;
         }
+
+        public async Task<List<GroupDto>> GetGroupsForRetakeAsync(int semesterId, int lan1AssessmentId)
+        {
+            var groups = await _groupRepository.GetGroupsForRetakeAsync(semesterId, lan1AssessmentId);
+
+            var items = groups.Select(g => new GroupDto
+            {
+                GroupId = g.GroupId,
+                GroupName = g.GroupName ?? "",
+                SemesterId = g.SemesterId,
+                SemesterName = g.Semester?.SemesterName ?? "",
+                LeaderId = g.LeaderId,
+                LeaderName = g.Leader?.FullName ?? "",
+                MentorId = g.MentorId,
+                MentorName = g.Mentor?.FullName,
+                StatusId = g.StatusId,
+                StatusName = g.Status?.StatusName ?? "",
+                IsLeader = false,
+                MemberCount = g.GroupMembers.Count(m => m.StatusId == 1)
+            }).ToList();
+
+            return items;
+        }
     }
 }

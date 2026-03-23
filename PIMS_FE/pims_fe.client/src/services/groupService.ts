@@ -70,6 +70,18 @@ export const groupService = {
         return response.data;
     },
 
+    async getGroupsEligibleForRetake(semesterId: number, lan1AssessmentId: number): Promise<ApiResponse<GroupDto[]>> {
+        const response = await api.get<ApiResponse<GroupDto[]>>('/api/group/eligible-for-retake', {
+            params: { semesterId, lan1AssessmentId }
+        });
+        return response.data;
+    },
+
+    async getActiveAssessments(): Promise<ApiResponse<{ assessmentId: number; title: string }[]>> {
+        const response = await api.get<ApiResponse<{ assessmentId: number; title: string }[]>>('/api/Group/active-assessment');
+        return response.data;
+    },
+
     async getGroupDetail(groupId: number): Promise<ApiResponse<GroupDetailDto>> {
         const response = await api.get<ApiResponse<GroupDetailDto>>(`/api/group/${groupId}`);
         return response.data;

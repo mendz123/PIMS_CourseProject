@@ -29,6 +29,7 @@ namespace PIMS_BE.Services.Interfaces
         Task LeaveGroupAsync(int userId);
         Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize);
         Task<List<TeacherGroupDto>> GetGroupsByTeacherAsync(int teacherId, int? semesterId = null);
+        Task<List<GroupDto>> GetGroupsForRetakeAsync(int semesterId, int lan1AssessmentId);
     }
 }
 

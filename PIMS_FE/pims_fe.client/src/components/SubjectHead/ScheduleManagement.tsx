@@ -27,6 +27,7 @@ import {
 import { councilService, type CouncilDto } from "../../services/councilService";
 import { semesterService } from "../../services/semesterService";
 import { roomService, type RoomDto } from "../../services/roomService";
+import { groupService } from "../../services/groupService";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -560,6 +561,11 @@ const ScheduleManagement: React.FC = () => {
     const [deleteTarget, setDeleteTarget] = useState<DefenseScheduleDto | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
+    // Retake Mode States
+    const [isRetakeMode, setIsRetakeMode] = useState(false);
+    const [lan1AssessmentId, setLan1AssessmentId] = useState<string>("");
+    const [assessments, setAssessments] = useState<{ assessmentId: number; title: string }[]>([]);
+
     // Schedules are already filtered by active semester at the API level
     const filteredSchedules = schedules;
 
@@ -593,12 +599,42 @@ const ScheduleManagement: React.FC = () => {
                 setGroups(eligibleRes.data ?? []);
                 await fetchSchedules(sem.semesterId);
             } else {
+                setCouncils([]);
+                setGroups([]);
+                setRooms([]);
                 await fetchSchedules(undefined);
             }
         } catch { /* silent */ }
     }, [fetchSchedules]);
 
-    useEffect(() => { fetchSupport(); }, [fetchSupport]);
+    const fetchAssessments = useCallback(async () => {
+        try {
+            const res = await groupService.getActiveAssessments();
+            const finalAssessments = (res.data ?? []).filter(a => a.title.toLowerCase().includes('final'));
+            setAssessments(finalAssessments);
+        } catch { /* silent */ }
+    }, []);
+
+    const fetchGroups = useCallback(async (retake: boolean, assessmentId: string, semId?: number) => {
+        try {
+            if (retake && assessmentId && semId) {
+                const res = await groupService.getGroupsEligibleForRetake(semId, Number(assessmentId));
+                setGroups((res.data as any) ?? []); 
+            } else if (!retake && semId) {
+                const res = await defenseScheduleService.getGroups(semId);
+                setGroups((res.data as any) ?? []);
+            } else {
+                setGroups([]);
+            }
+        } catch { toast.error("Failed to fetch groups"); }
+    }, []);
+
+    useEffect(() => { fetchSupport(); fetchAssessments(); }, [fetchSupport, fetchAssessments]);
+
+    // Re-fetch groups when mode or assessment changes
+    useEffect(() => {
+        if (!loading) fetchGroups(isRetakeMode, lan1AssessmentId, activeSemesterId);
+    }, [isRetakeMode, lan1AssessmentId, activeSemesterId, loading, fetchGroups]);
 
     const handleCreate = async (dto: CreateDefenseScheduleDto) => {
         setCreateLoading(true);
@@ -733,6 +769,24 @@ const ScheduleManagement: React.FC = () => {
                         New Session
                     </button>
                 </div>
+            </div>
+
+            {/* Retake Mode Toggle */}
+            <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-indigo-200 shadow-sm bg-indigo-50/30">
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={isRetakeMode} onChange={e => setIsRetakeMode(e.target.checked)} className="w-5 h-5 rounded accent-indigo-600 cursor-pointer" />
+                    <span className="text-sm font-bold text-indigo-900">Schedule for Retake (Lần 2)</span>
+                </label>
+                
+                {isRetakeMode && (
+                    <div className="flex flex-1 items-center gap-3 animate-in fade-in slide-in-from-left-4">
+                        <span className="text-xs text-indigo-700 font-medium whitespace-nowrap">Filter eligible groups from Assessment (Lần 1):</span>
+                        <select value={lan1AssessmentId} onChange={e => setLan1AssessmentId(e.target.value)} className="flex-1 max-w-sm px-3 py-2 text-sm rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none shadow-sm">
+                            <option value="">— Select Lần 1 Assessment —</option>
+                            {assessments.map(a => <option key={a.assessmentId} value={a.assessmentId}>{a.title}</option>)}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Active Semester Badge */}
