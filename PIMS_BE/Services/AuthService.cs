@@ -28,7 +28,7 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
 
     // Token expiration times
-    private const int ACCESS_TOKEN_EXPIRATION_MINUTES = 15;
+    private const int ACCESS_TOKEN_EXPIRATION_MINUTES = 60;
     private const int REFRESH_TOKEN_EXPIRATION_DAYS = 7;
     private const int EMAIL_VERIFICATION_TOKEN_EXPIRATION_HOURS = 24;
 
