@@ -152,6 +152,7 @@ public class DefenseScheduleRepository
         return await _context.Groups
             .Include(g => g.GroupMembers)
             .Where(g => g.SemesterId == semesterId)
+            .Where(g => g.StatusId == 4)
             .Where(g =>
                 // Nhóm phải có thành viên
                 g.GroupMembers.Any() &&
