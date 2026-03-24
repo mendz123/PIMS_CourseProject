@@ -466,6 +466,20 @@ const AssessmentPage: React.FC = () => {
     (a) => a.score !== undefined && a.score !== null,
   ).length;
   const totalCount = data.assessments.length;
+  const hasAllScores = totalCount > 0 && gradedCount === totalCount;
+  const finalAssessments = data.assessments.filter((a) => a.isFinal);
+  const hasAnyFinalAssessment = finalAssessments.length > 0;
+  const hasFinalScore = finalAssessments.every(
+    (a) => a.score !== undefined && a.score !== null,
+  );
+  const hasPassedAllFinalAssessments = finalAssessments.every(
+    (a) => a.isPassed ?? (a.score ?? 0) >= 5,
+  );
+
+  const isTotalPassed =
+    hasAllScores && (!hasAnyFinalAssessment || hasFinalScore)
+      ? totalScore >= 5 && hasPassedAllFinalAssessments
+      : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -497,14 +511,45 @@ const AssessmentPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Điểm tích lũy */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl px-6 py-4 text-center min-w-[130px]">
+          {/* Điểm tích lũy + kết quả tổng */}
+          <div
+            className={`rounded-2xl px-6 py-4 text-center min-w-[180px] border ${
+              isTotalPassed === false
+                ? "bg-gradient-to-br from-red-50 to-rose-50 border-red-200"
+                : isTotalPassed === true
+                  ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
+                  : "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100"
+            }`}
+          >
             <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wide">
               Accumulated Score
             </p>
-            <p className="text-3xl font-extrabold text-primary">
+            <p
+              className={`text-3xl font-extrabold ${
+                isTotalPassed === false
+                  ? "text-red-600"
+                  : isTotalPassed === true
+                    ? "text-green-600"
+                    : "text-primary"
+              }`}
+            >
               {totalScore.toFixed(2)}
             </p>
+            <div className="mt-2">
+              {isTotalPassed === undefined ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                  In Progress
+                </span>
+              ) : isTotalPassed ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <CheckCircle size={12} /> PASS
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                  <XCircle size={12} /> FAIL
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400 mt-1">
               {gradedCount}/{totalCount} assessments graded
             </p>
