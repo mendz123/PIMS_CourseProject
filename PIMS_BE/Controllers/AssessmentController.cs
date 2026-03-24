@@ -506,11 +506,11 @@ public class AssessmentController : ControllerBase
 
     [HttpGet("group/{groupId}/passed-final")]
     [Authorize(Roles = "TEACHER,SUBJECT_HEAD,ADMIN")]
-    public async Task<ActionResult<ApiResponse<List<int>>>> GetUsersPassedFinal(int groupId, [FromQuery] int? excludeAssessmentId = null)
+    public async Task<ActionResult<ApiResponse<List<int>>>> GetUsersPassedFinal(int groupId)
     {
         try
         {
-            var passedUserIds = await _assessmentService.GetUsersPassedFinalAsync(groupId, excludeAssessmentId);
+            var passedUserIds = await _assessmentService.GetUsersPassedFinalAsync(groupId);
             return Ok(ApiResponse<List<int>>.Ok(passedUserIds, "Passed users retrieved successfully"));
         }
         catch (Exception ex)
