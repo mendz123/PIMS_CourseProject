@@ -6,10 +6,10 @@ import { assessmentService } from "../../services/assessmentService";
 import { councilService, type CouncilDto } from "../../services/councilService";
 import { defenseScheduleService, type DefenseScheduleDto } from "../../services/defenseScheduleService";
 import { groupService } from "../../services/groupService";
-import type { 
-  AssessmentWithCriteriaDto, 
-  CouncilStudentScoreDto, 
-  SaveCouncilGradesDto 
+import type {
+    AssessmentWithCriteriaDto,
+    CouncilStudentScoreDto,
+    SaveCouncilGradesDto
 } from "../../types/assessment.types";
 import type { GroupMemberDto } from "../../types/group.types";
 import { toast } from "react-hot-toast";
@@ -20,13 +20,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [council, setCouncil] = useState<CouncilDto | null>(null);
     const [schedules, setSchedules] = useState<DefenseScheduleDto[]>([]);
-    const [assessment, setAssessment] = useState<AssessmentWithCriteriaDto | null>(null);
     const [assessments, setAssessments] = useState<AssessmentWithCriteriaDto[]>([]);
     const [passedUserIds, setPassedUserIds] = useState<number[]>([]);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
     const [groupMembers, setGroupMembers] = useState<GroupMemberDto[]>([]);
-    const [studentScores, setStudentScores] = useState<Record<number, Record<number, number>>>({});
+    const [studentScores, setStudentScores] = useState<Record<number, Record<number, Record<number, number>>>>({});
 
     const fetchCouncilDetails = useCallback(async () => {
         setLoading(true);
@@ -37,7 +36,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
             if (!id) {
                 const mySchedulesRes = await defenseScheduleService.getMySchedule();
                 const mySchedules = mySchedulesRes.data ?? [];
-                
+
                 if (mySchedules.length > 0) {
                     const councilIds = Array.from(new Set(mySchedules.map(s => s.councilId)));
                     id = councilIds[0];
@@ -48,8 +47,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
             }
 
             if (!id) {
-                 setLoading(false);
-                 return;
+                setLoading(false);
+                return;
             }
 
             // 2. Fetch Council Info
@@ -65,26 +64,13 @@ const TeacherCouncilGradingPage: React.FC = () => {
             if (councilRes.data) {
                 const assessmentsRes = await assessmentService.getAssessmentsWithCriteria(councilRes.data.semesterId);
                 const allAssessments = assessmentsRes.data ?? [];
-                
+
                 const finalAssessments = allAssessments.filter(a => a.isFinal) || [];
+                // Sort them so that the first is Lần 1 and second is Lần 2
+                finalAssessments.sort((a, b) => a.assessmentId - b.assessmentId);
                 setAssessments(finalAssessments);
-                
-                const final = finalAssessments.find(a => {
-                    const title = a.title?.toLowerCase() || "";
-                    return title.includes("final") || 
-                           title.includes("hội đồng") || 
-                           title.includes("kết thúc") ||
-                           title.includes("bảo vệ") ||
-                           title.includes("tổng kết") ||
-                           title.includes("cuối kỳ");
-                }) || finalAssessments[finalAssessments.length - 1]; // Fallback to the last assessment if nothing matches
-                
-                if (final) {
-                    setAssessment(final);
-                    if (final.criteria.length === 0) {
-                        toast.error(`Đợt đánh giá "${final.title}" chưa có tiêu chí chấm điểm.`);
-                    }
-                } else {
+
+                if (finalAssessments.length === 0) {
                     toast.error("Không tìm thấy đợt đánh giá nào cho học kỳ này.");
                 }
             }
@@ -92,12 +78,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
             if (councilSchedules.length > 0) {
                 const dates = Array.from(new Set(councilSchedules.map(s => s.defenseDate?.toString()).filter(Boolean))) as string[];
                 dates.sort();
-                
+
                 // If no date selected yet, pick the first one
                 if (dates.length > 0 && !selectedDate) {
                     const firstDate = dates[0];
                     setSelectedDate(firstDate);
-                    
+
                     // Also select the first group of that date
                     const firstGroupOfDate = councilSchedules.find(s => s.defenseDate?.toString() === firstDate);
                     if (firstGroupOfDate && !selectedGroupId) {
@@ -122,17 +108,18 @@ const TeacherCouncilGradingPage: React.FC = () => {
 
     useEffect(() => {
         const fetchGroupMembers = async () => {
-            if (!selectedGroupId || !assessment || !council) return;
+            if (!selectedGroupId || assessments.length === 0 || !council) return;
             try {
                 const res = await groupService.getGroupDetail(selectedGroupId);
                 const members = res.data?.members ?? [];
                 setGroupMembers(members);
 
-                // Fetch passed users
+                // Fetch passed users. We exclude the very last assessment (Retake) so we see who passed Lần 1.
                 try {
-                    const passedRes = await assessmentService.getUsersPassedFinal(selectedGroupId, assessment.assessmentId);
+                    const latestAssId = assessments[assessments.length - 1]?.assessmentId;
+                    const passedRes = await assessmentService.getUsersPassedFinal(selectedGroupId, latestAssId);
                     setPassedUserIds(passedRes.data || []);
-                } catch(e) { console.error("Error fetching passed users", e); }
+                } catch (e) { console.error("Error fetching passed users", e); }
 
                 // Fetch existing scores for this group and council
                 let existingScoresMap: Record<number, Record<number, number>> = {};
@@ -140,13 +127,13 @@ const TeacherCouncilGradingPage: React.FC = () => {
                     const gradesRes = await assessmentService.getCouncilGrades(council.councilId, selectedGroupId);
                     const grades = gradesRes.data ?? [];
                     console.log(`Fetched ${grades.length} existing grades for group ${selectedGroupId}`);
-                    
+
                     grades.forEach((g: any) => {
                         // Handle both camelCase and PascalCase from API
                         const uId = g.userId ?? g.UserId;
                         const cId = g.criteriaId ?? g.CriteriaId;
                         const val = g.score ?? g.Score ?? 0;
-                        
+
                         if (uId !== undefined && cId !== undefined) {
                             if (!existingScoresMap[uId]) existingScoresMap[uId] = {};
                             existingScoresMap[uId][cId] = val;
@@ -157,15 +144,18 @@ const TeacherCouncilGradingPage: React.FC = () => {
                 }
 
                 // Initialize scores
-                const initialScores: Record<number, Record<number, number>> = {};
-                members.forEach(m => {
-                    initialScores[m.userId] = {};
-                    assessment.criteria.forEach(c => {
-                        const savedScore = existingScoresMap[m.userId]?.[c.criteriaId];
-                        initialScores[m.userId][c.criteriaId] = savedScore ?? 0;
+                const initialScores: Record<number, Record<number, Record<number, number>>> = {};
+                assessments.forEach(ass => {
+                    initialScores[ass.assessmentId] = {};
+                    members.forEach(m => {
+                        initialScores[ass.assessmentId][m.userId] = {};
+                        ass.criteria.forEach(c => {
+                            const savedScore = existingScoresMap[m.userId]?.[c.criteriaId];
+                            initialScores[ass.assessmentId][m.userId][c.criteriaId] = savedScore ?? 0;
+                        });
                     });
                 });
-                
+
                 console.log("Setting student scores:", initialScores);
                 setStudentScores(initialScores);
             } catch (error) {
@@ -174,25 +164,29 @@ const TeacherCouncilGradingPage: React.FC = () => {
             }
         };
         fetchGroupMembers();
-    }, [selectedGroupId, assessment, council]);
+    }, [selectedGroupId, assessments, council]);
 
-    const handleScoreChange = (userId: number, criteriaId: number, value: string) => {
+    const handleScoreChange = (assId: number, userId: number, criteriaId: number, value: string) => {
         const score = parseFloat(value);
         if (isNaN(score)) return;
         const clampedScore = Math.min(10, Math.max(0, score));
 
         setStudentScores(prev => ({
             ...prev,
-            [userId]: {
-                ...prev[userId],
-                [criteriaId]: clampedScore
+            [assId]: {
+                ...prev[assId],
+                [userId]: {
+                    ...prev[assId]?.[userId],
+                    [criteriaId]: clampedScore
+                }
             }
         }));
     };
 
-    const calculateStudentTotal = (userId: number) => {
+    const calculateStudentTotal = (assId: number, userId: number) => {
+        const assessment = assessments.find(a => a.assessmentId === assId);
         if (!assessment) return 0;
-        const scores = studentScores[userId] || {};
+        const scores = studentScores[assId]?.[userId] || {};
         let total = 0;
         assessment.criteria.forEach(c => {
             const score = scores[c.criteriaId] || 0;
@@ -201,13 +195,13 @@ const TeacherCouncilGradingPage: React.FC = () => {
         return total;
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (assessment: AssessmentWithCriteriaDto, isRetake: boolean) => {
         if (!council || !selectedGroupId || !assessment) return;
 
         setSubmitting(true);
         try {
-            const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(studentScores)
-                .filter(([userIdStr]) => !passedUserIds.includes(parseInt(userIdStr)))
+            const studentScoresDto: CouncilStudentScoreDto[] = Object.entries(studentScores[assessment.assessmentId] || {})
+                .filter(([userIdStr]) => !(isRetake && passedUserIds.includes(parseInt(userIdStr))))
                 .map(([userIdStr, criteriaScores]) => ({
                     userId: parseInt(userIdStr),
                     criteriaScores
@@ -222,11 +216,11 @@ const TeacherCouncilGradingPage: React.FC = () => {
 
             await assessmentService.saveCouncilGrades(payload);
             toast.success("Đã lưu điểm thành công!");
-            
+
             // Refresh council details (this will update 'assessment' and 'council' states)
             // which in turn triggers the useEffect for fetching group members and grades.
             await fetchCouncilDetails();
-            
+
             // If the state doesn't trigger a re-fetch (e.g. same object references), 
             // we can slightly toggle the selectedGroupId to force a refresh if absolutely necessary,
             // but fetchCouncilDetails updates multiple states so it should be fine.
@@ -241,8 +235,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const availableDates = Array.from(new Set(schedules.map(s => s.defenseDate?.toString()).filter(Boolean))) as string[];
     availableDates.sort();
 
-    const filteredSchedules = selectedDate 
-        ? schedules.filter(s => s.defenseDate?.toString() === selectedDate) 
+    const filteredSchedules = selectedDate
+        ? schedules.filter(s => s.defenseDate?.toString() === selectedDate)
         : schedules;
 
     const currentSchedule = schedules.find(s => s.groupId === selectedGroupId);
@@ -252,9 +246,9 @@ const TeacherCouncilGradingPage: React.FC = () => {
             <TeacherSidebar currentPath="/teacher/council-grading" />
 
             <main className="flex-1 overflow-y-auto">
-                <TeacherHeader 
-                    title={council?.councilName || "Chấm điểm hội đồng"} 
-                    subtitle={`Học kỳ: ${council?.semesterName || "..."} - Đánh giá kết quả bảo vệ đồ án của các nhóm sinh viên.`} 
+                <TeacherHeader
+                    title={council?.councilName || "Chấm điểm hội đồng"}
+                    subtitle={`Học kỳ: ${council?.semesterName || "..."} - Đánh giá kết quả bảo vệ đồ án của các nhóm sinh viên.`}
                 />
 
                 <div className="p-8">
@@ -271,7 +265,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
                             <div className="space-y-2">
                                 <h2 className="text-xl font-bold text-gray-900">Không có hội đồng bảo vệ</h2>
                                 <p className="text-sm text-gray-500">
-                                    Bạn chưa được phân công vào bất kỳ hội đồng bảo vệ nào trong học kỳ này. 
+                                    Bạn chưa được phân công vào bất kỳ hội đồng bảo vệ nào trong học kỳ này.
                                     Vui lòng kiểm tra lại lịch bảo vệ hoặc liên hệ với giáo vụ.
                                 </p>
                             </div>
@@ -326,11 +320,10 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                         const firstGroupOfDate = schedules.find(s => s.defenseDate?.toString() === date);
                                                         if (firstGroupOfDate) setSelectedGroupId(firstGroupOfDate.groupId);
                                                     }}
-                                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                                                        selectedDate === date 
-                                                        ? 'bg-primary text-white shadow-md' 
-                                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                                    }`}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedDate === date
+                                                            ? 'bg-primary text-white shadow-md'
+                                                            : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                                                        }`}
                                                 >
                                                     {new Date(date).toLocaleDateString('vi-VN')}
                                                 </button>
@@ -362,11 +355,10 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                             <button
                                                 key={s.groupId}
                                                 onClick={() => setSelectedGroupId(s.groupId)}
-                                                className={`w-full p-4 flex items-center justify-between transition-all border-l-4 ${
-                                                    selectedGroupId === s.groupId 
-                                                    ? 'bg-primary/5 border-primary' 
-                                                    : 'border-transparent hover:bg-gray-50'
-                                                }`}
+                                                className={`w-full p-4 flex items-center justify-between transition-all border-l-4 ${selectedGroupId === s.groupId
+                                                        ? 'bg-primary/5 border-primary'
+                                                        : 'border-transparent hover:bg-gray-50'
+                                                    }`}
                                             >
                                                 <div className="text-left">
                                                     <p className={`text-sm font-bold ${selectedGroupId === s.groupId ? 'text-primary' : 'text-gray-700'}`}>
@@ -377,7 +369,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                     </p>
                                                 </div>
                                                 {s.status?.toUpperCase() === 'COMPLETED' ? (
-                                                     <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                                                    <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
                                                 ) : (
                                                     <span className="size-2 rounded-full bg-amber-400" />
                                                 )}
@@ -403,45 +395,42 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                         <div>
                                             <div className="flex items-center gap-3 mb-2">
                                                 <h2 className="text-2xl font-black text-gray-900">{currentSchedule?.groupName}</h2>
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                                    currentSchedule?.status?.toUpperCase() === 'COMPLETED' 
-                                                    ? 'bg-emerald-100 text-emerald-700' 
-                                                    : 'bg-amber-100 text-amber-700'
-                                                }`}>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${currentSchedule?.status?.toUpperCase() === 'COMPLETED'
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : 'bg-amber-100 text-amber-700'
+                                                    }`}>
                                                     {currentSchedule?.status || "PENDING"}
                                                 </span>
                                             </div>
-                                            <div className="mt-4 flex items-center gap-3">
-                                                <p className="text-sm font-semibold text-blue-900">Bài kiểm tra (Assessment):</p>
-                                                <select 
-                                                    value={assessment?.assessmentId || ""} 
-                                                    onChange={(e) => {
-                                                        const selected = assessments.find(a => a.assessmentId === Number(e.target.value));
-                                                        if (selected) setAssessment(selected);
-                                                    }}
-                                                    className="px-4 py-2 text-sm rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm bg-white text-gray-800 font-medium min-w-[250px] transition-all"
-                                                >
-                                                    {assessments.map(a => (
-                                                        <option key={a.assessmentId} value={a.assessmentId}>{a.title}</option>
-                                                    ))}
-                                                </select>
+                                            <div className="mt-4 flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500 max-w-2xl">
+                                                    Hệ thống hiển thị song song các đợt đánh giá final. Điểm cuối cùng của mỗi đợt được tính bằng trung bình cộng điểm của toàn bộ thành viên trong hội đồng.
+                                                </p>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={handleSubmit}
-                                            disabled={submitting}
-                                            className="px-8 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg ring-offset-2 hover:bg-primary/90 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 shrink-0"
-                                        >
-                                            {submitting ? (
-                                                <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <span className="material-symbols-outlined text-[20px]">save</span>
-                                            )}
-                                            {submitting ? "Đang lưu..." : "Lưu điểm hội đồng"}
-                                        </button>
+                                        <div className="flex flex-col gap-3">
+                                            {assessments.map((ass, idx) => {
+                                                const isRetake = idx > 0;
+                                                return (
+                                                    <button
+                                                        key={ass.assessmentId}
+                                                        onClick={() => handleSubmit(ass, isRetake)}
+                                                        disabled={submitting}
+                                                        className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
+                                                    >
+                                                        {submitting ? (
+                                                            <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                                        ) : (
+                                                            <span className="material-symbols-outlined text-[18px]">save</span>
+                                                        )}
+                                                        {submitting ? "Đang lưu..." : `Lưu điểm ${idx === 0 ? 'Lần 1' : 'Lần 2'} (${ass.title})`}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
 
-                                    {!assessment ? (
+                                    {assessments.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center p-12 bg-amber-50 rounded-2xl border border-amber-100 text-amber-800 text-center">
                                             <span className="material-symbols-outlined text-4xl mb-4">warning</span>
                                             <h3 className="text-lg font-bold">Không tìm thấy tiêu chí</h3>
@@ -449,84 +438,74 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Criteria Legend */}
-                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                                {assessment.criteria.map(c => (
-                                                    <div key={c.criteriaId} className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate" title={c.criteriaName}>
-                                                            {c.criteriaName}
-                                                        </p>
-                                                        <p className="text-xs font-black text-primary mt-1">{c.weight}%</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-
                                             {/* Students Loop */}
                                             <div className="space-y-8">
                                                 {groupMembers.map((member) => (
                                                     <div key={member.userId} className="group p-1 rounded-[2rem] hover:bg-primary/5 transition-all">
-                                                        <div className="bg-white border border-[#dbdfe6] rounded-[1.8rem] overflow-hidden group-hover:border-primary/20 shadow-sm transition-all">
+                                                        <div className="bg-white border border-[#dbdfe6] rounded-[1.8rem] overflow-hidden group-hover:border-primary/20 shadow-sm transition-all pb-6">
                                                             <div className="px-6 py-4 bg-gray-50/50 border-b border-[#dbdfe6] flex items-center justify-between">
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="size-12 rounded-2xl bg-white border border-[#dbdfe6] shadow-sm flex items-center justify-center font-black text-gray-400 group-hover:text-primary transition-colors">
                                                                         {member.fullName.charAt(0)}
                                                                     </div>
                                                                     <div>
-                                                                        <h4 className="font-bold text-gray-900 flex items-center gap-2">
-                                                                            {member.fullName}
-                                                                            {passedUserIds.includes(member.userId) && (
-                                                                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200 uppercase tracking-wide">
-                                                                                    Passed Lần 1
-                                                                                </span>
-                                                                            )}
-                                                                        </h4>
+                                                                        <h4 className="font-bold text-gray-900">{member.fullName}</h4>
                                                                         <p className="text-[11px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{member.email}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex gap-6 items-center">
-                                                                    <div className="text-right border-r border-[#dbdfe6] pr-6">
-                                                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tiến độ chấm</p>
-                                                                       <p className="text-sm font-black text-primary">
-                                                                          {Object.values(studentScores[member.userId] || {}).filter(v => v > 0).length} / {assessment.criteria.length}
-                                                                       </p>
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                       <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Điểm dự tính</p>
-                                                                       <p className={`text-xl font-black ${calculateStudentTotal(member.userId) < 4 ? 'text-rose-500' : 'text-primary'}`}>
-                                                                          {calculateStudentTotal(member.userId).toFixed(2)}
-                                                                       </p>
-                                                                       {calculateStudentTotal(member.userId) < 4 && (
-                                                                           <p className="text-[9px] font-bold text-rose-400 uppercase mt-1">Không đạt</p>
-                                                                       )}
                                                                     </div>
                                                                 </div>
                                                             </div>
 
-                                                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-                                                                {assessment.criteria.map(criteria => (
-                                                                    <div key={criteria.criteriaId} className="space-y-3">
-                                                                        <div className="flex justify-between items-center text-xs">
-                                                                            <label className="font-bold text-gray-600 truncate max-w-[120px]" title={criteria.criteriaName}>
-                                                                                {criteria.criteriaName}
-                                                                            </label>
-                                                                            <span className="text-gray-400 font-bold">{criteria.weight}%</span>
+                                                            <div className="px-8 pt-6 space-y-6">
+                                                                {assessments.map((ass, idx) => {
+                                                                    const isRetake = idx > 0;
+                                                                    const isPassedL1 = passedUserIds.includes(member.userId);
+                                                                    const isLocked = isRetake && isPassedL1;
+
+                                                                    return (
+                                                                        <div key={ass.assessmentId} className={`p-6 rounded-2xl border ${isLocked ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50/50 border-[#dbdfe6]'}`}>
+                                                                            <div className="flex justify-between items-center mb-6">
+                                                                                <h5 className="font-bold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                                                    <span className="material-symbols-outlined text-primary text-xl">assignment</span>
+                                                                                    {ass.title}
+                                                                                    {isLocked && (
+                                                                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200 uppercase tracking-widest ml-2">
+                                                                                            Passed Lần 1
+                                                                                        </span>
+                                                                                    )}
+                                                                                </h5>
+                                                                                <div className="text-right">
+                                                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Điểm dự tính</p>
+                                                                                    <p className={`text-xl font-black ${calculateStudentTotal(ass.assessmentId, member.userId) < 4 ? 'text-rose-500' : 'text-primary'}`}>
+                                                                                        {calculateStudentTotal(ass.assessmentId, member.userId).toFixed(2)}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+                                                                                {ass.criteria.map(criteria => (
+                                                                                    <div key={criteria.criteriaId} className="space-y-2">
+                                                                                        <div className="flex justify-between items-center text-[11px]">
+                                                                                            <label className="font-bold text-gray-600 truncate max-w-[120px]" title={criteria.criteriaName}>
+                                                                                                {criteria.criteriaName}
+                                                                                            </label>
+                                                                                            <span className="text-gray-400 font-bold">{criteria.weight}%</span>
+                                                                                        </div>
+                                                                                        <div className="relative group/input">
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                step="0.1" min="0" max="10"
+                                                                                                disabled={isLocked}
+                                                                                                value={studentScores[ass.assessmentId]?.[member.userId]?.[criteria.criteriaId] ?? ""}
+                                                                                                onChange={(e) => handleScoreChange(ass.assessmentId, member.userId, criteria.criteriaId, e.target.value)}
+                                                                                                className={`w-full h-11 px-4 bg-white border border-[#dbdfe6] rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-black text-gray-900 group-hover/input:border-primary/50 shadow-sm ${isLocked ? 'bg-gray-100 cursor-not-allowed opacity-60 text-gray-400' : ''}`}
+                                                                                                placeholder="0.0"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="relative group/input">
-                                                                            <input
-                                                                                type="number"
-                                                                                step="0.1"
-                                                                                min="0"
-                                                                                max="10"
-                                                                                disabled={passedUserIds.includes(member.userId)}
-                                                                                value={studentScores[member.userId]?.[criteria.criteriaId] ?? ""}
-                                                                                onChange={(e) => handleScoreChange(member.userId, criteria.criteriaId, e.target.value)}
-                                                                                className={`w-full h-12 px-4 bg-gray-50 border border-[#dbdfe6] rounded-2xl focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-black text-gray-900 group-hover/input:border-primary/30 ${passedUserIds.includes(member.userId) ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}
-                                                                                placeholder="0.0"
-                                                                            />
-                                                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-300">/ 10</span>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     </div>
