@@ -621,7 +621,7 @@ const ScheduleManagement: React.FC = () => {
                 const res = await groupService.getGroupsEligibleForRetake(semId, Number(assessmentId));
                 setGroups((res.data as any) ?? []); 
             } else if (!retake && semId) {
-                const res = await defenseScheduleService.getGroups(semId);
+                const res = await defenseScheduleService.getEligibleGroups(semId);
                 setGroups((res.data as any) ?? []);
             } else {
                 setGroups([]);
