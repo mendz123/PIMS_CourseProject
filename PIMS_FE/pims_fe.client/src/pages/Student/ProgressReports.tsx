@@ -33,6 +33,7 @@ const ProgressReports = () => {
     const [iteration, setIteration] = useState('');
     const [projectInfo, setProjectInfo] = useState<{ projectId: number; title: string } | null>(null);
     const [currentDate] = useState(new Date());
+    const [activeSemester, setActiveSemester] = useState<{ id: number; name: string } | null>(null);
 
 
     const { user } = useAuth();
@@ -187,10 +188,25 @@ const ProgressReports = () => {
             }
         };
 
+        const fetchActiveSemester = async () => {
+            try {
+                const response = await api.get('/api/Semester/active');
+                if (response.data && response.data.data) {
+                    setActiveSemester({
+                        id: response.data.data.semesterId,
+                        name: response.data.data.semesterName
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch active semester:", error);
+            }
+        };
+
         fetchAssessments();
         fetchProjectInfo();
         fetchSubmissionHistory();
         fetchTemplates();
+        fetchActiveSemester();
     }, []);
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-10">
@@ -200,12 +216,24 @@ const ProgressReports = () => {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-[#0f172a]">Báo cáo tiến độ</h2>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-2">
                         <p className="text-gray-500 capitalize">{format(currentDate, 'eeee, dd/MM/yyyy', { locale: vi })}</p>
+
+                        {activeSemester && (
+                            <>
+                                <span className="text-gray-300">•</span>
+                                <span className="text-emerald-600 font-bold text-sm bg-emerald-50 px-2 py-0.5 rounded-md">
+                                    Học kỳ: {activeSemester.name}
+                                </span>
+                            </>
+                        )}
+
                         {projectInfo && (
                             <>
                                 <span className="text-gray-300">•</span>
-                                <span className="text-primary font-bold text-sm">Dự án: {projectInfo.title}</span>
+                                <span className="text-primary font-bold text-sm bg-blue-50 px-2 py-0.5 rounded-md">
+                                    Dự án: {projectInfo.title}
+                                </span>
                             </>
                         )}
                     </div>
@@ -237,25 +265,25 @@ const ProgressReports = () => {
                     <div className="lg:col-span-2 space-y-8">
 
                         {/* 1. Noti Deadline */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {deadlines.map(dl => (
-                                <div key={dl.id} className="bg-white p-4 rounded-2xl border-l-4 border-l-rose-500 shadow-sm flex items-center gap-4">
-                                    <div className="p-3 bg-rose-50 text-rose-600 rounded-xl animate-pulse"><BellRing size={24} /></div>
-                                    <div>
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-[9px]">Sắp hết hạn</p>
-                                        <p className="font-bold text-gray-800 text-sm">{dl.title}</p>
-                                        <p className="text-rose-600 text-[10px] font-medium mt-1 italic">Còn {formatDistanceToNow(dl.date, { locale: vi })}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        {/*<div className="grid grid-cols-1 md:grid-cols-2 gap-4">*/}
+                        {/*    {deadlines.map(dl => (*/}
+                        {/*        <div key={dl.id} className="bg-white p-4 rounded-2xl border-l-4 border-l-rose-500 shadow-sm flex items-center gap-4">*/}
+                        {/*            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl animate-pulse"><BellRing size={24} /></div>*/}
+                        {/*            <div>*/}
+                        {/*                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-[9px]">Sắp hết hạn</p>*/}
+                        {/*                <p className="font-bold text-gray-800 text-sm">{dl.title}</p>*/}
+                        {/*                <p className="text-rose-600 text-[10px] font-medium mt-1 italic">Còn {formatDistanceToNow(dl.date, { locale: vi })}</p>*/}
+                        {/*            </div>*/}
+                        {/*        </div>*/}
+                        {/*    ))}*/}
+                        {/*</div>*/}
 
                         {/* 2. FORM Submit report */}
                         <section className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 relative overflow-hidden">
                             <div className="mb-6">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm font-bold text-gray-400 uppercase tracking-wide">
-                                        Cột mốc báo cáo (Iteration)
+                                        Các đợt báo cáo 
                                     </label>
                                     {editingSubmissionId && (
                                         <button
@@ -457,13 +485,17 @@ const ProgressReports = () => {
                                 <li className="flex gap-2">
                                     <span className="text-primary font-bold underline">01</span>
                                     <span>Hệ thống tự động liên kết bài nộp với <b>Project ID</b> của nhóm bạn.</span>
-                                </li>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="text-primary font-bold underline">02</span>
+                                        <span>Hệ thống chỉ nhận các <b>File Nén.</b></span>
+                                    </li>
                                 <li className="flex gap-2">
-                                    <span className="text-primary font-bold underline">02</span>
+                                    <span className="text-primary font-bold underline">03</span>
                                     <span>Chỉ bản nộp cuối cùng trước deadline được tính là bản chính thức.</span>
                                 </li>
                                 <li className="flex gap-2">
-                                    <span className="text-primary font-bold underline">03</span>
+                                    <span className="text-primary font-bold underline">04</span>
                                     <span>File được tải trực tiếp lên Google Drive Admin với dung lượng không giới hạn.</span>
                                 </li>
                             </ul>

@@ -24,13 +24,12 @@ namespace PIMS_BE.Services.Interfaces
         // Topic registration
         Task<ProjectDto> RegisterTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto);
         Task<ProjectDto> UpdateTopicAsync(int leaderId, int groupId, RegisterTopicRequestDto dto);
-        Task<List<TopicReviewDto>> GetPendingTopicRequestsAsync(int teacherUserId);
-        Task<GroupDto> ReviewTopicAsync(int teacherUserId, int groupId, bool approve);
 
         // Leave group
         Task LeaveGroupAsync(int userId);
         Task<(List<GroupDto> Items, int TotalCount)> GetGroupsAsync(string? search, int pageNumber, int pageSize);
         Task<List<TeacherGroupDto>> GetGroupsByTeacherAsync(int teacherId, int? semesterId = null);
+        Task<List<GroupDto>> GetGroupsForRetakeAsync(int semesterId, int lan1AssessmentId);
     }
 }
 

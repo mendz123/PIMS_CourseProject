@@ -38,9 +38,10 @@ public class CouncilService : ICouncilService
 
     public async Task<CouncilDto> CreateAsync(CreateCouncilDto dto)
     {
-        // Validate Semester tồn tại
-        var semester = await _semesterRepo.GetByIdAsync(dto.SemesterId)
-            ?? throw new KeyNotFoundException($"Semester {dto.SemesterId} not found");
+        // Tự động lấy Semester đang Active
+        var activeSemesters = await _semesterRepo.FindAsync(s => s.IsActive == true);
+        var activeSemester = activeSemesters.FirstOrDefault() 
+            ?? throw new Exception("No active semester found! Cannot create council.");
 
         // Validate tất cả user tồn tại
         foreach (var userId in dto.MemberUserIds.Distinct())
@@ -49,11 +50,11 @@ public class CouncilService : ICouncilService
                 ?? throw new KeyNotFoundException($"User {userId} not found");
         }
 
-        // Tạo Council
+        // Tạo Council thuộc về Semester đang Active
         var council = new Council
         {
             CouncilName = dto.CouncilName,
-            SemesterId  = dto.SemesterId
+            SemesterId  = activeSemester.SemesterId
         };
         await _councilRepo.AddAsync(council);
         await _councilRepo.SaveChangesAsync();
@@ -132,6 +133,7 @@ public class CouncilService : ICouncilService
         CouncilId   = c.CouncilId,
         CouncilName = c.CouncilName ?? string.Empty,
         SemesterId  = c.SemesterId,
+        SemesterName = c.Semester?.SemesterName ?? "Unknown Semester",
         Members     = c.CouncilMembers.Select(m => new CouncilMemberDto
         {
             UserId   = m.UserId,

@@ -8,8 +8,7 @@ public class CreateCouncilDto
     [MaxLength(100)]
     public string CouncilName { get; set; } = null!;
 
-    [Required(ErrorMessage = "SemesterId is required")]
-    public int SemesterId { get; set; }
+
 
     /// <summary>List of UserId of teachers in the council</summary>
     [Required]

@@ -7,6 +7,7 @@ import type {
   CreateCriterionDto,
   UpdateCriterionDto,
   BatchCreateCriteriaDto,
+  BatchCreateAssessmentsDto,
   AssessmentWithCriteriaDto,
   ApiResponse,
   StudentMyAssessmentsDto,
@@ -50,6 +51,15 @@ export const assessmentService = {
   createAssessment: async (dto: CreateAssessmentDto) => {
     const response = await api.post<ApiResponse<AssessmentDto>>(
       "/api/assessment",
+      dto,
+    );
+    return response.data;
+  },
+
+  // Batch create assessments (total weight must equal 100%)
+  batchCreateAssessments: async (dto: BatchCreateAssessmentsDto) => {
+    const response = await api.post<ApiResponse<AssessmentDto[]>>(
+      "/api/assessment/batch",
       dto,
     );
     return response.data;
@@ -119,6 +129,30 @@ export const assessmentService = {
     const response = await api.get<ApiResponse<StudentMyAssessmentsDto>>(
       "/api/student/assessments/me",
     );
+    return response.data;
+  },
+
+  // Save council grades for final defense
+  saveCouncilGrades: async (dto: any) => {
+    const response = await api.post<ApiResponse<object>>(
+      "/api/assessment/save-council-grades",
+      dto,
+    );
+    return response.data;
+  },
+
+  // Get council grades for a specific teacher, council, and group
+  getCouncilGrades: async (councilId: number, groupId: number) => {
+    const response = await api.get<ApiResponse<any[]>>(
+      `/api/assessment/council-grades?councilId=${councilId}&groupId=${groupId}`,
+    );
+    return response.data;
+  },
+
+  // Get users who passed a final assessment previously
+  getUsersPassedFinal: async (groupId: number) => {
+    let url = `/api/assessment/group/${groupId}/passed-final`;
+    const response = await api.get<ApiResponse<number[]>>(url);
     return response.data;
   },
 };

@@ -1,5 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
+import React, { useState, useEffect } from "react";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import { assessmentService } from "../../services/assessmentService";
@@ -42,7 +41,10 @@ const GradingPage: React.FC = () => {
     // Grading State
     const [groupComments, setGroupComments] = useState<{ [groupId: number]: string }>({});
     const [studentScores, setStudentScores] = useState<{ [userId: number]: { [assessmentId: number]: number } }>({});
-    const [isSaving, setIsSaving] = useState(false);
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const groupsPerPage = 10;
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -130,7 +132,13 @@ const GradingPage: React.FC = () => {
     // Reset assessments and groups when semester changes
     useEffect(() => {
         fetchSemesterData();
+        setCurrentPage(1); // Reset page on semester change
     }, [selectedSemesterId]);
+
+    // Reset page when search or assessment filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, selectedAssessmentId]);
 
     const toggleGroup = (groupId: number) => {
         setExpandedGroups(prev =>
@@ -138,92 +146,7 @@ const GradingPage: React.FC = () => {
         );
     };
 
-    const handleScoreChange = (userId: number, assessmentId: number, score: string) => {
-        if (score === '') {
-            setStudentScores(prev => ({
-                ...prev,
-                [userId]: {
-                    ...prev[userId],
-                    [assessmentId]: '' as any
-                }
-            }));
-            return;
-        }
 
-        let numScore = parseFloat(score);
-        if (isNaN(numScore)) return;
-
-        if (numScore > 10) numScore = 10;
-        if (numScore < 0) numScore = 0;
-
-        setStudentScores(prev => ({
-            ...prev,
-            [userId]: {
-                ...prev[userId],
-                [assessmentId]: numScore
-            }
-        }));
-    };
-
-    const handleCommentChange = (groupId: number, comment: string) => {
-        setGroupComments(prev => ({
-            ...prev,
-            [groupId]: comment
-        }));
-    };
-
-    const handleSaveGrades = async () => {
-        setIsSaving(true);
-        try {
-            // Chuẩn bị payload cho từng nhóm đã được mở (hoặc tất cả), lọc theo search
-            const groupsToSave = searchQuery.trim() === '' ? groups : groups.filter(g => g.groupName.toLowerCase().includes(searchQuery.toLowerCase()));
-
-            let saveCount = 0;
-            const assessmentsToProcess = selectedAssessmentId === 'all'
-                ? assessments
-                : assessments.filter(a => a.assessmentId === selectedAssessmentId);
-
-            for (const group of groupsToSave) {
-                for (const assessment of assessmentsToProcess) {
-                    const groupScorePayload: any = {
-                        assessmentId: assessment.assessmentId,
-                        groupId: group.groupId,
-                        teacherComment: groupComments[group.groupId] || "",
-                        studentScores: []
-                    };
-
-                    group.students.forEach(student => {
-                        const mappedScore = studentScores[student.userId]?.[assessment.assessmentId];
-                        if (mappedScore !== undefined && mappedScore !== '' as any) {
-                            groupScorePayload.studentScores.push({
-                                userId: student.userId,
-                                score: parseFloat(mappedScore.toString())
-                            });
-                        }
-                    });
-
-                    // Chỉ lưu nếu có nhập điểm hoặc có nhận xét
-                    if (groupScorePayload.studentScores.length > 0 || groupScorePayload.teacherComment.trim() !== '') {
-                        await assessmentService.saveGrades(groupScorePayload);
-                        saveCount++;
-                    }
-                }
-            }
-            if (saveCount > 0) {
-                toast.success("Lưu điểm thành công!");
-                // Re-fetch data to reflect newly calculated total scores
-                await fetchSemesterData();
-            } else {
-                toast.error("Không có thay đổi nào để lưu hoặc nhóm chưa nộp bài! (Phải có bài nộp mới lưu được Nhận xét)");
-            }
-        }
-        catch (error) {
-            console.error("Lỗi khi lưu điểm:", error);
-            toast.error("Đã xảy ra lỗi khi lưu điểm.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318]">
@@ -314,104 +237,144 @@ const GradingPage: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#dbdfe6]">
-                                    {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).map(group => (
-                                        <React.Fragment key={group.groupId}>
-                                            {/* Hàng Nhóm - Accordion Header */}
-                                            <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
-                                                <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary">
-                                                    <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
-                                                        keyboard_arrow_down
-                                                    </span>
-                                                    {group.groupName}
-                                                </td>
-                                                <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 2} className="px-6 py-4 text-right">
-                                                    {group.submittedDocs && group.submittedDocs.length > 0 ? (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setViewingDocsGroup(group); }}
-                                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                                                        >
-                                                            <span className="material-symbols-outlined text-sm">description</span>
-                                                            Xem tài liệu ({group.submittedDocs.length})
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
-                                                    )}
-                                                </td>
-                                            </tr>
+                                    {groups
+                                        .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                        .slice((currentPage - 1) * groupsPerPage, currentPage * groupsPerPage)
+                                        .map(group => (
+                                            <React.Fragment key={group.groupId}>
+                                                {/* Hàng Nhóm - Accordion Header */}
+                                                <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
+                                                    <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary">
+                                                        <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
+                                                            keyboard_arrow_down
+                                                        </span>
+                                                        {group.groupName}
+                                                    </td>
+                                                    <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-6 py-4 text-right">
+                                                    </td>
+                                                </tr>
 
-                                            {/* Hàng Sinh viên - Accordion Content */}
-                                            {expandedGroups.includes(group.groupId) && group.students.map(student => (
-                                                <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
-                                                    <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
-                                                    {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => {
-                                                        const hasCriteriaGrades = student.criteriaScores && student.criteriaScores[a.assessmentId] && Object.keys(student.criteriaScores[a.assessmentId]).length > 0;
-                                                        const isDisabled = !group.submittedDocs || group.submittedDocs.length === 0;
+                                                {/* Hàng Sinh viên - Accordion Content */}
+                                                {expandedGroups.includes(group.groupId) && group.students.map(student => (
+                                                    <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
+                                                        <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
+                                                        {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => {
+                                                            const score = studentScores[student.userId]?.[a.assessmentId];
+                                                            const hasCriteriaGrades = student.criteriaScores && student.criteriaScores[a.assessmentId] && Object.keys(student.criteriaScores[a.assessmentId]).length > 0;
+                                                            const isFailedFinalScore = a.isFinal && score !== undefined && score !== null && score < 4;
 
-                                                        return (
-                                                            <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
-                                                                {hasCriteriaGrades ? (
-                                                                    <div className="w-16 mx-auto px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded text-center text-sm font-bold" title="Điểm đã được chấm chi tiết theo tiêu chí">
-                                                                        {studentScores[student.userId]?.[a.assessmentId] !== undefined ? studentScores[student.userId]?.[a.assessmentId] : '--'}
-                                                                    </div>
-                                                                ) : (
-                                                                    <input
-                                                                        type="number" step="0.1" max="10" min="0" placeholder="0.0"
-                                                                        value={studentScores[student.userId]?.[a.assessmentId] ?? ''}
-                                                                        onChange={(e) => handleScoreChange(student.userId, a.assessmentId, e.target.value)}
-                                                                        disabled={isDisabled}
-                                                                        className={`w-16 px-2 py-1 border border-[#dbdfe6] rounded text-center focus:ring-1 focus:ring-primary outline-none ${isDisabled ? 'bg-gray-100 cursor-not-allowed text-gray-400' : ''}`}
-                                                                    />
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    })}
+                                                            return (
+                                                                <td key={a.assessmentId} className="px-4 py-4 text-center border-r">
+                                                                    {score !== undefined ? (
+                                                                        <div 
+                                                                            className={`w-16 mx-auto px-2 py-1 border rounded text-center text-sm font-bold ${
+                                                                                isFailedFinalScore
+                                                                                ? "bg-rose-50 border-rose-200 text-rose-700"
+                                                                                : hasCriteriaGrades 
+                                                                                ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
+                                                                                : "bg-blue-50 border-blue-200 text-blue-700"
+                                                                            }`} 
+                                                                            title={isFailedFinalScore ? "Điểm thi Final thấp hơn ngưỡng đạt (4.0)" : (hasCriteriaGrades ? "Điểm đã được chấm chi tiết theo tiêu chí" : "Điểm đánh giá trực tiếp")}
+                                                                        >
+                                                                            {score}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-gray-400 font-medium">--</span>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
 
-                                                    {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
+                                                        {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
                                                     Nhưng để layout đẹp, ta giữ textarea trống hoặc chỉ là text "--" cho sinh viên, 
                                                     và hiển thị text cho Group */}
-                                                    {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
-                                                    {/*    --*/}
-                                                    {/*</td>*/}
-                                                    <td className="px-6 py-4 text-right font-bold text-orange-600">
-                                                        {student.totalScore !== undefined && student.totalScore !== null
-                                                            ? student.totalScore.toFixed(2)
-                                                            : '--'}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                        {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
+                                                        {/*    --*/}
+                                                        {/*</td>*/}
+                                                        <td className="px-6 py-4 text-right">
+                                                            {student.totalScore !== undefined && student.totalScore !== null ? (
+                                                                (() => {
+                                                                    const hasFailedFinal = (student.criteriaScores && Object.keys(student.criteriaScores).some(aId => {
+                                                                        const a = assessments.find(ax => ax.assessmentId === Number(aId));
+                                                                        return a?.isFinal && (studentScores[student.userId]?.[Number(aId)] ?? 0) < 4;
+                                                                    })) || assessments.some(a => a.isFinal && (studentScores[student.userId]?.[a.assessmentId] ?? 0) < 4);
+                                                                    
+                                                                    const isPassed = student.totalScore >= 5 && !hasFailedFinal;
+                                                                    
+                                                                    return (
+                                                                        <div className="flex flex-col items-end gap-1">
+                                                                            <span className={`font-bold ${!isPassed ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                                                {student.totalScore.toFixed(2)}
+                                                                            </span>
+                                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${!isPassed ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                                                {!isPassed ? 'Failed' : 'Passed'}
+                                                                            </span>
+                                                                            {hasFailedFinal && (
+                                                                                <span className="text-[9px] text-red-400 font-bold italic text-right break-words max-w-[80px]">Final {"<"} 4.0</span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()
+                                                            ) : (
+                                                                <span className="font-bold text-gray-400">--</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
 
-                                            {/* Row Nhận xét cấp Group */}
-                                            {expandedGroups.includes(group.groupId) && (
-                                                <tr className="bg-orange-50/20">
-                                                    <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
-                                                        Nhận xét chung cho nhóm {group.groupName}:
-                                                    </td>
-                                                    <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
-                                                        <textarea
-                                                            rows={2}
-                                                            placeholder="Nhập lời phê của Giảng viên cho nhóm này..."
-                                                            value={groupComments[group.groupId] ?? ""}
-                                                            onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
-                                                            disabled={!group.submittedDocs || group.submittedDocs.length === 0}
-                                                            className={`w-full p-2 text-sm border border-orange-200 rounded-lg focus:ring-1 focus:ring-orange-500 outline-none ${(!group.submittedDocs || group.submittedDocs.length === 0) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
+                                                {/* Row Nhận xét cấp Group */}
+                                                {expandedGroups.includes(group.groupId) && (
+                                                    <tr className="bg-orange-50/20">
+                                                        <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
+                                                            Nhận xét chung cho nhóm {group.groupName}:
+                                                        </td>
+                                                        <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
+                                                            <div className="w-full p-2 text-sm border border-orange-200 rounded-lg bg-white/50 min-h-[40px] text-gray-700">
+                                                                {groupComments[group.groupId] || <span className="text-gray-400 italic">Chưa có nhận xét</span>}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
                                 </tbody>
                             </table>
 
-                            <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3">
-                                <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white">Hủy</button>
-                                <button
-                                    onClick={handleSaveGrades}
-                                    disabled={isSaving}
-                                    className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                    {isSaving ? "Đang lưu..." : "Lưu điểm"}
-                                </button>
-                            </div>
+                            {/* Pagination Controls */}
+                            {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length > groupsPerPage && (
+                                <div className="p-4 bg-gray-50 border-t border-[#dbdfe6] flex items-center justify-between rounded-b-xl">
+                                    <span className="text-sm text-[#616f89]">
+                                        Hiển thị {Math.min((currentPage - 1) * groupsPerPage + 1, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} - {Math.min(currentPage * groupsPerPage, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} trong tổng số {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length} nhóm
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Trước
+                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length / groupsPerPage) }, (_, i) => i + 1).map(page => (
+                                                <button
+                                                    key={page}
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors ${currentPage === page ? 'bg-primary text-white' : 'text-[#616f89] hover:bg-white border border-[#dbdfe6] border-transparent hover:border-[#dbdfe6]'}`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentPage(p => Math.min(Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length / groupsPerPage), p + 1))}
+                                            disabled={currentPage === Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length / groupsPerPage)}
+                                            className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Sau
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

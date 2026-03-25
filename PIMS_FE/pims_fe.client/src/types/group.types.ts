@@ -26,6 +26,7 @@ export interface GroupMemberDto {
 
 export interface GroupDetailDto extends GroupDto {
   members: GroupMemberDto[];
+  project?: ProjectDto | null;
 }
 
 export interface InvitationDto {
@@ -76,6 +77,7 @@ export interface MentorRequestDetailDto {
   message?: string | null;
   status: string;
   createdAt?: string | null;
+  topic?: ProjectDto | null;
 }
 
 export interface PaginatedResponse<T> {

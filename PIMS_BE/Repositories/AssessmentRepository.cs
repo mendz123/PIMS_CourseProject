@@ -30,6 +30,9 @@ public interface IAssessmentRepository : IGenericRepository<Assessment>
 
 public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRepository
 {
+    private const int ProjectStatusPending = 1;
+    private const int ProjectStatusApproved = 3;
+
     public AssessmentRepository(PimsDbContext context) : base(context)
     {
     }
@@ -91,7 +94,10 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     }
         public async Task<IEnumerable<Assessment>> GetActiveAssessmentsAsync()
         {
-            return await _context.Assessments.Where(a => a.IsLocked != true).ToListAsync();
+            return await _context.Assessments
+                .Include(a => a.Semester)
+                .Where(a => a.IsLocked != true && a.Semester.IsActive == true)
+                .ToListAsync();
         }
 
     public async Task<StudentAssessmentRawData?> GetStudentAssessmentDataAsync(int userId)
@@ -115,9 +121,10 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
         var group    = membership.Group;
         var semester = group.Semester;
 
-        // Ưu tiên project đã được duyệt, nếu không có thì lấy pending
-        var project = group.Projects.FirstOrDefault(p => p.StatusId == 2)   // Approved
-                   ?? group.Projects.FirstOrDefault(p => p.StatusId == 1);  // Pending
+        // Ưu tiên project đã được duyệt, nếu không có thì lấy bản pending mới nhất
+        var project = group.Projects.FirstOrDefault(p => p.StatusId == ProjectStatusApproved)
+               ?? group.Projects.OrderByDescending(p => p.ProjectId)
+                .FirstOrDefault(p => p.StatusId == ProjectStatusPending);
 
         // 2. Lấy tất cả assessments của học kỳ đó (kèm criteria)
         var assessments = await _context.Assessments

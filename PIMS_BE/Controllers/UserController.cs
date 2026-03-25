@@ -181,5 +181,23 @@ public class UserController : BaseApiController
             return StatusCode(500, ApiResponse<List<UserSuggestionDto>>.InternalError("Internal Server Error: " + ex.Message));
         }
     }
+
+    [HttpPost("import-students")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<ApiResponse<List<UserInfo>>>> ImportStudents([FromForm] ImportStudentRequest request)
+    {
+        var file = request.File;
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<List<UserInfo>>.BadRequest("No file uploaded."));
+        try
+        {
+            var importedUsers = await _userService.ImportStudentListAsync(file);
+            return Ok(ApiResponse<List<UserInfo>>.Ok(importedUsers, "Students imported successfully."));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<List<UserInfo>>.InternalError("Internal Server Error: " + ex.Message));
+        }
+    }
 }
 

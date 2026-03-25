@@ -8,5 +8,17 @@ public interface IDefenseScheduleService
     Task<DefenseScheduleDto?> GetByIdAsync(int id);
     Task<IEnumerable<DefenseScheduleDto>> GetByTeacherAsync(int userId);
     Task<DefenseScheduleDto> CreateAsync(CreateDefenseScheduleDto dto);
+    Task<DefenseScheduleDto> UpdateAsync(int scheduleId, UpdateDefenseScheduleDto dto);
+    Task DeleteAsync(int scheduleId);
+    Task<IEnumerable<DefenseScheduleDto>> BulkCreateAsync(BulkCreateDefenseScheduleDto dto);
     Task<DefenseScheduleDto> AssignRoomAsync(int scheduleId, AssignRoomDto dto);
+    Task<IEnumerable<GroupInfoDto>> GetEligibleGroupsAsync(int semesterId);
 }
+
+public class GroupInfoDto
+{
+    public int GroupId { get; set; }
+    public string? GroupName { get; set; }
+    public int SemesterId { get; set; }
+}
+

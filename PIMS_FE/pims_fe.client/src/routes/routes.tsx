@@ -10,7 +10,10 @@ import {
   GroupListPage,
   TeacherNotifications,
   TeacherDefenseSchedulePage,
+  TeacherStudentListPage,
+  TeacherCouncilGradingPage,
 } from "../pages/Teacher";
+
 import {
   SubjectHeadDashboard,
   AssessmentManagement,
@@ -113,6 +116,19 @@ export const router = createBrowserRouter([
         path: "teacher/settings",
         element: <TeacherSettingsPage />,
       },
+      {
+        path: "teacher/students",
+        element: <TeacherStudentListPage />,
+      },
+      {
+        path: "teacher/council-grading",
+        element: <TeacherCouncilGradingPage />,
+      },
+      {
+        path: "teacher/council-grading/:councilId",
+        element: <TeacherCouncilGradingPage />,
+      },
+
       {
         path: "subject-head",
         element: (

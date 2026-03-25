@@ -76,6 +76,8 @@ const Notifications: React.FC = () => {
     fetchNotifications();
   };
 
+  const latestInvitationNotified = new Set<number>();
+
   const handleMarkRead = async (id: number) => {
     await notificationService.markAsRead(id);
     fetchNotifications();
@@ -149,12 +151,19 @@ const Notifications: React.FC = () => {
             notifications.map((notif) => {
               const invitationId = parseInvitationId(notif.content);
               const isInvite = invitationId !== null;
+              const isLatestInviteNotification =
+                invitationId !== null && !latestInvitationNotified.has(invitationId);
+              if (invitationId !== null) {
+                latestInvitationNotified.add(invitationId);
+              }
               const invitationData =
                 invitationId !== null
                   ? pendingInvitations.get(invitationId)
                   : undefined;
               const isPending =
-                invitationId !== null && pendingInvitations.has(invitationId);
+                invitationId !== null &&
+                pendingInvitations.has(invitationId) &&
+                isLatestInviteNotification;
 
               if (isInvite) {
                 return (

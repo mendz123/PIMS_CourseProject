@@ -13,6 +13,7 @@ using PIMS_BE.Repositories;
 using PIMS_BE.Middlewares;
 using PIMS_BE.Helpers;
 using Serilog;
+using OfficeOpenXml;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -32,6 +33,9 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     Log.Information("Starting PIMS Backend Application");
+
+    // Set EPPlus License Context
+    ExcelPackage.License.SetNonCommercialPersonal("Akasaki");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,6 +68,10 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IMentorRequestRepository, MentorRequestRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IDefenseScheduleRepository, DefenseScheduleRepository>();
+builder.Services.AddScoped<ICouncilCriteriaGradeRepository, CouncilCriteriaGradeRepository>();
+builder.Services.AddScoped<IAssessmentScoreRepository, AssessmentScoreRepository>();
+builder.Services.AddScoped<IStudentFinalResultRepository, StudentFinalResultRepository>();
+builder.Services.AddScoped<ICriteriaGradeRepository, CriteriaGradeRepository>();
 
 // Register Services
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -75,6 +83,7 @@ builder.Services.AddScoped<ISemesterService, SemesterService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<ICouncilService, CouncilService>();
 builder.Services.AddScoped<IDefenseScheduleService, DefenseScheduleService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 // Register Email Service
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -187,7 +196,8 @@ builder.Services.AddCors(options =>
               "http://localhost:49684", 
               "http://localhost:5173",
               "http://localhost:5172",
-              "https://localhost:5172")
+              "https://localhost:5172",
+              "https://pims.khaidz.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Cho phép gửi cookies
@@ -210,13 +220,12 @@ app.Use(async (context, next) =>
 // Use Exception Middleware FIRST
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Alway show swagger, even in production, since Cloudflare handles security
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// Disable internal HTTPS redirection because Cloudflare Zero Trust handles Edge SSL
+// app.UseHttpsRedirection();
 
 // Global exception handling - should be early in pipeline
 app.UseExceptionHandling();

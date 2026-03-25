@@ -151,6 +151,32 @@ const UserManagement: React.FC = () => {
     setEditingUser(null);
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const loadingToast = toast.loading("Importing students...");
+    try {
+      const response = await userService.importStudents(file);
+      if (response.success) {
+        toast.success(response.message || "Students imported successfully", {
+          id: loadingToast,
+        });
+        fetchUsers();
+      } else {
+        toast.error(response.message || "Failed to import students", {
+          id: loadingToast,
+        });
+      }
+    } catch (err) {
+      console.error("Error importing students:", err);
+      toast.error("An error occurred during import", { id: loadingToast });
+    } finally {
+      // Reset file input
+      e.target.value = "";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -253,6 +279,24 @@ const UserManagement: React.FC = () => {
             <span className="material-symbols-outlined">person_add</span>
             Add New User
           </button>
+          <div className="flex items-center">
+            <input
+              type="file"
+              id="import-students-input"
+              className="hidden"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onChange={handleImport}
+            />
+            <button
+              className="btn-secondary flex items-center gap-2"
+              onClick={() =>
+                document.getElementById("import-students-input")?.click()
+              }
+            >
+              <span className="material-symbols-outlined">upload_file</span>
+              Import Students
+            </button>
+          </div>
         </div>
       </div>
 

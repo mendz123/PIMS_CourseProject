@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PIMS_BE.Models;
 
 namespace PIMS_BE.Repositories
@@ -9,6 +9,7 @@ namespace PIMS_BE.Repositories
         Task<int> SaveAsync(); 
         Task<List<ProjectSubmission>> GetSubmissionsByGroupIdAsync(int groupId);
         Task<ProjectSubmission?> GetSubmissionByIdAsync(int submissionId);
+        Task<ProjectSubmission?> GetByGroupAndAssessmentAsync(int groupId, int assessmentId);
     }
 
         // ProjectSubmissionRepository.cs
@@ -29,16 +30,25 @@ namespace PIMS_BE.Repositories
         {
             return await _dbSet
                 .Include(s => s.Assessment)
+                    .ThenInclude(a => a.Semester)
                 .Include(s => s.Submitter)
                 .Include(s => s.Group)
-                .Where(s => s.GroupId == groupId)
+                .Where(s => s.GroupId == groupId && s.Assessment != null && s.Assessment.Semester.IsActive == true)
                 .OrderByDescending(s => s.SubmittedAt)
                 .ToListAsync();
         }
 
         public async Task<ProjectSubmission?> GetSubmissionByIdAsync(int submissionId)
         {
-            return await _dbSet.FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
+            return await _dbSet
+                .Include(s => s.Assessment)
+                .Include(s => s.Submitter)
+                .Include(s => s.Group)
+                .FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
+        }
+        public async Task<ProjectSubmission?> GetByGroupAndAssessmentAsync(int groupId, int assessmentId)
+        {
+            return await _dbSet.FirstOrDefaultAsync(s => s.GroupId == groupId && s.AssessmentId == assessmentId);
         }
     }
 }

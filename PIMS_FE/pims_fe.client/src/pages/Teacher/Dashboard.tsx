@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import TeacherStats from "../../components/teacher/TeacherStats";
@@ -6,71 +6,29 @@ import TopicApprovalsTable from "../../components/teacher/TopicApprovalsTable";
 import PerformanceChart from "../../components/teacher/PerformanceChart";
 import ProgressTrackingTable from "../../components/teacher/ProgressTrackingTable";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import Settings from "../../components/dashboard/Settings";
-import Notification from "../../components/dashboard/NotificationNavbar";
+import api from "../../services/api";
 
 const TeacherDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = React.useState("dashboard");
+  const { user } = useAuth();
 
-  // Mock data for now (could be fetched from API)
-  const topicApprovals = [
-    {
-      groupId: "G-201",
-      title: "AI-driven Logistics Optimization",
-      date: "Oct 24, 2023",
-    },
-    {
-      groupId: "G-205",
-      title: "Blockchain for Supply Chain",
-      date: "Oct 25, 2023",
-    },
-    {
-      groupId: "G-212",
-      title: "IoT Smart Irrigation System",
-      date: "Oct 26, 2023",
-    },
-  ];
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const performanceData = [
-    {
-      label: "Exceeding Expectation",
-      percentage: 45,
-      colorClass: "bg-primary",
-    },
-    { label: "On Track", percentage: 35, colorClass: "bg-[#07883b]" },
-    { label: "Delayed", percentage: 15, colorClass: "bg-orange-500" },
-    { label: "Critical", percentage: 5, colorClass: "bg-red-500" },
-  ];
-
-  const progressItems = [
-    {
-      groupName: "Eco-Trackers",
-      leadStudent: "Marcus Aurelius",
-      milestone: "Phase 2: Prototype",
-      progress: 65,
-      status: "On Track",
-      statusColorClass: "bg-[#07883b]/10 text-[#07883b]",
-    },
-    {
-      groupName: "Cyber-Shield",
-      leadStudent: "Elena Rodriguez",
-      milestone: "Phase 3: Testing",
-      progress: 85,
-      status: "Review Required",
-      statusColorClass: "bg-orange-500/10 text-orange-500",
-    },
-    {
-      groupName: "Data Miners",
-      leadStudent: "Kevin Smith",
-      milestone: "Phase 1: Design",
-      progress: 30,
-      status: "On Track",
-      statusColorClass: "bg-[#07883b]/10 text-[#07883b]",
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await api.get('/api/Dashboard/teacher-overview');
+        if (response.data && response.data.data) {
+          setDashboardData(response.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318] font-display">
@@ -83,18 +41,33 @@ const TeacherDashboard: React.FC = () => {
         />
 
         <div className="p-8 max-w-[1200px] mx-auto space-y-8">
-          <TeacherStats />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <TopicApprovalsTable items={topicApprovals} />
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-3 text-gray-500 font-medium">Đang tải dữ liệu tổng quan...</span>
             </div>
-            <div className="lg:col-span-1">
-              <PerformanceChart items={performanceData} />
-            </div>
-          </div>
+          ) : dashboardData ? (
+            <>
+              <TeacherStats
+                activeGroupsCount={dashboardData.activeGroupsCount}
+                pendingProposalsCount={dashboardData.pendingProposalsCount}
+                unreviewedReportsCount={dashboardData.unreviewedReportsCount}
+              />
 
-          <ProgressTrackingTable items={progressItems} totalCount={24} />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  <TopicApprovalsTable items={dashboardData.topicApprovals || []} />
+                </div>
+                <div className="lg:col-span-1">
+                  <PerformanceChart items={dashboardData.performanceData || []} />
+                </div>
+              </div>
+
+              <ProgressTrackingTable items={dashboardData.progressItems || []} totalCount={dashboardData.activeGroupsCount} />
+            </>
+          ) : (
+            <div className="text-center p-8 text-gray-500">Failed to load dashboard data.</div>
+          )}
         </div>
 
         <footer className="p-8 pt-0 max-w-[1200px] mx-auto text-center">

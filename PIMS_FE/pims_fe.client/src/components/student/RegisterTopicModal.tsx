@@ -84,8 +84,8 @@ const RegisterTopicModal: React.FC<Props> = ({
               </h3>
               <p className="text-xs text-gray-500">
                 {isUpdate
-                  ? "Edit your topic information and resubmit to your mentor"
-                  : "Fill in the topic information to submit to your mentor for review"}
+                  ? "Edit your topic information and save changes"
+                  : "Fill in your group's topic information"}
               </p>
             </div>
           </div>
@@ -182,10 +182,10 @@ const RegisterTopicModal: React.FC<Props> = ({
             )}
             {loading
               ? isUpdate
-                ? "Updating..."
-                : "Sending..."
+                ? "Saving..."
+                : "Saving..."
               : isUpdate
-                ? "Update & Resubmit"
+                ? "Save Changes"
                 : "Register"}
           </button>
         </div>

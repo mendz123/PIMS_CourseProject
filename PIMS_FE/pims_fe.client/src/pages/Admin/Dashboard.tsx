@@ -19,6 +19,22 @@ const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+  React.useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await notificationService.getUnreadCount();
+        if (response && response.success) {
+          setUnreadCount(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread count:", error);
+      }
+    };
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Get active tab from URL query param "tab", default to "overview" if missing
   const activeTab = searchParams.get("tab") || "overview";
@@ -123,15 +139,21 @@ const AdminDashboard: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${activeTab === item.id
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                activeTab === item.id
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-[#616f89] hover:bg-[#f6f6f8]"
-                }`}
+              }`}
             >
               <span className="material-symbols-outlined text-[22px]">
                 {item.icon}
               </span>
               <span className="text-sm">{item.label}</span>
+              {item.id === "notifications" && unreadCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -221,10 +243,11 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${stat.trendUp
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          stat.trendUp
                             ? "bg-green-100 text-green-700"
                             : "bg-red-100 text-red-700"
-                          }`}
+                        }`}
                       >
                         {stat.trend}
                       </span>
@@ -259,10 +282,11 @@ const AdminDashboard: React.FC = () => {
                           className="flex items-center gap-4 p-4 hover:bg-[#f6f6f8] transition-colors"
                         >
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${!notification.isRead
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
+                              !notification.isRead
                                 ? "bg-primary/20 text-primary"
                                 : "bg-gray-100 text-gray-400"
-                              }`}
+                            }`}
                           >
                             <span className="material-symbols-outlined text-lg">
                               {notification.isRead
@@ -279,9 +303,9 @@ const AdminDashboard: React.FC = () => {
                             <p className="text-[#616f89] text-xs mt-1">
                               {notification.createdAt
                                 ? formatDistanceToNow(
-                                  new Date(notification.createdAt),
-                                  { addSuffix: true },
-                                )
+                                    new Date(notification.createdAt),
+                                    { addSuffix: true },
+                                  )
                                 : "Recently"}
                             </p>
                           </div>

@@ -7,6 +7,8 @@ namespace PIMS_BE.DTOs.Group
     {
         public int GroupId { get; set; }
         public string GroupName { get; set; } = string.Empty;
+        public string? SemesterName { get; set; }
+        public string? TopicName { get; set; }
         public int MemberCount { get; set; }
         
         // List of students in the group

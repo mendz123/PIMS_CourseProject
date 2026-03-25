@@ -38,7 +38,7 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
       { stdio: "inherit" }
     ).status
   ) {
-    throw new Error("Could not create certificate.");
+    console.warn("Could not create certificate, skipping for Docker build.");
   }
 }
 

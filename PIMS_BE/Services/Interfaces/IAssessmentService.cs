@@ -5,6 +5,7 @@ namespace PIMS_BE.Services.Interfaces;
 public interface IAssessmentService
 {
     Task<AssessmentDto> CreateAssessmentAsync(CreateAssessmentDto dto, int userId);
+    Task<List<AssessmentDto>> BatchCreateAssessmentsAsync(BatchCreateAssessmentsDto dto, int userId);
     Task<AssessmentDto> UpdateAssessmentAsync(int assessmentId, UpdateAssessmentDto dto, int userId);
     Task DeleteAssessmentAsync(int assessmentId, int userId);
     Task<AssessmentDto?> GetAssessmentByIdAsync(int assessmentId);
@@ -21,4 +22,7 @@ public interface IAssessmentService
 
     Task<bool> SaveGradesAsync(SaveGradesDto dto, int teacherId);
     Task<bool> SaveGradesByCriteriaAsync(SaveGradesByCriteriaDto dto, int teacherId);
+    Task<bool> SaveCouncilGradesAsync(SaveCouncilGradesDto dto, int teacherId);
+    Task<List<CouncilCriteriaGradeDto>> GetCouncilGradesAsync(int councilId, int groupId, int teacherId);
+    Task<List<int>> GetUsersPassedFinalAsync(int groupId);
 }

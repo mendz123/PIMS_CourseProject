@@ -150,6 +150,49 @@ public class AssessmentController : ControllerBase
     }
 
     /// <summary>
+    /// Batch create assessments — total weight must equal 100%
+    /// </summary>
+    [HttpPost("batch")]
+    [Authorize(Roles = "ADMIN,SUBJECT_HEAD")]
+    public async Task<ActionResult<ApiResponse<List<AssessmentDto>>>> BatchCreateAssessments([FromBody] BatchCreateAssessmentsDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<List<AssessmentDto>>.Unauthorized("Invalid user authentication"));
+            }
+            var userName = User.Identity?.Name ?? "Unknown";
+
+            _logger.LogInformation("User {UserName} (ID: {UserId}) batch-creating {Count} assessments for semester {SemesterId}",
+                userName, userId, dto.Assessments.Count, dto.SemesterId);
+
+            var assessments = await _assessmentService.BatchCreateAssessmentsAsync(dto, userId);
+
+            _logger.LogInformation("{Count} assessments batch-created successfully by user {UserName}",
+                assessments.Count, userName);
+
+            return StatusCode(201, ApiResponse<List<AssessmentDto>>.Created(assessments, "Assessments created successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning("Batch create assessments failed - not found: {Message}", ex.Message);
+            return NotFound(ApiResponse<List<AssessmentDto>>.NotFound(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Batch create assessments failed - invalid operation: {Message}", ex.Message);
+            return BadRequest(ApiResponse<List<AssessmentDto>>.BadRequest(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error batch-creating assessments");
+            return StatusCode(500, ApiResponse<List<AssessmentDto>>.InternalError(ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Update assessment
     /// </summary>
     [HttpPut("{id}")]
@@ -393,4 +436,87 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Save council member grades for a group's final assessment defense
+    /// </summary>
+    [HttpPost("save-council-grades")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<object>>> SaveCouncilGrades([FromBody] SaveCouncilGradesDto dto)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int teacherId))
+            {
+                return Unauthorized(ApiResponse<object>.Unauthorized("Invalid user authentication"));
+            }
+
+            var success = await _assessmentService.SaveCouncilGradesAsync(dto, teacherId);
+            
+            if (success)
+            {
+                return Ok(ApiResponse<object>.Ok(new { }, "Lưu điểm hội đồng thành công"));
+            }
+            
+            return BadRequest(ApiResponse<object>.BadRequest("Không thể lưu điểm hội đồng"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving council grades for council {CouncilId}, group {GroupId}", dto.CouncilId, dto.GroupId);
+            return StatusCode(500, ApiResponse<object>.InternalError(ex.Message));
+        }
+    }
+
+    [HttpGet("council-grades")]
+    [Authorize(Roles = "TEACHER")]
+    public async Task<ActionResult<ApiResponse<List<CouncilCriteriaGradeDto>>>> GetCouncilGrades([FromQuery] int councilId, [FromQuery] int groupId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int teacherId))
+            {
+                return Unauthorized(ApiResponse<List<CouncilCriteriaGradeDto>>.Unauthorized("Invalid user authentication"));
+            }
+
+            var grades = await _assessmentService.GetCouncilGradesAsync(councilId, groupId, teacherId);
+            return Ok(ApiResponse<List<CouncilCriteriaGradeDto>>.Ok(grades, "Criteria grades retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving council grades for council {CouncilId}, group {GroupId}", councilId, groupId);
+            return StatusCode(500, ApiResponse<List<CouncilCriteriaGradeDto>>.InternalError(ex.Message));
+        }
+    }
+
+    [HttpGet("debug/council/{councilId}/group/{groupId}")]
+    [AllowAnonymous]
+    public async Task<ActionResult> DebugCouncilProcessing(int councilId, int groupId, [FromServices] PIMS_BE.Repositories.ICouncilRepository councilRepo, [FromServices] PIMS_BE.Repositories.ICouncilCriteriaGradeRepository gradeRepo)
+    {
+        var councilMemberIds = await councilRepo.GetMemberUserIdsAsync(councilId);
+        var teachersWhoGraded = await gradeRepo.GetTeachersWhoGradedAsync(councilId, groupId);
+        bool allMembersGraded = councilMemberIds.All(m => teachersWhoGraded.Contains(m));
+
+        return Ok(new {
+            CouncilMemberIds = councilMemberIds,
+            TeachersWhoGraded = teachersWhoGraded,
+            AllMembersGraded = allMembersGraded
+        });
+    }
+
+    [HttpGet("group/{groupId}/passed-final")]
+    [Authorize(Roles = "TEACHER,SUBJECT_HEAD,ADMIN")]
+    public async Task<ActionResult<ApiResponse<List<int>>>> GetUsersPassedFinal(int groupId)
+    {
+        try
+        {
+            var passedUserIds = await _assessmentService.GetUsersPassedFinalAsync(groupId);
+            return Ok(ApiResponse<List<int>>.Ok(passedUserIds, "Passed users retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving passed users for group {GroupId}", groupId);
+            return StatusCode(500, ApiResponse<List<int>>.InternalError(ex.Message));
+        }
+    }
 }
