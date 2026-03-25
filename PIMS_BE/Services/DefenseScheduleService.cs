@@ -404,12 +404,11 @@ public class DefenseScheduleService : IDefenseScheduleService
                 // Lịch 1 là firstExisting. Lịch đang tạo là lịch 2.
 
                 // 2. Lịch thứ 2 chỉ được tạo khi lịch 1 đã bảo vệ xong
-                bool isFirstFinished = today > firstExisting.DefenseDate || 
-                                       (today == firstExisting.DefenseDate && currentTime > firstExisting.EndTime);
+                bool isFirstFinished = firstExisting.Status == "COMPLETED";
 
                 if (!isFirstFinished)
                     throw new InvalidOperationException(
-                        "Cannot schedule a retake session before the first defense session has finished. " +
+                        "Cannot schedule a retake session before the first defense session is COMPLETED. " +
                         $"The first session is scheduled on {firstExisting.DefenseDate} at {firstExisting.StartTime}-{firstExisting.EndTime}.");
 
                 // 3. Lịch thứ 2 phải ở ngày sau lịch 1
