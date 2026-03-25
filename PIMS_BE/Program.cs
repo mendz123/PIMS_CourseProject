@@ -196,7 +196,8 @@ builder.Services.AddCors(options =>
               "http://localhost:49684", 
               "http://localhost:5173",
               "http://localhost:5172",
-              "https://localhost:5172")
+              "https://localhost:5172",
+              "https://pims.khaidz.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Cho phép gửi cookies
@@ -219,13 +220,12 @@ app.Use(async (context, next) =>
 // Use Exception Middleware FIRST
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Alway show swagger, even in production, since Cloudflare handles security
+app.UseSwagger();
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// Disable internal HTTPS redirection because Cloudflare Zero Trust handles Edge SSL
+// app.UseHttpsRedirection();
 
 // Global exception handling - should be early in pipeline
 app.UseExceptionHandling();

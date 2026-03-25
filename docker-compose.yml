@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Khởi tạo Backend Server
+  backend:
+    build:
+      context: ./PIMS_BE                # Đường dẫn tới thư mục Backend
+      dockerfile: Dockerfile
+    container_name: pims_backend
+    ports:
+      - "5172:8080"                     # Mở cổng 5172 của máy chủ đón khách (Khớp hoàn toàn với Cloudflare hiện tại)
+    environment:
+      # Lấy nguyên ConnectionString cũ của bạn đang chạy tốt
+      - ConnectionStrings__DefaultConnection=Server=100.123.181.94,1433;Database=PIMS_Project;User Id=sa;Password=Khaidz12345;TrustServerCertificate=True;Encrypt=True;Connection Timeout=30;Command Timeout=60;MultipleActiveResultSets=True;Max Pool Size=100;Pooling=True;
+    restart: always
+
+  # Khởi tạo Frontend UX/UI
+  frontend:
+    build:
+      context: ./PIMS_FE/pims_fe.client # Đường dẫn tới Frontend
+      dockerfile: Dockerfile
+      args:
+        # Đường dẫn tới API thật (Xóa /api ở cuối để tránh bị lặp thành /api/api)
+        - VITE_API_URL=https://api.khaidz.com
+        - VITE_GOOGLE_CLIENT_ID=532793804448-4qspbrsidfmqbtr23h6godjdp2nk8qmv.apps.googleusercontent.com
+    container_name: pims_frontend
+    ports:
+      - "3000:80"                       # Mở cổng 3000 của máy chủ đó khách (Khớp với Cloudflare hiện tại)
+    depends_on:
+      - backend
+    restart: always
+
+  # Đường hầm Cloudflare Zero Trust (Chạy nội bộ ngầm định)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pims_tunnel
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    restart: always
+    depends_on:
+      - backend
+      - frontend
