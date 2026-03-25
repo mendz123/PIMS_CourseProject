@@ -537,26 +537,35 @@ public class AssessmentService : IAssessmentService
 
                 foreach (var studentId in studentIds)
                 {
-                    decimal totalScore = 0;
+                    decimal currentTotal = 0;
                     bool failedFinal = false;
+                    bool finalExists = false;
+                    bool hasAllFinalScores = true;
 
                     foreach (var a in assessmentsInSemester)
                     {
-                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
-                        totalScore += score * (a.Weight ?? 0) / 100m;
+                        var scoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                        var score = scoreEntry?.Score ?? 0;
+                        currentTotal += score * (a.Weight ?? 0) / 100m;
                         
-                        if (a.IsFinal == true && score < 4)
+                        if (a.IsFinal == true)
                         {
-                            failedFinal = true;
+                            finalExists = true;
+                            if (scoreEntry == null) hasAllFinalScores = false;
+                            if (score < 4) failedFinal = true;
                         }
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
+                    
+                    // Only calculate TotalScore and IsPassed if all Final assessments for this student exist
+                    decimal? totalScoreToSave = (finalExists && !hasAllFinalScores) ? null : currentTotal;
+                    bool? isPassedToSave = (finalExists && !hasAllFinalScores) ? null : (currentTotal >= 5 && !failedFinal);
 
                     if (finalResult != null)
                     {
-                        finalResult.TotalScore = totalScore;
-                        finalResult.IsPassed = totalScore >= 5 && !failedFinal;
+                        finalResult.TotalScore = totalScoreToSave;
+                        finalResult.IsPassed = isPassedToSave;
                         _finalResultRepository.Update(finalResult);
                     }
                     else
@@ -565,8 +574,8 @@ public class AssessmentService : IAssessmentService
                         {
                             UserId = studentId,
                             SemesterId = semesterId,
-                            TotalScore = totalScore,
-                            IsPassed = totalScore >= 5 && !failedFinal
+                            TotalScore = totalScoreToSave,
+                            IsPassed = isPassedToSave
                         };
                         await _finalResultRepository.AddAsync(finalResult);
                     }
@@ -768,9 +777,11 @@ public class AssessmentService : IAssessmentService
                     var score = scoreEntry?.Score ?? 0;
                     finalSubjectScore += score * (a.Weight ?? 0) / 100m;
 
-                    if (a.IsFinal == true && score < 4)
+                    if (a.IsFinal == true)
                     {
-                        failedFinal = true;
+                        finalExists = true;
+                        if (scoreEntry == null) hasAllFinalScores = false;
+                        if (score < 4) failedFinal = true;
                     }
 
                     if ((a.IsFinal == true || a.IsRetake == true) && scoreEntry != null)
@@ -780,6 +791,10 @@ public class AssessmentService : IAssessmentService
                 }
 
                 var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
+
+                // Only calculate TotalScore and IsPassed if all Final assessments for this student exist
+                decimal? totalScoreToSave = (finalExists && !hasAllFinalScores) ? null : finalSubjectScore;
+                bool? isPassedToSave = (finalExists && !hasAllFinalScores) ? null : (finalSubjectScore >= 5 && !failedFinal);
 
                 if (finalResult != null)
                 {
@@ -793,8 +808,8 @@ public class AssessmentService : IAssessmentService
                     {
                         UserId = studentId,
                         SemesterId = semesterId,
-                        TotalScore = finalSubjectScore,
-                        IsPassed = finalSubjectScore >= 5 && !failedFinal
+                        TotalScore = totalScoreToSave,
+                        IsPassed = isPassedToSave
                     };
                     await _finalResultRepository.AddAsync(finalResult);
                 }
@@ -933,9 +948,11 @@ public class AssessmentService : IAssessmentService
                         var score = scoreEntry?.Score ?? 0;
                         finalSubjectScore += score * (a.Weight ?? 0) / 100m;
 
-                        if (a.IsFinal == true && score < 4)
+                        if (a.IsFinal == true)
                         {
-                            failedFinal = true;
+                            finalExists = true;
+                            if (scoreEntry == null) hasAllFinalScores = false;
+                            if (score < 4) failedFinal = true;
                         }
 
                         if ((a.IsFinal == true || a.IsRetake == true) && scoreEntry != null)
@@ -945,6 +962,10 @@ public class AssessmentService : IAssessmentService
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, assessment.SemesterId);
+
+                    // Only calculate TotalScore and IsPassed if all Final assessments for this student exist
+                    decimal? totalScoreToSave = (finalExists && !hasAllFinalScores) ? null : finalSubjectScore;
+                    bool? isPassedToSave = (finalExists && !hasAllFinalScores) ? null : (finalSubjectScore >= 5 && !failedFinal);
 
                     if (finalResult != null)
                     {
@@ -958,8 +979,8 @@ public class AssessmentService : IAssessmentService
                         {
                             UserId = studentId,
                             SemesterId = assessment.SemesterId,
-                            TotalScore = finalSubjectScore,
-                            IsPassed = finalSubjectScore >= 5 && !failedFinal
+                            TotalScore = totalScoreToSave,
+                            IsPassed = isPassedToSave
                         };
                         await _finalResultRepository.AddAsync(newFinalResult);
                     }
@@ -993,9 +1014,12 @@ public class AssessmentService : IAssessmentService
 
     public async Task<List<int>> GetUsersPassedFinalAsync(int groupId)
     {
+        var group = await _context.Groups.FindAsync(groupId);
+        if (group == null) return new List<int>();
+
         var passedUserIds = await _context.AssessmentScores
             .Include(s => s.Assessment)
-            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true)
+            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true && s.Assessment.SemesterId == group.SemesterId)
             .Join(_context.GroupMembers.Where(gm => gm.GroupId == groupId),
                   score => score.UserId,
                   member => member.UserId,
