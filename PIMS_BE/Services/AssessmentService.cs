@@ -760,15 +760,22 @@ public class AssessmentService : IAssessmentService
             {
                 decimal finalSubjectScore = 0;
                 bool failedFinal = false;
+                bool hasFinalOrRetakeScore = false;
 
                 foreach (var a in assessmentsInSemester)
                 {
-                    var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
+                    var scoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                    var score = scoreEntry?.Score ?? 0;
                     finalSubjectScore += score * (a.Weight ?? 0) / 100m;
 
                     if (a.IsFinal == true && score < 4)
                     {
                         failedFinal = true;
+                    }
+
+                    if ((a.IsFinal == true || a.IsRetake == true) && scoreEntry != null)
+                    {
+                        hasFinalOrRetakeScore = true;
                     }
                 }
 
@@ -776,11 +783,11 @@ public class AssessmentService : IAssessmentService
 
                 if (finalResult != null)
                 {
-                    finalResult.TotalScore = finalSubjectScore;
-                    finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                    finalResult.TotalScore = hasFinalOrRetakeScore ? finalSubjectScore : (decimal?)null;
+                    finalResult.IsPassed = hasFinalOrRetakeScore ? (finalSubjectScore >= 5 && !failedFinal) : (bool?)null;
                     _finalResultRepository.Update(finalResult);
                 }
-                else
+                else if (hasFinalOrRetakeScore)
                 {
                     finalResult = new StudentFinalResult
                     {
@@ -918,15 +925,22 @@ public class AssessmentService : IAssessmentService
                 {
                     decimal finalSubjectScore = 0;
                     bool failedFinal = false;
+                    bool hasFinalOrRetakeScore = false;
 
                     foreach (var a in assessmentsInSemester)
                     {
-                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
+                        var scoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                        var score = scoreEntry?.Score ?? 0;
                         finalSubjectScore += score * (a.Weight ?? 0) / 100m;
 
                         if (a.IsFinal == true && score < 4)
                         {
                             failedFinal = true;
+                        }
+
+                        if ((a.IsFinal == true || a.IsRetake == true) && scoreEntry != null)
+                        {
+                            hasFinalOrRetakeScore = true;
                         }
                     }
 
@@ -934,11 +948,11 @@ public class AssessmentService : IAssessmentService
 
                     if (finalResult != null)
                     {
-                        finalResult.TotalScore = finalSubjectScore;
-                        finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                        finalResult.TotalScore = hasFinalOrRetakeScore ? finalSubjectScore : (decimal?)null;
+                        finalResult.IsPassed = hasFinalOrRetakeScore ? (finalSubjectScore >= 5 && !failedFinal) : (bool?)null;
                         _finalResultRepository.Update(finalResult);
                     }
-                    else
+                    else if (hasFinalOrRetakeScore)
                     {
                         var newFinalResult = new StudentFinalResult
                         {

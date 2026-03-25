@@ -301,6 +301,10 @@ const GradingPage: React.FC = () => {
                                                                         return a?.isFinal && (studentScores[student.userId]?.[Number(aId)] ?? 0) < 4;
                                                                     })) || assessments.some(a => a.isFinal && (studentScores[student.userId]?.[a.assessmentId] ?? 0) < 4);
                                                                     
+                                                                    if (student.totalScore === null || student.totalScore === undefined) {
+                                                                        return <span className="font-bold text-gray-400 text-right w-full block">--</span>;
+                                                                    }
+
                                                                     const isPassed = student.totalScore >= 5 && !hasFailedFinal;
                                                                     
                                                                     return (
