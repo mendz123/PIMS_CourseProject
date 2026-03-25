@@ -18,9 +18,9 @@ public class StudentAssessmentRawData
 
 public interface IAssessmentRepository : IGenericRepository<Assessment>
 {
-    Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId);
+    Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId, bool includeRetake = false);
     Task<Assessment?> GetAssessmentWithCriteriaAsync(int assessmentId);
-    Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId);
+    Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId, bool includeRetake = false);
     Task<bool> HasScoresAsync(int assessmentId);
     Task<bool> HasSubmissionsAsync(int assessmentId);
     Task<decimal> GetTotalWeightBySemesterAsync(int semesterId, int? excludeAssessmentId = null);
@@ -37,11 +37,11 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     {
     }
 
-    public async Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId)
+    public async Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId, bool includeRetake = false)
     {
         return await _context.Assessments
             .Include(a => a.CreatedByNavigation)
-            .Where(a => a.SemesterId == semesterId)
+            .Where(a => a.SemesterId == semesterId && (includeRetake || !a.IsRetake))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync();
     }
@@ -56,14 +56,14 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
     }
 
-    public async Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId)
+    public async Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId, bool includeRetake = false)
     {
         return await _context.Assessments
             .Include(a => a.AssessmentCriteria)
             .Include(a => a.CreatedByNavigation)
             .Include(a => a.ProjectSubmissions)
             .Include(a => a.AssessmentScores)
-            .Where(a => a.SemesterId == semesterId)
+            .Where(a => a.SemesterId == semesterId && (includeRetake || !a.IsRetake))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync();
     }
@@ -83,7 +83,7 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     public async Task<decimal> GetTotalWeightBySemesterAsync(int semesterId, int? excludeAssessmentId = null)
     {
         var query = _context.Assessments
-            .Where(a => a.SemesterId == semesterId);
+            .Where(a => a.SemesterId == semesterId && !a.IsRetake);
 
         if (excludeAssessmentId.HasValue)
         {

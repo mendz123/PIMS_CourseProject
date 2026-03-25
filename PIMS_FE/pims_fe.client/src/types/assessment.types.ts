@@ -9,6 +9,7 @@ export interface AssessmentDto {
   createdBy: number;
   createdAt: string;
   createdByName: string;
+  isRetake: boolean;
   criteria?: AssessmentCriterionDto[];
 }
 
@@ -81,6 +82,7 @@ export interface AssessmentWithCriteriaDto {
   hasScores?: boolean;
   criteria: AssessmentCriterionDto[];
   totalCriteriaWeight: number;
+  isRetake: boolean;
   isValid: boolean;
 }
 

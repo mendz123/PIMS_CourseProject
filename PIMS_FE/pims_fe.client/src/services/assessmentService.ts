@@ -16,17 +16,17 @@ import type {
 // Assessment APIs
 export const assessmentService = {
   // Get all assessments by semester
-  getAssessmentsBySemester: async (semesterId: number) => {
+  getAssessmentsBySemester: async (semesterId: number, includeRetake: boolean = false) => {
     const response = await api.get<ApiResponse<AssessmentDto[]>>(
-      `/api/assessment/semester/${semesterId}`,
+      `/api/assessment/semester/${semesterId}?includeRetake=${includeRetake}`,
     );
     return response.data;
   },
 
   // Get assessments with criteria by semester
-  getAssessmentsWithCriteria: async (semesterId: number) => {
+  getAssessmentsWithCriteria: async (semesterId: number, includeRetake: boolean = false) => {
     const response = await api.get<ApiResponse<AssessmentWithCriteriaDto[]>>(
-      `/api/assessment/semester/${semesterId}/with-criteria`,
+      `/api/assessment/semester/${semesterId}/with-criteria?includeRetake=${includeRetake}`,
     );
     return response.data;
   },

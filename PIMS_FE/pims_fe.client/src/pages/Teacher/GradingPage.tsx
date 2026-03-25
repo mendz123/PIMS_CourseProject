@@ -77,7 +77,7 @@ const GradingPage: React.FC = () => {
         // 1. Fetch Assessments independently
         let currentAssessments: AssessmentWithCriteriaDto[] = [];
         try {
-            const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
+            const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId, true);
             currentAssessments = assessmentRes.data || [];
             setAssessments(currentAssessments);
         } catch (error) {
@@ -212,7 +212,7 @@ const GradingPage: React.FC = () => {
                                         </option>
                                         {assessments.map(a => (
                                             <option key={a.assessmentId} value={a.assessmentId}>
-                                                {a.title} ({a.weight}%)
+                                                {a.title} {!a.isRetake && `(${a.weight}%)`}
                                             </option>
                                         ))}
                                     </select>
@@ -229,7 +229,9 @@ const GradingPage: React.FC = () => {
                                         {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => (
                                             <th key={a.assessmentId} className="px-4 py-4 text-xs font-bold uppercase text-center bg-orange-50/30">
                                                 {a.title} <br />
-                                                <span className="text-orange-600">({a.weight}%)</span>
+                                                {!a.isRetake && (
+                                                    <span className="text-orange-600">({a.weight}%)</span>
+                                                )}
                                             </th>
                                         ))}
                                         {/*<th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>*/}

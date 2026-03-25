@@ -10,6 +10,7 @@ public class AssessmentDto
     public string Title { get; set; } = string.Empty;
     public decimal Weight { get; set; }
     public bool IsFinal { get; set; }
+    public bool IsRetake { get; set; }
     public bool IsLocked { get; set; }
     public int CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }

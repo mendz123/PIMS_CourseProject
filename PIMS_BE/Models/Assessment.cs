@@ -16,6 +16,7 @@ public partial class Assessment
     public bool? IsFinal { get; set; }
 
     public bool? IsLocked { get; set; }
+    public bool IsRetake { get; set; } = false;
 
     public int CreatedBy { get; set; }
 

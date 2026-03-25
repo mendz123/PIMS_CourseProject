@@ -28,14 +28,14 @@ public class AssessmentController : ControllerBase
     /// Get all assessments for a semester
     /// </summary>
     [HttpGet("semester/{semesterId}")]
-    public async Task<ActionResult<ApiResponse<List<AssessmentDto>>>> GetAssessmentsBySemester(int semesterId)
+    public async Task<ActionResult<ApiResponse<List<AssessmentDto>>>> GetAssessmentsBySemester(int semesterId, [FromQuery] bool includeRetake = false)
     {
         try
         {
             var userId = User.Identity?.Name ?? "Unknown";
             _logger.LogInformation("User {UserId} retrieving assessments for semester {SemesterId}", userId, semesterId);
             
-            var assessments = await _assessmentService.GetAssessmentsBySemesterAsync(semesterId);
+            var assessments = await _assessmentService.GetAssessmentsBySemesterAsync(semesterId, includeRetake);
             return Ok(ApiResponse<List<AssessmentDto>>.Ok(assessments, "Assessments retrieved successfully"));
         }
         catch (Exception ex)
@@ -49,11 +49,13 @@ public class AssessmentController : ControllerBase
     /// Get all assessments with criteria for a semester
     /// </summary>
     [HttpGet("semester/{semesterId}/with-criteria")]
-    public async Task<ActionResult<ApiResponse<List<AssessmentWithCriteriaDto>>>> GetAssessmentsWithCriteria(int semesterId)
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<List<AssessmentWithCriteriaDto>>>> GetAssessmentsWithCriteria(int semesterId, [FromQuery] bool includeRetake = false)
     {
         try
         {
-            var assessments = await _assessmentService.GetAssessmentsWithCriteriaAsync(semesterId);
+            _logger.LogInformation("GetAssessmentsWithCriteria called with semesterId={SemesterId}, includeRetake={IncludeRetake}", semesterId, includeRetake);
+            var assessments = await _assessmentService.GetAssessmentsWithCriteriaAsync(semesterId, includeRetake);
             return Ok(ApiResponse<List<AssessmentWithCriteriaDto>>.Ok(assessments, "Assessments with criteria retrieved successfully"));
         }
         catch (Exception ex)
