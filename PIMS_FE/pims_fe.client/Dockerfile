@@ -9,6 +9,8 @@ RUN npm install
 # Cài đặt biến môi trường URL thật của API vào FE trước khi Build file cứng
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # Copy source code và build (Bỏ qua các lỗi cảnh báo code thừa của TypeScript để ép Build)
 COPY . .

@@ -20,8 +20,9 @@ services:
       context: ./PIMS_FE/pims_fe.client # Đường dẫn tới Frontend
       dockerfile: Dockerfile
       args:
-        # Đường dẫn tới API thật, bạn có thể tự gọi nó qua tên miền này luôn
-        - VITE_API_URL=https://api.khaidz.com/api 
+        # Đường dẫn tới API thật (Xóa /api ở cuối để tránh bị lặp thành /api/api)
+        - VITE_API_URL=https://api.khaidz.com
+        - VITE_GOOGLE_CLIENT_ID=532793804448-4qspbrsidfmqbtr23h6godjdp2nk8qmv.apps.googleusercontent.com
     container_name: pims_frontend
     ports:
       - "3000:80"                       # Mở cổng 3000 của máy chủ đó khách (Khớp với Cloudflare hiện tại)
