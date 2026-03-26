@@ -802,7 +802,8 @@ public class AssessmentService : IAssessmentService
                 {
                     var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
                         ra.IsRetake == true && 
-                        ra.Title == (a.Title + " (Retake)") && 
+                        a.Title != null && ra.Title != null && ra.Title.ToLower().Contains(a.Title.ToLower()) &&
+                        ra.Title.ToLower().Contains("retake") &&
                         ra.SemesterId == a.SemesterId);
 
                     var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
@@ -954,8 +955,7 @@ public class AssessmentService : IAssessmentService
                 }
 
                 // 4. Cập nhật trạng thái DefenseSchedule
-                var schedules = await _defenseScheduleRepository.GetByCouncilAsync(dto.CouncilId);
-                var schedule = schedules.FirstOrDefault(s => s.GroupId == dto.GroupId);
+                var schedule = await _defenseScheduleRepository.GetWithDetailsAsync(dto.ScheduleId);
                 if (schedule != null)
                 {
                     schedule.Status = "COMPLETED";
@@ -987,7 +987,8 @@ public class AssessmentService : IAssessmentService
                     {
                         var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
                             ra.IsRetake == true && 
-                            ra.Title == (a.Title + " (Retake)") && 
+                            a.Title != null && ra.Title != null && ra.Title.ToLower().Contains(a.Title.ToLower()) &&
+                            ra.Title.ToLower().Contains("retake") &&
                             ra.SemesterId == a.SemesterId);
 
                         var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
