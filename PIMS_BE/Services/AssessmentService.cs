@@ -674,12 +674,11 @@ public class AssessmentService : IAssessmentService
                 }).ToList(),
             };
 
-            // Map lịch bảo vệ theo thứ tự cho các lần bảo vệ (final + retake)
-            if ((item.IsFinal || item.IsRetake) && scheduleQueue.Count > 0)
+            // Map lịch bảo vệ theo thứ tự cho các lần bảo vệ (final + retake).
+            // Nếu chưa có lịch cho lần tiếp theo (thường là retake), giữ null để tránh hiển thị trùng lịch final.
+            if ((item.IsFinal || item.IsRetake) && finalAttemptIndex < scheduleQueue.Count)
             {
-                var ds = finalAttemptIndex < scheduleQueue.Count
-                    ? scheduleQueue[finalAttemptIndex]
-                    : scheduleQueue[^1];
+                var ds = scheduleQueue[finalAttemptIndex];
                 item.DefenseDate      = ds.DefenseDate;
                 item.DefenseStartTime = ds.StartTime;
                 item.DefenseEndTime   = ds.EndTime;
