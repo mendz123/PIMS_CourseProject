@@ -689,7 +689,9 @@ public class AssessmentService : IAssessmentService
             GroupName          = raw.Group.GroupName ?? string.Empty,
             SemesterId         = raw.Semester.SemesterId,
             SemesterName       = raw.Semester.SemesterName ?? string.Empty,
-            Assessments        = items
+            Assessments        = items,
+            TotalScore         = raw.FinalResult?.TotalScore,
+            IsPassed           = raw.FinalResult?.IsPassed
         };
     }
 

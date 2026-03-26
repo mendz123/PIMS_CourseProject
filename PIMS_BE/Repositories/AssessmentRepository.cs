@@ -14,6 +14,7 @@ public class StudentAssessmentRawData
     public List<AssessmentScore> Scores      { get; set; } = new();
     public DefenseSchedule? DefenseSchedule  { get; set; }
     public List<ProjectSubmission> Submissions { get; set; } = new();
+    public StudentFinalResult? FinalResult   { get; set; }
 }
 
 public interface IAssessmentRepository : IGenericRepository<Assessment>
@@ -157,6 +158,10 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
                       && ps.TeacherComment != null)
             .ToListAsync();
 
+        // 6. Lấy FinalResult của sinh viên
+        var finalResult = await _context.StudentFinalResults
+            .FirstOrDefaultAsync(fr => fr.UserId == userId && fr.SemesterId == semester.SemesterId);
+
         return new StudentAssessmentRawData
         {
             Group           = group,
@@ -165,7 +170,8 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             Assessments     = assessments,
             Scores          = scores,
             DefenseSchedule = defenseSchedule,
-            Submissions     = submissions
+            Submissions     = submissions,
+            FinalResult     = finalResult
         };
     }
     }

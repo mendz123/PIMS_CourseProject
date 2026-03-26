@@ -316,7 +316,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                 ) : (
                                     <>
                                         {currentScheduleInContext?.status?.toUpperCase() === 'COMPLETED' && (
-                                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 text-emerald-800"><span className="material-symbols-outlined text-emerald-500">verified</span><p className="text-sm font-medium">Grading for this group is completed. You can still modify scores if needed.</p></div>
+                                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 text-emerald-800"><span className="material-symbols-outlined text-emerald-500">verified</span><p className="text-sm font-medium">Grading for this group is completed. Scores can no longer be modified.</p></div>
                                         )}
                                         <div className="bg-white rounded-3xl border border-[#dbdfe6] p-8 shadow-sm space-y-10 min-h-[600px]">
                                             <div className="flex flex-col md:flex-row justify-between gap-6 border-b border-[#dbdfe6] pb-8">
@@ -338,8 +338,9 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                         
                                                         const isRetake = idx > 0;
                                                         const expired = isExpired(sched.defenseDate);
+                                                        const isCompleted = sched.status?.toUpperCase() === 'COMPLETED';
                                                         return (
-                                                            <button key={`save-${sched.scheduleId}`} onClick={() => handleSubmit(isRetake)} disabled={submitting || expired} className="w-full px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
+                                                            <button key={`save-${sched.scheduleId}`} onClick={() => handleSubmit(isRetake)} disabled={submitting || expired || isCompleted} className="w-full px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
                                                                 {submitting ? <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
                                                                 {submitting ? "Saving..." : (isRetake ? "Save Attempt 2 (Retake)" : "Save Attempt 1 (Final)")}
                                                             </button>
@@ -368,6 +369,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                                 </div>
                                                                 <div className="p-8 space-y-8">
                                                                     {groupSchedulesForThisGroup.map((sched, idx) => {
+                                                                        if (sched.scheduleId !== currentScheduleInContext?.scheduleId) return null;
+
                                                                         const isRetake = idx > 0;
                                                                         const isPassedL1 = passedUserIds.includes(member.userId);
                                                                         
@@ -376,7 +379,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
 
                                                                         const isMyCouncil = sched.councilId === council.councilId;
                                                                         const expired = isExpired(sched.defenseDate);
-                                                                        const isLocked = !isMyCouncil || (isRetake && isPassedL1) || expired;
+                                                                        const isCompleted = sched.status?.toUpperCase() === 'COMPLETED';
+                                                                        const isLocked = !isMyCouncil || (isRetake && isPassedL1) || expired || isCompleted;
                                                                         return (
                                                                             <div key={`box-${sched.scheduleId}`} className={`p-6 rounded-3xl border ${isLocked ? (expired ? 'bg-rose-50/30 border-rose-100' : 'bg-emerald-50/30 border-emerald-100') : 'bg-gray-50/30 border-[#dbdfe6]'}`}>
                                                                                 <div className="flex justify-between items-start mb-6">

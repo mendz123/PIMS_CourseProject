@@ -152,4 +152,6 @@ export interface StudentMyAssessmentsDto {
   semesterId: number;
   semesterName: string;
   assessments: StudentAssessmentItemDto[];
+  totalScore?: number;
+  isPassed?: boolean;
 }
