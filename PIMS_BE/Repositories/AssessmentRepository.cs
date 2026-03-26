@@ -12,7 +12,7 @@ public class StudentAssessmentRawData
     public Project?         Project          { get; set; }
     public List<Assessment> Assessments      { get; set; } = new();
     public List<AssessmentScore> Scores      { get; set; } = new();
-    public DefenseSchedule? DefenseSchedule  { get; set; }
+    public List<DefenseSchedule> DefenseSchedules { get; set; } = new();
     public List<ProjectSubmission> Submissions { get; set; } = new();
     public StudentFinalResult? FinalResult   { get; set; }
 }
@@ -140,15 +140,18 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             .Where(s => s.UserId == userId && assessmentIds.Contains(s.AssessmentId))
             .ToListAsync();
 
-        // 4. Lấy lịch bảo vệ (defense schedule) của nhóm nếu có final assessment
+        // 4. Lấy tất cả lịch bảo vệ của nhóm (gồm cả lần đầu + retake nếu có)
         var hasFinal = assessments.Any(a => a.IsFinal == true);
-        DefenseSchedule? defenseSchedule = null;
+        var defenseSchedules = new List<DefenseSchedule>();
         if (hasFinal)
         {
-            defenseSchedule = await _context.DefenseSchedules
+            defenseSchedules = await _context.DefenseSchedules
                 .Include(ds => ds.Room)
                 .Where(ds => ds.GroupId == group.GroupId)
-                .FirstOrDefaultAsync();
+                .OrderBy(ds => ds.DefenseDate)
+                .ThenBy(ds => ds.StartTime)
+                .ThenBy(ds => ds.ScheduleId)
+                .ToListAsync();
         }
 
         // 5. Lấy teacher comment từ ProjectSubmissions của nhóm
@@ -169,7 +172,7 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             Project         = project,
             Assessments     = assessments,
             Scores          = scores,
-            DefenseSchedule = defenseSchedule,
+            DefenseSchedules = defenseSchedules,
             Submissions     = submissions,
             FinalResult     = finalResult
         };

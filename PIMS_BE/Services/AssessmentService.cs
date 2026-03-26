@@ -640,6 +640,13 @@ public class AssessmentService : IAssessmentService
                 g => g.Key,
                 g => g.OrderByDescending(ps => ps.SubmittedAt).First().TeacherComment);
 
+        var scheduleQueue = raw.DefenseSchedules
+            .OrderBy(ds => ds.DefenseDate)
+            .ThenBy(ds => ds.StartTime)
+            .ThenBy(ds => ds.ScheduleId)
+            .ToList();
+        var finalAttemptIndex = 0;
+
         var items = raw.Assessments.Select(a =>
         {
             scoreMap.TryGetValue(a.AssessmentId, out var scoreEntry);
@@ -667,10 +674,12 @@ public class AssessmentService : IAssessmentService
                 }).ToList(),
             };
 
-            // Nếu là final: gắn thêm thông tin lịch bảo vệ
-            if (item.IsFinal && raw.DefenseSchedule != null)
+            // Map lịch bảo vệ theo thứ tự cho các lần bảo vệ (final + retake)
+            if ((item.IsFinal || item.IsRetake) && scheduleQueue.Count > 0)
             {
-                var ds = raw.DefenseSchedule;
+                var ds = finalAttemptIndex < scheduleQueue.Count
+                    ? scheduleQueue[finalAttemptIndex]
+                    : scheduleQueue[^1];
                 item.DefenseDate      = ds.DefenseDate;
                 item.DefenseStartTime = ds.StartTime;
                 item.DefenseEndTime   = ds.EndTime;
@@ -678,6 +687,7 @@ public class AssessmentService : IAssessmentService
                 item.RoomName         = ds.Room?.RoomName;
                 item.RoomLocation     = ds.Location ?? ds.Room?.Building;
                 item.DefenseStatus    = ds.Status;
+                finalAttemptIndex++;
             }
 
             return item;

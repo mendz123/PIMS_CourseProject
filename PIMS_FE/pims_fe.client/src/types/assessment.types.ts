@@ -125,6 +125,7 @@ export interface StudentAssessmentItemDto {
   title: string;
   weight: number;
   isFinal: boolean;
+  isRetake: boolean;
   startDate?: string;
   deadline?: string;
   description?: string;

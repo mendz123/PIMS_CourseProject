@@ -455,6 +455,19 @@ const AssessmentManagementContent: React.FC = () => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  const formatDateTime = (dateValue?: string) => {
+    if (!dateValue) return "Not set";
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return "Invalid date";
+    return parsed.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const getTotalWeight = () =>
     assessments.reduce((sum, a) => sum + a.weight, 0);
   const getCriteriaTotalWeight = () =>
@@ -738,44 +751,44 @@ const AssessmentManagementContent: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Dates & Description */}
-                {(assessment.startDate ||
-                  assessment.deadline ||
-                  assessment.description) && (
-                  <div className="mb-4 space-y-2 px-0">
-                    {(assessment.startDate || assessment.deadline) && (
-                      <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
-                        {assessment.startDate && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              calendar_today
-                            </span>
-                            Start:{" "}
-                            {new Date(assessment.startDate).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
-                        {assessment.deadline && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              event
-                            </span>
-                            Deadline:{" "}
-                            {new Date(assessment.deadline).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
+                {/* Assessment Info */}
+                <div className="mb-4 rounded-lg border border-[#e9edf5] bg-[#f8faff] p-3 space-y-2">
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        calendar_today
+                      </span>
+                      <div>
+                        <p className="font-medium text-[#111318]">Start date</p>
+                        <p>{formatDateTime(assessment.startDate)}</p>
                       </div>
-                    )}
-                    {assessment.description && (
-                      <p className="text-sm text-[#616f89] italic line-clamp-2">
-                        {assessment.description}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        event
+                      </span>
+                      <div>
+                        <p className="font-medium text-[#111318]">Deadline</p>
+                        <p>{formatDateTime(assessment.deadline)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        description
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#111318]">
+                          Description
+                        </p>
+                        <p className="italic break-words line-clamp-2">
+                          {assessment.description?.trim() || "Not set"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* Criteria Section */}
                 <div className="border-t pt-4 mb-4">
