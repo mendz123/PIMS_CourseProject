@@ -4,6 +4,7 @@ import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import { assessmentService } from "../../services/assessmentService";
 import { councilService, type CouncilDto } from "../../services/councilService";
+import { semesterService } from "../../services/semesterService";
 import { defenseScheduleService, type DefenseScheduleDto } from "../../services/defenseScheduleService";
 import { groupService } from "../../services/groupService";
 import type {
@@ -34,19 +35,45 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const fetchCouncilDetails = useCallback(async () => {
         setLoading(true);
         try {
-            const mySchedulesRes = await defenseScheduleService.getMySchedule();
-            const mySchedules = mySchedulesRes.data ?? [];
+            // 1. Get Active Semester
+            const activeSemesterRes = await semesterService.getActiveSemester();
+            const activeSemesterId = activeSemesterRes.data?.semesterId;
+
+            if (!activeSemesterId) {
+                setLoading(false);
+                return;
+            }
+
+            // 2. Get My Schedules and filter by Active Semester's Councils
+            const [mySchedulesRes, activeCouncilsRes] = await Promise.all([
+                defenseScheduleService.getMySchedule(),
+                councilService.getAllCouncils(activeSemesterId)
+            ]);
+
+            const allMySchedules = mySchedulesRes.data ?? [];
+            const activeCouncilIds = new Set((activeCouncilsRes.data ?? []).map(c => c.councilId));
+            
+            // Filter only schedules belonging to active semester councils
+            const myActiveSchedules = allMySchedules.filter(s => activeCouncilIds.has(s.councilId));
+
             const councilsFound = Array.from(
-                new Map(mySchedules.map(s => [s.councilId, s.councilName])).entries()
+                new Map(myActiveSchedules.map(s => [s.councilId, s.councilName])).entries()
             ).map(([id, name]) => ({ id, name }));
             setMyCouncils(councilsFound);
 
             let targetCouncilId: number | null = councilId ? parseInt(councilId) : null;
+            
+            // Validate if the councilId from URL belongs to the active semester
+            if (targetCouncilId && !activeCouncilIds.has(targetCouncilId)) {
+                targetCouncilId = null; // Reset if invalid for current semester
+            }
+
             if (!targetCouncilId && councilsFound.length > 0) {
                 targetCouncilId = councilsFound[0].id;
             }
 
             if (!targetCouncilId) {
+                setCouncil(null);
                 setLoading(false);
                 return;
             }

@@ -49,7 +49,7 @@ const GradingPage: React.FC = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // 1. Lấy danh sách học kỳ
+                // 1. Get semester list
                 const semestersRes = await semesterService.getAllSemesters();
                 if (semestersRes.data) {
                     const activeSemesters = semestersRes.data.filter(s => s.isActive);
@@ -153,25 +153,25 @@ const GradingPage: React.FC = () => {
             <TeacherSidebar currentPath="/teacher/grading" />
 
             <main className="flex-1 overflow-y-auto">
-                <TeacherHeader title="Tổng điểm sinh viên" subtitle="Tổng Điểm Của Sing Viên Trong Kì Học." />
+                <TeacherHeader title="Student Total Scores" subtitle="Total scores of students in the semester." />
 
                 {loading ? (
                     <div className="flex justify-center items-center h-[calc(100vh-200px)]">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <span className="ml-3 text-gray-500 font-medium">Đang tải dữ liệu...</span>
+                        <span className="ml-3 text-gray-500 font-medium">Loading data...</span>
                     </div>
                 ) : (
                     <div className="p-8 max-w-[1400px] mx-auto space-y-6">
-                        {/* 1. Chọn Assessment */}
+                        {/* 1. Assessment Selection */}
                         <section className="bg-white rounded-xl border border-[#dbdfe6] p-6 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-bold uppercase text-[#616f89]">Chọn giai đoạn đánh giá</h3>
+                                <h3 className="text-sm font-bold uppercase text-[#616f89]">Select Assessment Period</h3>
                                 <select
                                     className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
                                     value={selectedSemesterId || ''}
                                     onChange={(e) => setSelectedSemesterId(Number(e.target.value))}
                                 >
-                                    <option value="" disabled>-- Chọn học kỳ --</option>
+                                    <option value="" disabled>-- Select Semester --</option>
                                     {semesters.map(s => (
                                         <option key={s.semesterId} value={s.semesterId}>
                                             {s.semesterName}
@@ -180,13 +180,13 @@ const GradingPage: React.FC = () => {
                                 </select>
                             </div>
 
-                            {/* Bộ lọc theo nhóm và tiêu chí */}
+                            {/* Group and criteria filters */}
                             <div className="mt-4 flex flex-wrap items-center gap-6">
                                 <div className="flex items-center gap-3 relative">
                                     <span className="material-symbols-outlined absolute left-3 text-gray-400 font-bold" style={{ fontSize: '18px' }}>search</span>
                                     <input
                                         type="text"
-                                        placeholder="Tìm kiếm theo tên nhóm..."
+                                        placeholder="Search by group name..."
                                         className="pl-9 pr-4 py-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#111318] w-64"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -194,7 +194,7 @@ const GradingPage: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-[#616f89]">Lọc theo Đợt:</span>
+                                    <span className="text-sm font-medium text-[#616f89]">Filter by Period:</span>
                                     <select
                                         className={`p-2 border rounded-lg outline-none text-sm font-medium transition-colors ${(!assessments || assessments.length === 0)
                                             ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
@@ -203,12 +203,12 @@ const GradingPage: React.FC = () => {
                                         value={selectedAssessmentId.toString()}
                                         onChange={(e) => setSelectedAssessmentId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                                         disabled={!assessments || assessments.length === 0}
-                                        title={(!assessments || assessments.length === 0) ? "Không có dữ liệu Đợt để lọc" : ""}
+                                        title={(!assessments || assessments.length === 0) ? "No assessment data to filter" : ""}
                                     >
                                         <option value="all">
                                             {(!assessments || assessments.length === 0)
-                                                ? "-- Không có Đợt --"
-                                                : "-- Tất cả các Đợt --"}
+                                                ? "-- No Assessments --"
+                                                : "-- All Assessments --"}
                                         </option>
                                         {assessments.map(a => (
                                             <option key={a.assessmentId} value={a.assessmentId}>
@@ -220,12 +220,12 @@ const GradingPage: React.FC = () => {
                             </div>
                         </section>
 
-                        {/* 2. Bảng chấm điểm theo tiêu chí  */}
+                        {/* 2. Grading table by criteria */}
                         <div className="bg-white rounded-xl border border-[#dbdfe6] shadow-sm overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-[#f8f9fa] border-b border-[#dbdfe6]">
-                                        <th className="px-6 py-4 text-xs font-bold uppercase w-[250px]">Nhóm / Sinh viên</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase w-[250px]">Group / Student</th>
                                         {assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).map(a => (
                                             <th key={a.assessmentId} className="px-4 py-4 text-xs font-bold uppercase text-center bg-orange-50/30">
                                                 {a.title} <br />
@@ -235,7 +235,7 @@ const GradingPage: React.FC = () => {
                                             </th>
                                         ))}
                                         {/*<th className="px-6 py-4 text-xs font-bold uppercase text-center">Đánh giá chung</th>*/}
-                                        <th className="px-6 py-4 text-xs font-bold uppercase text-right">Tổng điểm</th>
+                                        <th className="px-6 py-4 text-xs font-bold uppercase text-right">Total Score</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#dbdfe6]">
@@ -244,7 +244,7 @@ const GradingPage: React.FC = () => {
                                         .slice((currentPage - 1) * groupsPerPage, currentPage * groupsPerPage)
                                         .map(group => (
                                             <React.Fragment key={group.groupId}>
-                                                {/* Hàng Nhóm - Accordion Header */}
+                                                {/* Group Row - Accordion Header */}
                                                 <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
                                                     <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary">
                                                         <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
@@ -256,7 +256,7 @@ const GradingPage: React.FC = () => {
                                                     </td>
                                                 </tr>
 
-                                                {/* Hàng Sinh viên - Accordion Content */}
+                                                {/* Student Row - Accordion Content */}
                                                 {expandedGroups.includes(group.groupId) && group.students.map(student => (
                                                     <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-10 py-4 text-sm font-medium border-r">{student.fullName}</td>
@@ -276,7 +276,7 @@ const GradingPage: React.FC = () => {
                                                                                 ? "bg-emerald-50 border-emerald-200 text-emerald-700" 
                                                                                 : "bg-blue-50 border-blue-200 text-blue-700"
                                                                             }`} 
-                                                                            title={isFailedFinalScore ? "Điểm thi Final thấp hơn ngưỡng đạt (4.0)" : (hasCriteriaGrades ? "Điểm đã được chấm chi tiết theo tiêu chí" : "Điểm đánh giá trực tiếp")}
+                                                                            title={isFailedFinalScore ? "Final exam score is below the passing threshold (4.0)" : (hasCriteriaGrades ? "Score has been graded in detail by criteria" : "Direct assessment score")}
                                                                         >
                                                                             {score}
                                                                         </div>
@@ -287,9 +287,9 @@ const GradingPage: React.FC = () => {
                                                             );
                                                         })}
 
-                                                        {/* Ô Checkbox Đánh giá chung (bỏ textarea ở đây, chuyển lên cấp Nhóm hoặc để 1 text chung) 
-                                                    Nhưng để layout đẹp, ta giữ textarea trống hoặc chỉ là text "--" cho sinh viên, 
-                                                    và hiển thị text cho Group */}
+                                                        {/* General Review Checkbox (removed textarea here, moved to Group level or kept as common text) 
+                                                    But to keep the layout nice, we keep the textarea empty or just text "--" for students, 
+                                                    and display text for the Group */}
                                                         {/*<td className="px-4 py-4 border-r text-center text-sm text-gray-400">*/}
                                                         {/*    --*/}
                                                         {/*</td>*/}
@@ -332,11 +332,11 @@ const GradingPage: React.FC = () => {
                                                 {expandedGroups.includes(group.groupId) && (
                                                     <tr className="bg-orange-50/20">
                                                         <td colSpan={2} className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600">
-                                                            Nhận xét chung cho nhóm {group.groupName}:
+                                                            General comments for group {group.groupName}:
                                                         </td>
                                                         <td colSpan={(assessments.filter(a => selectedAssessmentId === 'all' || a.assessmentId === selectedAssessmentId).length || 0) + 1} className="px-4 py-3">
                                                             <div className="w-full p-2 text-sm border border-orange-200 rounded-lg bg-white/50 min-h-[40px] text-gray-700">
-                                                                {groupComments[group.groupId] || <span className="text-gray-400 italic">Chưa có nhận xét</span>}
+                                                                {groupComments[group.groupId] || <span className="text-gray-400 italic">No comments yet</span>}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -350,7 +350,7 @@ const GradingPage: React.FC = () => {
                             {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length > groupsPerPage && (
                                 <div className="p-4 bg-gray-50 border-t border-[#dbdfe6] flex items-center justify-between rounded-b-xl">
                                     <span className="text-sm text-[#616f89]">
-                                        Hiển thị {Math.min((currentPage - 1) * groupsPerPage + 1, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} - {Math.min(currentPage * groupsPerPage, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} trong tổng số {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length} nhóm
+                                        Showing {Math.min((currentPage - 1) * groupsPerPage + 1, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} - {Math.min(currentPage * groupsPerPage, groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length)} of {groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length} groups
                                     </span>
                                     <div className="flex gap-2">
                                         <button
@@ -358,7 +358,7 @@ const GradingPage: React.FC = () => {
                                             disabled={currentPage === 1}
                                             className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Trước
+                                            Previous
                                         </button>
                                         <div className="flex items-center gap-1">
                                             {Array.from({ length: Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length / groupsPerPage) }, (_, i) => i + 1).map(page => (
@@ -376,7 +376,7 @@ const GradingPage: React.FC = () => {
                                             disabled={currentPage === Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).length / groupsPerPage)}
                                             className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            Sau
+                                            Next
                                         </button>
                                     </div>
                                 </div>
@@ -385,12 +385,12 @@ const GradingPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* Modal Xem Tài Liệu */}
+                {/* View Documents Modal */}
                 {viewingDocsGroup && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
                             <div className="px-6 py-4 border-b border-[#dbdfe6] flex items-center justify-between bg-gray-50/50">
-                                <h3 className="text-lg font-bold text-[#111318]">Tài liệu nộp - {viewingDocsGroup.groupName}</h3>
+                                <h3 className="text-lg font-bold text-[#111318]">Submitted documents - {viewingDocsGroup.groupName}</h3>
                                 <button onClick={() => setViewingDocsGroup(null)} className="text-gray-400 hover:text-red-500 transition-colors">
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
@@ -404,22 +404,22 @@ const GradingPage: React.FC = () => {
                                                     <span className="material-symbols-outlined text-orange-500 text-3xl">picture_as_pdf</span>
                                                     <div>
                                                         <p className="text-sm font-bold text-[#111318] break-all">{doc.name}</p>
-                                                        <p className="text-xs text-gray-500">Nộp lúc: {doc.submittedAt}</p>
+                                                        <p className="text-xs text-gray-500">Submitted at: {doc.submittedAt}</p>
                                                     </div>
                                                 </div>
-                                                <a href={doc.url} download={doc.name} target="_blank" rel="noopener noreferrer" className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors shrink-0" title="Tải xuống">
+                                                <a href={doc.url} download={doc.name} target="_blank" rel="noopener noreferrer" className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors shrink-0" title="Download">
                                                     <span className="material-symbols-outlined">download</span>
                                                 </a>
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <div className="text-center py-6 text-gray-500">Không có tài liệu nào được nộp.</div>
+                                    <div className="text-center py-6 text-gray-500">No documents have been submitted.</div>
                                 )}
                             </div>
                             <div className="px-6 py-4 border-t border-[#dbdfe6] bg-gray-50 flex justify-end">
                                 <button onClick={() => setViewingDocsGroup(null)} className="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
-                                    Đóng
+                                    Close
                                 </button>
                             </div>
                         </div>
