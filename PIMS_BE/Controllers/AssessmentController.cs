@@ -496,7 +496,7 @@ public class AssessmentController : ControllerBase
     public async Task<ActionResult> DebugCouncilProcessing(int councilId, int groupId, [FromServices] PIMS_BE.Repositories.ICouncilRepository councilRepo, [FromServices] PIMS_BE.Repositories.ICouncilCriteriaGradeRepository gradeRepo)
     {
         var councilMemberIds = await councilRepo.GetMemberUserIdsAsync(councilId);
-        var teachersWhoGraded = await gradeRepo.GetTeachersWhoGradedAsync(councilId, groupId);
+        var teachersWhoGraded = await gradeRepo.GetTeachersWhoGradedAsync(councilId, groupId, null);
         bool allMembersGraded = councilMemberIds.All(m => teachersWhoGraded.Contains(m));
 
         return Ok(new {

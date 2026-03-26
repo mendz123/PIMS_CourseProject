@@ -487,6 +487,9 @@ public class AssessmentService : IAssessmentService
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            var assessment = await _assessmentRepository.GetByIdAsync(dto.AssessmentId);
+            decimal passThreshold = (assessment?.IsFinal == true || assessment?.IsRetake == true) ? 4 : 5;
+
             // 1. Update ProjectSubmission Comment
             var submission = await _submissionRepository.GetByGroupAndAssessmentAsync(dto.GroupId, dto.AssessmentId);
 
@@ -504,7 +507,7 @@ public class AssessmentService : IAssessmentService
                 if (existingScore != null)
                 {
                     existingScore.Score = studentScore.Score;
-                    existingScore.IsPassed = studentScore.Score >= 5;
+                    existingScore.IsPassed = studentScore.Score >= passThreshold;
                     _assessmentScoreRepository.Update(existingScore);
                 }
                 else
@@ -514,7 +517,7 @@ public class AssessmentService : IAssessmentService
                         AssessmentId = dto.AssessmentId,
                         UserId = studentScore.UserId,
                         Score = studentScore.Score,
-                        IsPassed = studentScore.Score >= 5
+                        IsPassed = studentScore.Score >= passThreshold
                     };
                     await _assessmentScoreRepository.AddAsync(newScore);
                 }
@@ -523,11 +526,10 @@ public class AssessmentService : IAssessmentService
             await _assessmentRepository.SaveChangesAsync();
 
             // 3. Recalculate Total Score for modified students in the current semester
-            var assessment = await _assessmentRepository.GetByIdAsync(dto.AssessmentId);
             if (assessment != null)
             {
                 var semesterId = assessment.SemesterId;
-                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId);
+                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId, true);
 
                 var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
 
@@ -552,7 +554,8 @@ public class AssessmentService : IAssessmentService
                     {
                         var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
                             ra.IsRetake == true && 
-                            ra.Title == (a.Title + " (Retake)") && 
+                            a.Title != null && ra.Title != null && ra.Title.ToLower().Contains(a.Title.ToLower()) &&
+                            ra.Title.ToLower().Contains("retake") &&
                             ra.SemesterId == a.SemesterId);
 
                         var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
@@ -753,11 +756,12 @@ public class AssessmentService : IAssessmentService
 
                 // Lưu/Cập nhật AssessmentScore (Tổng điểm của đợt)
                 var existingAssessmentScore = await _assessmentScoreRepository.GetByAssessmentAndUserAsync(dto.AssessmentId, studentData.UserId);
+                decimal passThreshold = (assessment.IsFinal == true || assessment.IsRetake == true) ? 4 : 5;
 
                 if (existingAssessmentScore != null)
                 {
                     existingAssessmentScore.Score = totalAssessmentScore;
-                    existingAssessmentScore.IsPassed = totalAssessmentScore >= 5;
+                    existingAssessmentScore.IsPassed = totalAssessmentScore >= passThreshold;
                     _assessmentScoreRepository.Update(existingAssessmentScore);
                 }
                 else
@@ -767,7 +771,7 @@ public class AssessmentService : IAssessmentService
                         AssessmentId = dto.AssessmentId,
                         UserId = studentData.UserId,
                         Score = totalAssessmentScore,
-                        IsPassed = totalAssessmentScore >= 5
+                        IsPassed = totalAssessmentScore >= passThreshold
                     };
                     await _assessmentScoreRepository.AddAsync(newScore);
                 }
@@ -777,7 +781,7 @@ public class AssessmentService : IAssessmentService
 
             // 3. Tính lại Tổng Kết Môn (StudentFinalResult)
             var semesterId = assessment.SemesterId;
-            var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId);
+            var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId, true);
 
             var studentIds = dto.StudentScores.Select(s => s.UserId).ToList();
 
@@ -905,7 +909,8 @@ public class AssessmentService : IAssessmentService
 
             // 2. Kiểm tra xem tất cả thành viên hội đồng đã chấm xong chưa
             var councilMemberIds = await _councilRepository.GetMemberUserIdsAsync(dto.CouncilId);
-            var teachersWhoGraded = await _councilGradeRepository.GetTeachersWhoGradedAsync(dto.CouncilId, dto.GroupId);
+            var criteriaIds = criteriaDict.Keys.ToList();
+            var teachersWhoGraded = await _councilGradeRepository.GetTeachersWhoGradedAsync(dto.CouncilId, dto.GroupId, criteriaIds);
 
             bool allMembersGraded = councilMemberIds.All(m => teachersWhoGraded.Contains(m));
 
@@ -934,11 +939,12 @@ public class AssessmentService : IAssessmentService
                     }
 
                     var existingScore = await _assessmentScoreRepository.GetByAssessmentAndUserAsync(dto.AssessmentId, studentId);
+                    decimal passThreshold = (assessment.IsFinal == true || assessment.IsRetake == true) ? 4 : 5;
 
                     if (existingScore != null)
                     {
                         existingScore.Score = totalAverageAssessmentScore;
-                        existingScore.IsPassed = totalAverageAssessmentScore >= 4; // Final assessment pass threshold is 4
+                        existingScore.IsPassed = totalAverageAssessmentScore >= passThreshold;
                         _assessmentScoreRepository.Update(existingScore);
                     }
                     else
@@ -948,7 +954,7 @@ public class AssessmentService : IAssessmentService
                             AssessmentId = dto.AssessmentId,
                             UserId = studentId,
                             Score = totalAverageAssessmentScore,
-                            IsPassed = totalAverageAssessmentScore >= 4 // Final assessment pass threshold is 4
+                            IsPassed = totalAverageAssessmentScore >= passThreshold
                         };
                         await _assessmentScoreRepository.AddAsync(newScore);
                     }
@@ -965,7 +971,7 @@ public class AssessmentService : IAssessmentService
                 await _assessmentRepository.SaveChangesAsync();
 
                 // 5. Tính lại Tổng Kết Môn
-                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(assessment.SemesterId);
+                var assessmentsInSemester = await _assessmentRepository.GetAssessmentsBySemesterAsync(assessment.SemesterId, true);
                 var assessmentIdsInSemester = assessmentsInSemester.Select(a => a.AssessmentId).ToList();
 
                 var allScoresForStudents = await _assessmentScoreRepository.GetByAssessmentsAndUsersAsync(assessmentIdsInSemester, studentIds);
@@ -1068,7 +1074,7 @@ public class AssessmentService : IAssessmentService
 
         var passedUserIds = await _context.AssessmentScores
             .Include(s => s.Assessment)
-            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true && s.Assessment.SemesterId == group.SemesterId)
+            .Where(s => (s.Assessment.IsFinal == true || s.Assessment.IsRetake == true) && s.IsPassed == true && s.Assessment.SemesterId == group.SemesterId)
             .Join(_context.GroupMembers.Where(gm => gm.GroupId == groupId),
                   score => score.UserId,
                   member => member.UserId,
