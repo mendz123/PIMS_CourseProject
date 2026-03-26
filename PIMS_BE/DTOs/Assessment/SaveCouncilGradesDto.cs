@@ -15,6 +15,9 @@ namespace PIMS_BE.DTOs.Assessment
         public int AssessmentId { get; set; }
 
         [Required]
+        public int ScheduleId { get; set; }
+
+        [Required]
         public List<StudentCouncilScoreDto> StudentScores { get; set; } = new List<StudentCouncilScoreDto>();
     }
 
