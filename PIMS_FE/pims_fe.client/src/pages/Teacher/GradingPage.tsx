@@ -296,10 +296,15 @@ const GradingPage: React.FC = () => {
                                                         <td className="px-6 py-4 text-right">
                                                             {student.totalScore !== undefined && student.totalScore !== null ? (
                                                                 (() => {
-                                                                    const hasFailedFinal = (student.criteriaScores && Object.keys(student.criteriaScores).some(aId => {
-                                                                        const a = assessments.find(ax => ax.assessmentId === Number(aId));
-                                                                        return a?.isFinal && (studentScores[student.userId]?.[Number(aId)] ?? 0) < 4;
-                                                                    })) || assessments.some(a => a.isFinal && (studentScores[student.userId]?.[a.assessmentId] ?? 0) < 4);
+                                                                    const hasFailedFinal = assessments.filter(a => !a.isRetake && a.isFinal).some(a => {
+                                                                        const retakeAss = assessments.find(ra => ra.isRetake && ra.title.toLowerCase().includes(a.title.toLowerCase()) && ra.title.toLowerCase().includes("retake"));
+                                                                        const origScore = studentScores[student.userId]?.[a.assessmentId];
+                                                                        const retakeScore = retakeAss ? studentScores[student.userId]?.[retakeAss.assessmentId] : undefined;
+                                                                        
+                                                                        if (origScore === undefined && retakeScore === undefined) return false;
+                                                                        const effectiveScore = retakeScore !== undefined ? retakeScore : (origScore !== undefined ? origScore : 0);
+                                                                        return effectiveScore < 4;
+                                                                    });
                                                                     
                                                                     if (student.totalScore === null || student.totalScore === undefined) {
                                                                         return <span className="font-bold text-gray-400 text-right w-full block">--</span>;

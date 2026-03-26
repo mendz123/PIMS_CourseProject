@@ -55,6 +55,8 @@ const StudentGroup: React.FC = () => {
   );
   const [showUserDrawer, setShowUserDrawer] = useState(false);
 
+  const [activeSemester, setActiveSemester] = useState<{ id: number; name: string } | null>(null);
+
   const isTopicApproved = !!group && group.statusId >= 4;
   const isTopicLocked = !!group && !!group.mentorId;
   const canRegisterOrUpdateTopic = !!group && group.isLeader && !isTopicLocked;
@@ -62,6 +64,24 @@ const StudentGroup: React.FC = () => {
     !!group && group.isLeader && group.statusId === 2 && !!project && !group.mentorId;
   const canInviteMember = !!group && group.isLeader && !isTopicApproved;
   const canLeaveGroup = !!group && !group.isLeader && !isTopicApproved;
+
+  useEffect(() => {
+    // Fetch active semester name for the "No Group" state
+    const fetchActiveSemester = async () => {
+      try {
+        const response = await axios.get("/api/Semester/active");
+        if (response.data && response.data.data) {
+          setActiveSemester({
+            id: response.data.data.semesterId,
+            name: response.data.data.semesterName
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch active semester:", error);
+      }
+    };
+    fetchActiveSemester();
+  }, []);
 
   useEffect(() => {
     if (!hasGroup) {
@@ -171,8 +191,9 @@ const StudentGroup: React.FC = () => {
               Bạn chưa có nhóm
             </h2>
             <p className="text-gray-500 text-sm mb-8">
-              Tạo nhóm mới để bắt đầu hành trình dự án của bạn trong học kỳ hiện
-              tại.
+              Tạo nhóm mới để bắt đầu hành trình dự án của bạn trong{" "}
+              {activeSemester ? `học kỳ ${activeSemester.name}` : "học kỳ hiện tại"}
+              .
             </p>
             <button
               onClick={handleOpenModal}
