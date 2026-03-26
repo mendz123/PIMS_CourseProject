@@ -248,8 +248,33 @@ const TeacherCouncilGradingPage: React.FC = () => {
     critId: number,
     val: string,
   ) => {
+    // Allow empty string for smooth backspacing
+    if (val === "") {
+      setStudentScores((prev) => ({
+        ...prev,
+        [schedId]: {
+          ...prev[schedId],
+          [uId]: { ...prev[schedId]?.[uId], [critId]: "" as any },
+        },
+      }));
+      return;
+    }
+
     const score = parseFloat(val);
     const clamped = isNaN(score) ? 0 : Math.min(10, Math.max(0, score));
+    
+    // If it's a valid intermediate state (like "5." or just "0"), keep it as string to allow further typing
+    if (val.endsWith(".") || val === "0") {
+      setStudentScores((prev) => ({
+        ...prev,
+        [schedId]: {
+          ...prev[schedId],
+          [uId]: { ...prev[schedId]?.[uId], [critId]: val as any },
+        },
+      }));
+      return;
+    }
+
     setStudentScores((prev) => ({
       ...prev,
       [schedId]: {
@@ -280,7 +305,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const scores = studentScores[schedId]?.[uId] || {};
     return assessment.criteria.reduce(
       (acc: number, c: any) =>
-        acc + (scores[c.criteriaId] || 0) * (c.weight / 100),
+        acc + Number(scores[c.criteriaId] || 0) * (c.weight / 100),
       0,
     );
   };
@@ -314,7 +339,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
         })
         .map(([uIdStr, criteriaScores]) => ({
           userId: parseInt(uIdStr),
-          criteriaScores,
+          criteriaScores: Object.fromEntries(
+            Object.entries(criteriaScores as Record<number, any>).map(([critId, score]) => [
+              critId,
+              score === "" ? 0 : Number(score),
+            ]),
+          ),
         }));
 
       await assessmentService.saveCouncilGrades({
