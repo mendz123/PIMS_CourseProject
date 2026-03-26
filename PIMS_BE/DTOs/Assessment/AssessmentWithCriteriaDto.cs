@@ -8,6 +8,7 @@ public class AssessmentWithCriteriaDto
     public string Title { get; set; } = string.Empty;
     public decimal Weight { get; set; }
     public bool IsFinal { get; set; }
+    public bool IsRetake { get; set; }
     public bool IsLocked { get; set; }
     public DateTime? StartDate { get; set; }
     public DateTime? Deadline { get; set; }

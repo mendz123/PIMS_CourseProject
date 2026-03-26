@@ -455,31 +455,14 @@ const AssessmentPage: React.FC = () => {
     );
   }
 
-  // Tính điểm tích lũy theo trọng số
-  const totalScore = data.assessments.reduce((sum, a) => {
-    if (a.score !== undefined && a.score !== null) {
-      return sum + (a.score * a.weight) / 100;
-    }
-    return sum;
-  }, 0);
+  // Lấy kết quả điểm từ backend
+  const totalScore = data.totalScore;
+  const isTotalPassed = data.isPassed;
+
   const gradedCount = data.assessments.filter(
     (a) => a.score !== undefined && a.score !== null,
   ).length;
   const totalCount = data.assessments.length;
-  const hasAllScores = totalCount > 0 && gradedCount === totalCount;
-  const finalAssessments = data.assessments.filter((a) => a.isFinal);
-  const hasAnyFinalAssessment = finalAssessments.length > 0;
-  const hasFinalScore = finalAssessments.every(
-    (a) => a.score !== undefined && a.score !== null,
-  );
-  const hasPassedAllFinalAssessments = finalAssessments.every(
-    (a) => a.isPassed ?? (a.score ?? 0) >= 5,
-  );
-
-  const isTotalPassed =
-    hasAllScores && (!hasAnyFinalAssessment || hasFinalScore)
-      ? totalScore >= 5 && hasPassedAllFinalAssessments
-      : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -533,20 +516,20 @@ const AssessmentPage: React.FC = () => {
                     : "text-primary"
               }`}
             >
-              {totalScore.toFixed(2)}
+              {totalScore !== undefined && totalScore !== null ? totalScore.toFixed(2) : "--"}
             </p>
             <div className="mt-2">
-              {isTotalPassed === undefined ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                  In Progress
-                </span>
-              ) : isTotalPassed ? (
+              {totalScore === undefined || totalScore === null ? null : isTotalPassed === true ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                   <CheckCircle size={12} /> PASS
                 </span>
-              ) : (
+              ) : isTotalPassed === false ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                   <XCircle size={12} /> FAIL
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                  In Progress
                 </span>
               )}
             </div>

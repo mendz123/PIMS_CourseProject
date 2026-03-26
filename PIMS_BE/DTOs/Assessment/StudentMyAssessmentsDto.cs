@@ -18,4 +18,8 @@ public class StudentMyAssessmentsDto
 
     // ---- Danh sách assessment ----
     public List<StudentAssessmentItemDto> Assessments { get; set; } = new();
+
+    // ---- Kết quả tổng kết (lấy từ StudentFinalResult) ----
+    public decimal? TotalScore { get; set; }
+    public bool?    IsPassed   { get; set; }
 }

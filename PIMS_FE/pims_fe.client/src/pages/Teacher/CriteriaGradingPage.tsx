@@ -49,7 +49,7 @@ const CriteriaGradingPage: React.FC = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // 1. Lấy danh sách học kỳ
+                // 1. Fetch semesters
                 const semestersRes = await semesterService.getAllSemesters();
                 if (semestersRes.data) {
                     const activeSemesters = semestersRes.data.filter(s => s.isActive);
@@ -60,8 +60,6 @@ const CriteriaGradingPage: React.FC = () => {
                 }
             } catch (error) {
                 console.error("Failed to fetch initial data for CriteriaGradingPage", error);
-            } finally {
-                // setLoading(false) will be handled after fetching assessments and groups
             }
         };
         fetchInitialData();
@@ -75,11 +73,10 @@ const CriteriaGradingPage: React.FC = () => {
         let currentAssessments: AssessmentWithCriteriaDto[] = [];
         try {
             const assessmentRes = await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
-            // Bỏ các đợt chấm final/hội đồng vì đã có trang chấm hội đồng riêng
+            // Ignore final/council assessments as they have their own page
             currentAssessments = (assessmentRes.data || []).filter(a => !a.isFinal);
             setAssessments(currentAssessments);
             if (currentAssessments.length > 0) {
-                // Tự động chọn đợt đầu tiên
                 setSelectedAssessmentId(currentAssessments[0].assessmentId);
             } else {
                 setSelectedAssessmentId(null);
@@ -99,7 +96,7 @@ const CriteriaGradingPage: React.FC = () => {
                     let overallComment = "";
                     if (g.teacherComments) {
                         const values = Object.values(g.teacherComments).filter(c => c && c.trim().length > 0);
-                        if (values.length > 0) overallComment = values[0]; // Có thể thay đổi tuỳ assessment
+                        if (values.length > 0) overallComment = values[0]; 
                     }
                     initComments[g.groupId] = overallComment;
 
@@ -108,11 +105,7 @@ const CriteriaGradingPage: React.FC = () => {
                         groupName: g.groupName,
                         submittedDocs: g.submittedDocs,
                         students: g.students ? g.students.map(s => {
-                            // Extract CriteriaScores mapping from backend if it exists
-                            // Here logic expects structure: scores[assessmentId][criteriaId]
                             const sScores: any = {};
-
-                            // Load existing criteria scores if mapped
                             if (s.criteriaScores) {
                                 Object.keys(s.criteriaScores).forEach(aIdStr => {
                                     const aId = Number(aIdStr);
@@ -146,22 +139,11 @@ const CriteriaGradingPage: React.FC = () => {
         setLoading(false);
     };
 
-    // Theo dõi thay đổi Assessment để load lại Comment tương ứng
-    useEffect(() => {
-        if (!selectedAssessmentId || groups.length === 0) return;
-        // Thực tế backend chưa tách TeacherComment theo Assessment rõ ràng trong api get
-        // Nhưng tạm thời ta cập nhật comment theo AssessmentId nếu API trả ra Map
-
-        // (Lưu ý: Đoạn này phụ thuộc vào `g.teacherComments` map từ BE trả về trên TeacherGroupDto)
-        // Hiện tại initComments chỉ lấy comment đầu tiên, nhưng ta có thể lấy đúng comment của Assessment
-    }, [selectedAssessmentId, groups]);
-
     useEffect(() => {
         fetchSemesterData();
-        setCurrentPage(1); // Reset page on semester change
+        setCurrentPage(1); 
     }, [selectedSemesterId]);
 
-    // Reset page when search or assessment filter changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, selectedAssessmentId, submissionFilter]);
@@ -219,7 +201,7 @@ const CriteriaGradingPage: React.FC = () => {
 
     const handleSaveGrades = async () => {
         if (!selectedAssessmentId) {
-            toast.error("Vui lòng chọn một đợt đánh giá để lưu điểm!");
+            toast.error("Please select an assessment stage to save grades!");
             return;
         }
 
@@ -243,7 +225,6 @@ const CriteriaGradingPage: React.FC = () => {
                         let hasAnyScore = false;
                         Object.keys(mappedScores).forEach(cIdStr => {
                             const val = mappedScores[Number(cIdStr)] as any;
-                            // Bỏ qua giá trị rỗng hoặc undefined
                             if (val !== undefined && val !== null && val !== '') {
                                 cleanScores[Number(cIdStr)] = parseFloat(val);
                                 hasAnyScore = true;
@@ -259,7 +240,6 @@ const CriteriaGradingPage: React.FC = () => {
                     }
                 });
 
-                // Lưu nếu có điểm hoặc có nhận xét
                 if (payloadStr.studentScores.length > 0 || payloadStr.teacherComment!.trim() !== '') {
                     await assessmentService.saveGradesByCriteria(payloadStr);
                     saveCount++;
@@ -267,15 +247,15 @@ const CriteriaGradingPage: React.FC = () => {
             }
 
             if (saveCount > 0) {
-                toast.success("Lưu điểm tiêu chí thành công!");
+                toast.success("Criteria grades saved successfully!");
                 await fetchSemesterData();
             } else {
-                toast.error("Không có thay đổi nào để lưu!");
+                toast.error("No changes to save!");
             }
         }
         catch (error: any) {
-            console.error("Lỗi khi lưu điểm tiêu chí:", error);
-            const msg = error?.response?.data?.message || "Đã xảy ra lỗi khi lưu điểm tiêu chí.";
+            console.error("Error saving criteria grades:", error);
+            const msg = error?.response?.data?.message || "An error occurred while saving criteria grades.";
             toast.error(msg);
         } finally {
             setIsSaving(false);
@@ -289,25 +269,25 @@ const CriteriaGradingPage: React.FC = () => {
             <TeacherSidebar currentPath="/teacher/grading-criteria" />
 
             <main className="flex-1 overflow-y-auto">
-                <TeacherHeader title="Chấm điểm sinh viên theo Tiêu chí" subtitle="Đánh giá năng lực dựa trên các tiêu chí cụ thể của từng đợt." />
+                <TeacherHeader title="Student Criteria Grading" subtitle="Evaluate students based on specific criteria for each assessment stage." />
 
                 {loading ? (
                     <div className="flex justify-center items-center h-[calc(100vh-200px)]">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        <span className="ml-3 text-gray-500 font-medium">Đang tải dữ liệu...</span>
+                        <span className="ml-3 text-gray-500 font-medium">Loading data...</span>
                     </div>
                 ) : (
                     <div className="p-8 max-w-[1400px] mx-auto space-y-6">
                         {/* 1. Filter Section */}
                         <section className="bg-white rounded-xl border border-[#dbdfe6] p-6 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-sm font-bold uppercase text-[#616f89]">Chọn giai đoạn đánh giá</h3>
+                                <h3 className="text-sm font-bold uppercase text-[#616f89]">Select Assessment Stage</h3>
                                 <select
                                     className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
                                     value={selectedSemesterId || ''}
                                     onChange={(e) => setSelectedSemesterId(Number(e.target.value))}
                                 >
-                                    <option value="" disabled>-- Chọn học kỳ --</option>
+                                    <option value="" disabled>-- Select Semester --</option>
                                     {semesters.map(s => (
                                         <option key={s.semesterId} value={s.semesterId}>
                                             {s.semesterName}
@@ -321,7 +301,7 @@ const CriteriaGradingPage: React.FC = () => {
                                     <span className="material-symbols-outlined absolute left-3 text-gray-400 font-bold" style={{ fontSize: '18px' }}>search</span>
                                     <input
                                         type="text"
-                                        placeholder="Tìm kiếm theo tên nhóm..."
+                                        placeholder="Search by group name..."
                                         className="pl-9 pr-4 py-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#111318] w-64"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -329,7 +309,7 @@ const CriteriaGradingPage: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-[#616f89]">Đợt đánh giá:</span>
+                                    <span className="text-sm font-medium text-[#616f89]">Assessment Stage:</span>
                                     <select
                                         className={`p-2 border rounded-lg outline-none text-sm font-medium transition-colors ${(!assessments || assessments.length === 0)
                                             ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
@@ -340,7 +320,7 @@ const CriteriaGradingPage: React.FC = () => {
                                         disabled={!assessments || assessments.length === 0}
                                     >
                                         {(!assessments || assessments.length === 0) && (
-                                            <option value="" disabled>-- Không có đợt đánh giá --</option>
+                                            <option value="" disabled>-- No assessment stages available --</option>
                                         )}
                                         {assessments.map(a => (
                                             <option key={a.assessmentId} value={a.assessmentId}>
@@ -350,15 +330,15 @@ const CriteriaGradingPage: React.FC = () => {
                                     </select>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-[#616f89]">Trạng thái nộp bài:</span>
+                                    <span className="text-sm font-medium text-[#616f89]">Submission Status:</span>
                                     <select
                                         className="p-2 border border-[#dbdfe6] rounded-lg outline-none focus:border-primary text-sm font-medium text-[#616f89]"
                                         value={submissionFilter}
                                         onChange={(e) => setSubmissionFilter(e.target.value as any)}
                                     >
-                                        <option value="all">Tất cả nhóm</option>
-                                        <option value="submitted">Đã nộp bài</option>
-                                        <option value="unsubmitted">Chưa nộp bài</option>
+                                        <option value="all">All Groups</option>
+                                        <option value="submitted">Submitted</option>
+                                        <option value="unsubmitted">Unsubmitted</option>
                                     </select>
                                 </div>
                             </div>
@@ -368,22 +348,22 @@ const CriteriaGradingPage: React.FC = () => {
                         {currentAssessment ? (
                             <div className="bg-white rounded-xl border border-[#dbdfe6] shadow-sm overflow-hidden">
                                 <div className="flex items-center justify-between px-6 py-4 bg-[#f8f9fa] border-b border-[#dbdfe6]">
-                                    <h2 className="text-base font-bold text-primary">Các tiêu chí của {currentAssessment.title}</h2>
-                                    <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-lg">Trọng số: {currentAssessment.weight}%</span>
+                                    <h2 className="text-base font-bold text-primary">Criteria for {currentAssessment.title}</h2>
+                                    <span className="text-sm font-medium px-3 py-1 bg-primary/10 text-primary rounded-lg">Weight: {currentAssessment.weight}%</span>
                                 </div>
 
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[800px]">
                                         <thead>
                                             <tr className="bg-[#f8f9fa] border-b border-[#dbdfe6]">
-                                                <th className="px-6 py-4 text-xs font-bold uppercase w-[250px] sticky left-0 bg-[#f8f9fa] z-10 border-r">Nhóm / Sinh viên</th>
+                                                <th className="px-6 py-4 text-xs font-bold uppercase w-[250px] sticky left-0 bg-[#f8f9fa] z-10 border-r">Group / Student</th>
                                                 {currentAssessment.criteria?.map(c => (
                                                     <th key={c.criteriaId} className="px-4 py-4 text-xs font-bold uppercase text-center bg-blue-50/50 min-w-[120px]">
                                                         {c.criteriaName} <br />
                                                         <span className="text-blue-600">({c.weight}%)</span>
                                                     </th>
                                                 ))}
-                                                <th className="px-6 py-4 text-xs font-bold uppercase text-center bg-orange-50/50">Điểm Đợt</th>
+                                                <th className="px-6 py-4 text-xs font-bold uppercase text-center bg-orange-50/50">Stage Score</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#dbdfe6]">
@@ -392,12 +372,11 @@ const CriteriaGradingPage: React.FC = () => {
                                                 .filter(group => {
                                                     if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                     if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                    return true; // 'all'
+                                                    return true; 
                                                 })
                                                 .slice((currentPage - 1) * groupsPerPage, currentPage * groupsPerPage)
                                                 .map((group, groupIndex) => (
                                                     <React.Fragment key={group.groupId}>
-                                                        {/* Group Row */}
                                                         <tr className="bg-gray-50/50 cursor-pointer hover:bg-gray-100" onClick={() => toggleGroup(group.groupId)}>
                                                             <td className="px-6 py-4 flex items-center gap-2 font-bold text-primary sticky left-0 bg-gray-50/50 hover:bg-gray-100 border-r z-10">
                                                                 <span className={`material-symbols-outlined transition-transform ${expandedGroups.includes(group.groupId) ? 'rotate-180' : ''}`}>
@@ -412,15 +391,14 @@ const CriteriaGradingPage: React.FC = () => {
                                                                         className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
                                                                     >
                                                                         <span className="material-symbols-outlined text-sm">description</span>
-                                                                        Xem tài liệu ({group.submittedDocs.length})
+                                                                        View Documents ({group.submittedDocs.length})
                                                                     </button>
                                                                 ) : (
-                                                                    <span className="text-sm text-gray-400 italic">Chưa nộp bài</span>
+                                                                    <span className="text-sm text-gray-400 italic">No submission</span>
                                                                 )}
                                                             </td>
                                                         </tr>
 
-                                                        {/* Students Rows */}
                                                         {expandedGroups.includes(group.groupId) && group.students.map((student, studentIndex) => (
                                                             <tr key={student.userId} className="animate-in slide-in-from-top-1 duration-200">
                                                                 <td className="px-10 py-4 text-sm font-medium border-r sticky left-0 bg-white z-10">{student.fullName}</td>
@@ -436,23 +414,21 @@ const CriteriaGradingPage: React.FC = () => {
                                                                     </td>
                                                                 ))}
 
-                                                                {/* Preview Calculated Assessment Score */}
                                                                 <td className="px-4 py-4 border-r text-center font-bold text-orange-600 bg-orange-50/20">
                                                                     {calculateCurrentAssessmentScore(student, currentAssessment)}
                                                                 </td>
                                                             </tr>
                                                         ))}
 
-                                                        {/* Group Comment Row */}
                                                         {expandedGroups.includes(group.groupId) && (
                                                             <tr className="bg-blue-50/20">
                                                                 <td className="px-10 py-3 text-sm font-medium border-r text-right italic text-gray-600 sticky left-0 bg-blue-50/20 z-10">
-                                                                    Nhận xét đợt {currentAssessment.title}:
+                                                                    Comments for {currentAssessment.title}:
                                                                 </td>
                                                                 <td colSpan={(currentAssessment.criteria?.length || 0) + 1} className="px-4 py-3">
                                                                     <textarea
                                                                         rows={2}
-                                                                        placeholder={`Nhập lời phê của Giảng viên cho đợt ${currentAssessment.title}...`}
+                                                                        placeholder={`Enter teacher's comments for ${currentAssessment.title}...`}
                                                                         value={groupComments[group.groupId] ?? ""}
                                                                         onChange={(e) => handleCommentChange(group.groupId, e.target.value)}
                                                                         disabled={!group.submittedDocs || group.submittedDocs.length === 0}
@@ -467,36 +443,35 @@ const CriteriaGradingPage: React.FC = () => {
                                     </table>
                                 </div>
 
-                                {/* Pagination Controls */}
                                 {groups
                                     .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
                                     .filter(group => {
                                         if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                         if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                        return true; // 'all'
+                                        return true; 
                                     })
                                     .length > groupsPerPage && (
                                         <div className="p-4 bg-gray-50 border-t border-[#dbdfe6] flex items-center justify-between">
                                             <span className="text-sm text-[#616f89]">
-                                                Hiển thị {Math.min((currentPage - 1) * groupsPerPage + 1, groups
+                                                Showing {Math.min((currentPage - 1) * groupsPerPage + 1, groups
                                                     .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
                                                     .filter(group => {
                                                         if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                         if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                        return true; // 'all'
+                                                        return true; 
                                                     }).length)} - {Math.min(currentPage * groupsPerPage, groups
                                                         .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
                                                         .filter(group => {
                                                             if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                             if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                            return true; // 'all'
-                                                        }).length)} trong tổng số {groups
+                                                            return true; 
+                                                        }).length)} of {groups
                                                             .filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase()))
                                                             .filter(group => {
                                                                 if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                                 if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                                return true; // 'all'
-                                                            }).length} nhóm
+                                                                return true; 
+                                                            }).length} groups
                                             </span>
                                             <div className="flex gap-2">
                                                 <button
@@ -504,14 +479,14 @@ const CriteriaGradingPage: React.FC = () => {
                                                     disabled={currentPage === 1}
                                                     className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    Trước
+                                                    Previous
                                                 </button>
                                                 <div className="flex items-center gap-1">
                                                     {Array.from({
                                                         length: Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
                                                             if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                             if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                            return true; // 'all'
+                                                            return true; 
                                                         }).length / groupsPerPage)
                                                     }, (_, i) => i + 1).map(page => (
                                                         <button
@@ -527,36 +502,36 @@ const CriteriaGradingPage: React.FC = () => {
                                                     onClick={() => setCurrentPage(p => Math.min(Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
                                                         if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                         if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                        return true; // 'all'
+                                                        return true; 
                                                     }).length / groupsPerPage), p + 1))}
                                                     disabled={currentPage === Math.ceil(groups.filter(group => searchQuery.trim() === '' || group.groupName.toLowerCase().includes(searchQuery.toLowerCase())).filter(group => {
                                                         if (submissionFilter === 'submitted') return group.submittedDocs && group.submittedDocs.length > 0;
                                                         if (submissionFilter === 'unsubmitted') return !group.submittedDocs || group.submittedDocs.length === 0;
-                                                        return true; // 'all'
+                                                        return true; 
                                                     }).length / groupsPerPage)}
                                                     className="px-3 py-1 border border-[#dbdfe6] rounded-lg text-sm font-medium hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    Sau
+                                                    Next
                                                 </button>
                                             </div>
                                         </div>
                                     )}
 
                                 <div className="p-6 bg-gray-50 border-t border-[#dbdfe6] flex justify-end gap-3 rounded-b-xl">
-                                    <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white transition-colors">Hủy</button>
+                                    <button className="px-6 py-2 border border-[#dbdfe6] text-[#616f89] font-bold rounded-xl hover:bg-white transition-colors">Cancel</button>
                                     <button
                                         onClick={handleSaveGrades}
                                         disabled={isSaving}
                                         className={`px-6 py-2 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                        {isSaving ? "Đang lưu..." : "Lưu điểm tiêu chí"}
+                                        {isSaving ? "Saving..." : "Save Criteria Grades"}
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-white rounded-xl border border-[#dbdfe6] p-12 shadow-sm text-center">
                                 <span className="material-symbols-outlined text-gray-300 text-6xl mb-4">analytics</span>
-                                <h3 className="text-lg font-bold text-gray-700">Chưa chọn Đợt đánh giá</h3>
-                                <p className="text-gray-500 mt-2">Vui lòng chọn một đợt đánh giá từ danh sách phía trên để bắt đầu chấm điểm theo tiêu chí.</p>
+                                <h3 className="text-lg font-bold text-gray-700">No Assessment Selected</h3>
+                                <p className="text-gray-500 mt-2">Please select an assessment stage from the list above to start grading.</p>
                             </div>
                         )}
                     </div>
@@ -567,7 +542,7 @@ const CriteriaGradingPage: React.FC = () => {
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
                             <div className="px-6 py-4 border-b border-[#dbdfe6] flex items-center justify-between bg-gray-50/50">
-                                <h3 className="text-lg font-bold text-[#111318]">Tài liệu nộp - {viewingDocsGroup.groupName}</h3>
+                                <h3 className="text-lg font-bold text-[#111318]">Submitted Documents - {viewingDocsGroup.groupName}</h3>
                                 <button onClick={() => setViewingDocsGroup(null)} className="text-gray-400 hover:text-red-500 transition-colors">
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
@@ -584,11 +559,11 @@ const CriteriaGradingPage: React.FC = () => {
                                                     <div>
                                                         <p className="text-sm font-bold text-[#111318] line-clamp-1" title={doc.name}>{doc.name}</p>
                                                         <p className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">
-                                                            {doc.submittedAt ? new Date(doc.submittedAt).toLocaleString('vi-VN') : 'Chưa rõ thời gian'}
+                                                            {doc.submittedAt ? new Date(doc.submittedAt).toLocaleString('en-US') : 'Unknown time'}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <a href={doc.url} download={doc.name} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center text-primary bg-primary/10 hover:bg-primary hover:text-white rounded-lg transition-colors shrink-0" title="Tải xuống">
+                                                <a href={doc.url} download={doc.name} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center text-primary bg-primary/10 hover:bg-primary hover:text-white rounded-lg transition-colors shrink-0" title="Download">
                                                     <span className="material-symbols-outlined text-[20px]">download</span>
                                                 </a>
                                             </li>
@@ -597,13 +572,13 @@ const CriteriaGradingPage: React.FC = () => {
                                 ) : (
                                     <div className="text-center py-8">
                                         <span className="material-symbols-outlined text-gray-300 text-5xl mb-2">folder_off</span>
-                                        <p className="text-gray-500 font-medium">Không có tài liệu nào được nộp trong đợt này</p>
+                                        <p className="text-gray-500 font-medium">No documents were submitted in this stage.</p>
                                     </div>
                                 )}
                             </div>
                             <div className="px-6 py-4 border-t border-[#dbdfe6] bg-gray-50 flex justify-end">
                                 <button onClick={() => setViewingDocsGroup(null)} className="px-6 py-2 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
-                                    Đóng
+                                    Close
                                 </button>
                             </div>
                         </div>

@@ -4,6 +4,7 @@ import TeacherSidebar from "../../components/teacher/TeacherSidebar";
 import TeacherHeader from "../../components/teacher/TeacherHeader";
 import { assessmentService } from "../../services/assessmentService";
 import { councilService, type CouncilDto } from "../../services/councilService";
+import { semesterService } from "../../services/semesterService";
 import { defenseScheduleService, type DefenseScheduleDto } from "../../services/defenseScheduleService";
 import { groupService } from "../../services/groupService";
 import type {
@@ -18,6 +19,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
+    const [groupLoading, setGroupLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [council, setCouncil] = useState<CouncilDto | null>(null);
     const [schedules, setSchedules] = useState<DefenseScheduleDto[]>([]);
@@ -33,19 +35,45 @@ const TeacherCouncilGradingPage: React.FC = () => {
     const fetchCouncilDetails = useCallback(async () => {
         setLoading(true);
         try {
-            const mySchedulesRes = await defenseScheduleService.getMySchedule();
-            const mySchedules = mySchedulesRes.data ?? [];
+            // 1. Get Active Semester
+            const activeSemesterRes = await semesterService.getActiveSemester();
+            const activeSemesterId = activeSemesterRes.data?.semesterId;
+
+            if (!activeSemesterId) {
+                setLoading(false);
+                return;
+            }
+
+            // 2. Get My Schedules and filter by Active Semester's Councils
+            const [mySchedulesRes, activeCouncilsRes] = await Promise.all([
+                defenseScheduleService.getMySchedule(),
+                councilService.getAllCouncils(activeSemesterId)
+            ]);
+
+            const allMySchedules = mySchedulesRes.data ?? [];
+            const activeCouncilIds = new Set((activeCouncilsRes.data ?? []).map(c => c.councilId));
+            
+            // Filter only schedules belonging to active semester councils
+            const myActiveSchedules = allMySchedules.filter(s => activeCouncilIds.has(s.councilId));
+
             const councilsFound = Array.from(
-                new Map(mySchedules.map(s => [s.councilId, s.councilName])).entries()
+                new Map(myActiveSchedules.map(s => [s.councilId, s.councilName])).entries()
             ).map(([id, name]) => ({ id, name }));
             setMyCouncils(councilsFound);
 
             let targetCouncilId: number | null = councilId ? parseInt(councilId) : null;
+            
+            // Validate if the councilId from URL belongs to the active semester
+            if (targetCouncilId && !activeCouncilIds.has(targetCouncilId)) {
+                targetCouncilId = null; // Reset if invalid for current semester
+            }
+
             if (!targetCouncilId && councilsFound.length > 0) {
                 targetCouncilId = councilsFound[0].id;
             }
 
             if (!targetCouncilId) {
+                setCouncil(null);
                 setLoading(false);
                 return;
             }
@@ -99,6 +127,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
                 setGroupMembers([]);
                 return;
             }
+            setGroupLoading(true);
             try {
                 const [detailRes, passedRes] = await Promise.all([
                     groupService.getGroupDetail(selectedGroupId),
@@ -146,6 +175,7 @@ const TeacherCouncilGradingPage: React.FC = () => {
                 }
                 setStudentScores(initialScores);
             } catch (error) { toast.error("Could not load group members."); }
+            finally { setGroupLoading(false); }
         };
         fetchGroupData();
     }, [selectedGroupId, assessments, council, allSchedules]);
@@ -203,8 +233,12 @@ const TeacherCouncilGradingPage: React.FC = () => {
     availableDates.sort();
 
     const filteredSchedules = selectedDate ? schedules.filter(s => s.defenseDate?.toString() === selectedDate) : schedules;
-    const groupSchedules = allSchedules.filter(s => s.groupId === selectedGroupId).sort((a, b) => new Date(a.defenseDate || "").getTime() - new Date(b.defenseDate || "").getTime());
-    const currentSchedule = schedules.find(s => s.groupId === selectedGroupId);
+    const groupSchedulesForThisGroup = allSchedules.filter(s => s.groupId === selectedGroupId).sort((a, b) => new Date(a.defenseDate || "").getTime() - new Date(b.defenseDate || "").getTime());
+    
+    // Determine if the current selection (Date + Group) is for a Retake (Attempt 2+)
+    const currentScheduleInContext = filteredSchedules.find(s => s.groupId === selectedGroupId);
+    const currentScheduleInGroupIdx = groupSchedulesForThisGroup.findIndex(s => s.scheduleId === currentScheduleInContext?.scheduleId);
+    const isRetakeContext = currentScheduleInGroupIdx > 0;
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#f6f6f8] text-[#111318]">
@@ -235,8 +269,8 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                     <div className="space-y-4">
                                         <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
                                             <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">Room & Date</p>
-                                            <p className="text-sm font-bold text-gray-800">{currentSchedule?.roomName || "No Room"}</p>
-                                            {currentSchedule?.defenseDate && <p className="text-[11px] text-primary/60 mt-1 font-medium">{new Date(currentSchedule.defenseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
+                                            <p className="text-sm font-bold text-gray-800">{currentScheduleInContext?.roomName || "No Room"}</p>
+                                            {currentScheduleInContext?.defenseDate && <p className="text-[11px] text-primary/60 mt-1 font-medium">{new Date(currentScheduleInContext.defenseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-bold text-[#616f89] uppercase tracking-wider mb-2">Members</p>
@@ -308,15 +342,15 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        {currentSchedule?.status?.toUpperCase() === 'COMPLETED' && (
-                                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 text-emerald-800"><span className="material-symbols-outlined text-emerald-500">verified</span><p className="text-sm font-medium">Grading for this group is completed. You can still modify scores if needed.</p></div>
+                                        {currentScheduleInContext?.status?.toUpperCase() === 'COMPLETED' && (
+                                            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-3 text-emerald-800"><span className="material-symbols-outlined text-emerald-500">verified</span><p className="text-sm font-medium">Grading for this group is completed. Scores can no longer be modified.</p></div>
                                         )}
                                         <div className="bg-white rounded-3xl border border-[#dbdfe6] p-8 shadow-sm space-y-10 min-h-[600px]">
                                             <div className="flex flex-col md:flex-row justify-between gap-6 border-b border-[#dbdfe6] pb-8">
                                                 <div>
                                                     <div className="flex items-center gap-3 mb-2">
-                                                        <h2 className="text-2xl font-black text-gray-900">{currentSchedule?.groupName}</h2>
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${currentSchedule?.status?.toUpperCase() === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{currentSchedule?.status || "PENDING"}</span>
+                                                        <h2 className="text-2xl font-black text-gray-900">{currentScheduleInContext?.groupName}</h2>
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${currentScheduleInContext?.status?.toUpperCase() === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{currentScheduleInContext?.status || "PENDING"}</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 flex items-center gap-2">
                                                         <span className="material-symbols-outlined text-[18px] text-primary">info</span>
@@ -324,12 +358,16 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col gap-3 min-w-[240px]">
-                                                    {groupSchedules.map((sched, idx) => {
+                                                    {groupSchedulesForThisGroup.map((sched, idx) => {
                                                         if (sched.councilId !== council.councilId) return null;
+                                                        // Only show save button for the currently selected schedule context
+                                                        if (selectedDate && sched.defenseDate?.toString() !== selectedDate) return null;
+                                                        
                                                         const isRetake = idx > 0;
                                                         const expired = isExpired(sched.defenseDate);
+                                                        const isCompleted = sched.status?.toUpperCase() === 'COMPLETED';
                                                         return (
-                                                            <button key={`save-${sched.scheduleId}`} onClick={() => handleSubmit(isRetake)} disabled={submitting || expired} className="w-full px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
+                                                            <button key={`save-${sched.scheduleId}`} onClick={() => handleSubmit(isRetake)} disabled={submitting || expired || isCompleted} className="w-full px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
                                                                 {submitting ? <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[18px]">save</span>}
                                                                 {submitting ? "Saving..." : (isRetake ? "Save Attempt 2 (Retake)" : "Save Attempt 1 (Final)")}
                                                             </button>
@@ -340,9 +378,16 @@ const TeacherCouncilGradingPage: React.FC = () => {
 
                                             {assessments.length === 0 ? (
                                                 <div className="p-12 bg-amber-50 rounded-2xl border border-amber-100 text-center text-amber-800"><span className="material-symbols-outlined text-4xl mb-4">warning</span><h3 className="text-lg font-bold">Criteria Not Found</h3><p className="text-sm">No grading criteria for Final assessments was found.</p></div>
+                                            ) : groupLoading ? (
+                                                <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                                                    <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                                    <p className="text-xs font-medium text-gray-400">Updating assessment data...</p>
+                                                </div>
                                             ) : (
                                                 <div className="space-y-12">
-                                                    {groupMembers.map(member => (
+                                                    {groupMembers
+                                                        .filter(member => !isRetakeContext || !passedUserIds.includes(member.userId))
+                                                        .map(member => (
                                                         <div key={member.userId} className="p-1 rounded-[2.5rem] hover:bg-primary/5 transition-all group">
                                                             <div className="bg-white border border-[#dbdfe6] rounded-[2.3rem] overflow-hidden shadow-sm group-hover:border-primary/20 transition-all">
                                                                 <div className="px-6 py-5 bg-gray-50/50 border-b border-[#dbdfe6] flex items-center gap-4">
@@ -350,12 +395,19 @@ const TeacherCouncilGradingPage: React.FC = () => {
                                                                     <div><h4 className="font-bold text-gray-900">{member.fullName}</h4><p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">{member.email}</p></div>
                                                                 </div>
                                                                 <div className="p-8 space-y-8">
-                                                                    {groupSchedules.map((sched, idx) => {
+                                                                    {groupSchedulesForThisGroup.map((sched, idx) => {
+                                                                        if (sched.scheduleId !== currentScheduleInContext?.scheduleId) return null;
+
                                                                         const isRetake = idx > 0;
                                                                         const isPassedL1 = passedUserIds.includes(member.userId);
+                                                                        
+                                                                        // Logic: Hide students from the retake block if they already passed in Attempt 1
+                                                                        if (isRetake && isPassedL1) return null;
+
                                                                         const isMyCouncil = sched.councilId === council.councilId;
                                                                         const expired = isExpired(sched.defenseDate);
-                                                                        const isLocked = !isMyCouncil || (isRetake && isPassedL1) || expired;
+                                                                        const isCompleted = sched.status?.toUpperCase() === 'COMPLETED';
+                                                                        const isLocked = !isMyCouncil || (isRetake && isPassedL1) || expired || isCompleted;
                                                                         return (
                                                                             <div key={`box-${sched.scheduleId}`} className={`p-6 rounded-3xl border ${isLocked ? (expired ? 'bg-rose-50/30 border-rose-100' : 'bg-emerald-50/30 border-emerald-100') : 'bg-gray-50/30 border-[#dbdfe6]'}`}>
                                                                                 <div className="flex justify-between items-start mb-6">

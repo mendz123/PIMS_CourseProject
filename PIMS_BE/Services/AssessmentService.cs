@@ -80,6 +80,27 @@ public class AssessmentService : IAssessmentService
         await _assessmentRepository.AddAsync(assessment);
         await _assessmentRepository.SaveChangesAsync();
 
+        if (dto.IsFinal)
+        {
+            var retakeAssessment = new Assessment
+            {
+                SemesterId  = dto.SemesterId,
+                Title       = dto.Title + " (Retake)",
+                Weight      = dto.Weight,
+                IsFinal     = false,
+                IsRetake    = true,
+                IsLocked    = false,
+                CreatedBy   = userId,
+                CreatedAt   = DateTime.UtcNow,
+                StartDate   = dto.StartDate,
+                Deadline    = dto.Deadline,
+                Description = string.IsNullOrEmpty(dto.Description) ? "Retake for Final Assessment" : dto.Description + " (Retake)"
+            };
+
+            await _assessmentRepository.AddAsync(retakeAssessment);
+            await _assessmentRepository.SaveChangesAsync();
+        }
+
         return await MapToDto(assessment);
     }
 
@@ -118,6 +139,25 @@ public class AssessmentService : IAssessmentService
             };
             await _assessmentRepository.AddAsync(assessment);
             createdAssessments.Add(assessment);
+
+            if (item.IsFinal)
+            {
+                var retakeAssessment = new Assessment
+                {
+                    SemesterId  = dto.SemesterId,
+                    Title       = item.Title + " (Retake)",
+                    Weight      = item.Weight,
+                    IsFinal     = false,
+                    IsRetake    = true,
+                    IsLocked    = false,
+                    CreatedBy   = userId,
+                    CreatedAt   = DateTime.UtcNow,
+                    StartDate   = item.StartDate,
+                    Deadline    = item.Deadline,
+                    Description = string.IsNullOrEmpty(item.Description) ? "Retake for Final Assessment" : item.Description + " (Retake)"
+                };
+                await _assessmentRepository.AddAsync(retakeAssessment);
+            }
         }
 
         await _assessmentRepository.SaveChangesAsync();
@@ -137,6 +177,10 @@ public class AssessmentService : IAssessmentService
         {
             throw new KeyNotFoundException($"Assessment with ID {assessmentId} not found");
         }
+
+        string? oldTitle = assessment.Title;
+        int semesterId = assessment.SemesterId;
+        bool? wasFinal = assessment.IsFinal;
 
         // Check if locked
         if (assessment.IsLocked == true && dto.Weight.HasValue)
@@ -192,6 +236,48 @@ public class AssessmentService : IAssessmentService
         _assessmentRepository.Update(assessment);
         await _assessmentRepository.SaveChangesAsync();
 
+        // Propagation to Retake
+        if (wasFinal == true)
+        {
+            string retakeTitleToSearch = (oldTitle ?? "") + " (Retake)";
+            var retakes = await _assessmentRepository.FindAsync(a => 
+                a.SemesterId == semesterId && 
+                a.IsRetake == true && 
+                a.Title == retakeTitleToSearch);
+            
+            var retake = retakes.FirstOrDefault();
+            if (retake != null)
+            {
+                if (!string.IsNullOrEmpty(dto.Title))
+                {
+                    retake.Title = dto.Title + " (Retake)";
+                }
+                if (dto.Weight.HasValue)
+                {
+                    retake.Weight = dto.Weight.Value;
+                }
+                if (dto.Description != null)
+                {
+                    retake.Description = dto.Description + " (Retake)";
+                }
+                if (dto.StartDate.HasValue)
+                {
+                    retake.StartDate = dto.StartDate.Value;
+                }
+                if (dto.Deadline.HasValue)
+                {
+                    retake.Deadline = dto.Deadline.Value;
+                }
+                if (dto.IsLocked.HasValue) 
+                {
+                    retake.IsLocked = dto.IsLocked.Value;
+                }
+
+                _assessmentRepository.Update(retake);
+                await _assessmentRepository.SaveChangesAsync();
+            }
+        }
+
         return await MapToDto(assessment);
     }
 
@@ -202,6 +288,10 @@ public class AssessmentService : IAssessmentService
         {
             throw new KeyNotFoundException($"Assessment with ID {assessmentId} not found");
         }
+
+        string titleForRetake = (assessment.Title ?? "") + " (Retake)";
+        int semesterId = assessment.SemesterId;
+        bool? isFinal = assessment.IsFinal;
 
         // Check if has scores
         var hasScores = await _assessmentRepository.HasScoresAsync(assessmentId);
@@ -221,6 +311,22 @@ public class AssessmentService : IAssessmentService
         await _criterionRepository.DeleteByAssessmentIdAsync(assessmentId);
 
         _assessmentRepository.Remove(assessment);
+
+        // PROPAGATION: Delete Retake as well if this was a Final Assessment
+        if (isFinal == true)
+        {
+            var retakes = await _assessmentRepository.FindAsync(a => 
+                a.SemesterId == semesterId && 
+                a.IsRetake == true && 
+                a.Title == titleForRetake);
+            
+            var retake = retakes.FirstOrDefault();
+            if (retake != null) {
+                await _criterionRepository.DeleteByAssessmentIdAsync(retake.AssessmentId);
+                _assessmentRepository.Remove(retake);
+            }
+        }
+
         await _assessmentRepository.SaveChangesAsync();
     }
 
@@ -235,9 +341,9 @@ public class AssessmentService : IAssessmentService
         return await MapToDto(assessment);
     }
 
-    public async Task<List<AssessmentDto>> GetAssessmentsBySemesterAsync(int semesterId)
+    public async Task<List<AssessmentDto>> GetAssessmentsBySemesterAsync(int semesterId, bool includeRetake = false)
     {
-        var assessments = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId);
+        var assessments = await _assessmentRepository.GetAssessmentsBySemesterAsync(semesterId, includeRetake);
         var dtos = new List<AssessmentDto>();
 
         foreach (var assessment in assessments)
@@ -259,9 +365,9 @@ public class AssessmentService : IAssessmentService
         return MapToWithCriteriaDto(assessment);
     }
 
-    public async Task<List<AssessmentWithCriteriaDto>> GetAssessmentsWithCriteriaAsync(int semesterId)
+    public async Task<List<AssessmentWithCriteriaDto>> GetAssessmentsWithCriteriaAsync(int semesterId, bool includeRetake = false)
     {
-        var assessments = await _assessmentRepository.GetAssessmentsWithCriteriaAsync(semesterId);
+        var assessments = await _assessmentRepository.GetAssessmentsWithCriteriaAsync(semesterId, includeRetake);
         return assessments.Select(MapToWithCriteriaDto).ToList();
     }
 
@@ -316,6 +422,7 @@ public class AssessmentService : IAssessmentService
             Title         = assessment.Title ?? string.Empty,
             Weight        = assessment.Weight ?? 0,
             IsFinal       = assessment.IsFinal ?? false,
+            IsRetake      = assessment.IsRetake,
             IsLocked      = assessment.IsLocked ?? false,
             CreatedBy     = assessment.CreatedBy,
             CreatedAt     = assessment.CreatedAt ?? DateTime.UtcNow,
@@ -349,6 +456,7 @@ public class AssessmentService : IAssessmentService
             Title               = assessment.Title ?? string.Empty,
             Weight              = assessment.Weight ?? 0,
             IsFinal             = assessment.IsFinal ?? false,
+            IsRetake            = assessment.IsRetake,
             IsLocked            = assessment.IsLocked ?? false,
             StartDate           = assessment.StartDate,
             Deadline            = assessment.Deadline,
@@ -429,36 +537,63 @@ public class AssessmentService : IAssessmentService
 
                 foreach (var studentId in studentIds)
                 {
-                    decimal totalScore = 0;
+                    decimal currentTotal = 0;
                     bool failedFinal = false;
+                    bool finalExists = false;
+                    bool hasAllFinalScores = true;
+                    bool hasAnyFinalOrRetakeScore = false;
 
-                    foreach (var a in assessmentsInSemester)
+                    // Group assessments by base original title to handle overrides
+                    var assessmentsByBaseTitle = assessmentsInSemester
+                        .Where(a => a.IsRetake == false)
+                        .ToList();
+
+                    foreach (var a in assessmentsByBaseTitle)
                     {
-                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
-                        totalScore += score * (a.Weight ?? 0) / 100m;
-                        
-                        if (a.IsFinal == true && score < 4)
+                        var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
+                            ra.IsRetake == true && 
+                            ra.Title == (a.Title + " (Retake)") && 
+                            ra.SemesterId == a.SemesterId);
+
+                        var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                        var retakeScoreEntry = retakeAssessment != null 
+                            ? allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == retakeAssessment.AssessmentId) 
+                            : null;
+
+                        var effectiveScore = retakeScoreEntry?.Score ?? origScoreEntry?.Score ?? 0;
+                        currentTotal += effectiveScore * (a.Weight ?? 0) / 100m;
+
+                        if (a.IsFinal == true)
                         {
-                            failedFinal = true;
+                            finalExists = true;
+                            if (origScoreEntry == null && retakeScoreEntry == null) hasAllFinalScores = false;
+                            if (origScoreEntry != null || retakeScoreEntry != null) hasAnyFinalOrRetakeScore = true;
+                            
+                            // A student fails the final requirement if their LATEST score (Retake >= Final) is < 4
+                            if (effectiveScore < 4) failedFinal = true;
                         }
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
+                    
+                    // Calculation visibility: Only record TotalScore if at least one Final-related score exists
+                    decimal? totalScoreToSave = hasAnyFinalOrRetakeScore ? currentTotal : (decimal?)null;
+                    bool? isPassedToSave = hasAnyFinalOrRetakeScore ? (currentTotal >= 5 && !failedFinal) : (bool?)null;
 
                     if (finalResult != null)
                     {
-                        finalResult.TotalScore = totalScore;
-                        finalResult.IsPassed = totalScore >= 5 && !failedFinal;
+                        finalResult.TotalScore = totalScoreToSave;
+                        finalResult.IsPassed = isPassedToSave;
                         _finalResultRepository.Update(finalResult);
                     }
-                    else
+                    else if (hasAnyFinalOrRetakeScore)
                     {
                         finalResult = new StudentFinalResult
                         {
                             UserId = studentId,
                             SemesterId = semesterId,
-                            TotalScore = totalScore,
-                            IsPassed = totalScore >= 5 && !failedFinal
+                            TotalScore = totalScoreToSave,
+                            IsPassed = isPassedToSave
                         };
                         await _finalResultRepository.AddAsync(finalResult);
                     }
@@ -513,6 +648,7 @@ public class AssessmentService : IAssessmentService
                 Title         = a.Title ?? string.Empty,
                 Weight        = a.Weight ?? 0,
                 IsFinal       = a.IsFinal ?? false,
+                IsRetake      = a.IsRetake,
                 StartDate     = a.StartDate,
                 Deadline      = a.Deadline,
                 Description   = a.Description,
@@ -553,7 +689,9 @@ public class AssessmentService : IAssessmentService
             GroupName          = raw.Group.GroupName ?? string.Empty,
             SemesterId         = raw.Semester.SemesterId,
             SemesterName       = raw.Semester.SemesterName ?? string.Empty,
-            Assessments        = items
+            Assessments        = items,
+            TotalScore         = raw.FinalResult?.TotalScore,
+            IsPassed           = raw.FinalResult?.IsPassed
         };
     }
 
@@ -649,36 +787,63 @@ public class AssessmentService : IAssessmentService
 
             foreach (var studentId in studentIds)
             {
-                decimal finalSubjectScore = 0;
+                decimal currentTotal = 0;
                 bool failedFinal = false;
+                bool finalExists = false;
+                bool hasAllFinalScores = true;
+                bool hasAnyFinalOrRetakeScore = false;
 
-                foreach (var a in assessmentsInSemester)
+                // Group assessments by base original title to handle overrides
+                var assessmentsByBaseTitle = assessmentsInSemester
+                    .Where(a => a.IsRetake == false)
+                    .ToList();
+
+                foreach (var a in assessmentsByBaseTitle)
                 {
-                    var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
-                    finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+                    var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
+                        ra.IsRetake == true && 
+                        ra.Title == (a.Title + " (Retake)") && 
+                        ra.SemesterId == a.SemesterId);
 
-                    if (a.IsFinal == true && score < 4)
+                    var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                    var retakeScoreEntry = retakeAssessment != null 
+                        ? allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == retakeAssessment.AssessmentId) 
+                        : null;
+
+                    var effectiveScore = retakeScoreEntry?.Score ?? origScoreEntry?.Score ?? 0;
+                    currentTotal += effectiveScore * (a.Weight ?? 0) / 100m;
+
+                    if (a.IsFinal == true)
                     {
-                        failedFinal = true;
+                        finalExists = true;
+                        if (origScoreEntry == null && retakeScoreEntry == null) hasAllFinalScores = false;
+                        if (origScoreEntry != null || retakeScoreEntry != null) hasAnyFinalOrRetakeScore = true;
+                        
+                        // A student fails the final requirement if their LATEST score (Retake >= Final) is < 4
+                        if (effectiveScore < 4) failedFinal = true;
                     }
                 }
 
                 var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, semesterId);
+                
+                // Calculation visibility: Only record TotalScore if at least one Final-related score exists
+                decimal? totalScoreToSaveView = hasAnyFinalOrRetakeScore ? currentTotal : (decimal?)null;
+                bool? isPassedToSaveView = hasAnyFinalOrRetakeScore ? (currentTotal >= 5 && !failedFinal) : (bool?)null;
 
                 if (finalResult != null)
                 {
-                    finalResult.TotalScore = finalSubjectScore;
-                    finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                    finalResult.TotalScore = totalScoreToSaveView;
+                    finalResult.IsPassed = isPassedToSaveView;
                     _finalResultRepository.Update(finalResult);
                 }
-                else
+                else if (hasAnyFinalOrRetakeScore)
                 {
                     finalResult = new StudentFinalResult
                     {
                         UserId = studentId,
                         SemesterId = semesterId,
-                        TotalScore = finalSubjectScore,
-                        IsPassed = finalSubjectScore >= 5 && !failedFinal
+                        TotalScore = totalScoreToSaveView,
+                        IsPassed = isPassedToSaveView
                     };
                     await _finalResultRepository.AddAsync(finalResult);
                 }
@@ -807,36 +972,63 @@ public class AssessmentService : IAssessmentService
 
                 foreach (var studentId in studentIds)
                 {
-                    decimal finalSubjectScore = 0;
+                    decimal currentTotal = 0;
                     bool failedFinal = false;
+                    bool finalExists = false;
+                    bool hasAllFinalScores = true;
+                    bool hasAnyFinalOrRetakeScore = false;
 
-                    foreach (var a in assessmentsInSemester)
+                    // Group assessments by base original title to handle overrides
+                    var assessmentsByBaseTitle = assessmentsInSemester
+                        .Where(a => a.IsRetake == false)
+                        .ToList();
+
+                    foreach (var a in assessmentsByBaseTitle)
                     {
-                        var score = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId)?.Score ?? 0;
-                        finalSubjectScore += score * (a.Weight ?? 0) / 100m;
+                        var retakeAssessment = assessmentsInSemester.FirstOrDefault(ra => 
+                            ra.IsRetake == true && 
+                            ra.Title == (a.Title + " (Retake)") && 
+                            ra.SemesterId == a.SemesterId);
 
-                        if (a.IsFinal == true && score < 4)
+                        var origScoreEntry = allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == a.AssessmentId);
+                        var retakeScoreEntry = retakeAssessment != null 
+                            ? allScoresForStudents.FirstOrDefault(s => s.UserId == studentId && s.AssessmentId == retakeAssessment.AssessmentId) 
+                            : null;
+
+                        var effectiveScore = retakeScoreEntry?.Score ?? origScoreEntry?.Score ?? 0;
+                        currentTotal += effectiveScore * (a.Weight ?? 0) / 100m;
+
+                        if (a.IsFinal == true)
                         {
-                            failedFinal = true;
+                            finalExists = true;
+                            if (origScoreEntry == null && retakeScoreEntry == null) hasAllFinalScores = false;
+                            if (origScoreEntry != null || retakeScoreEntry != null) hasAnyFinalOrRetakeScore = true;
+                            
+                            // A student fails the final requirement if their LATEST score (Retake >= Final) is < 4
+                            if (effectiveScore < 4) failedFinal = true;
                         }
                     }
 
                     var finalResult = await _finalResultRepository.GetByUserAndSemesterAsync(studentId, assessment.SemesterId);
+                    
+                    // Calculation visibility: Only record TotalScore if at least one Final-related score exists
+                    decimal? totalScoreToSaveView = hasAnyFinalOrRetakeScore ? currentTotal : (decimal?)null;
+                    bool? isPassedToSaveView = hasAnyFinalOrRetakeScore ? (currentTotal >= 5 && !failedFinal) : (bool?)null;
 
                     if (finalResult != null)
                     {
-                        finalResult.TotalScore = finalSubjectScore;
-                        finalResult.IsPassed = finalSubjectScore >= 5 && !failedFinal;
+                        finalResult.TotalScore = hasAnyFinalOrRetakeScore ? currentTotal : (decimal?)null;
+                        finalResult.IsPassed = hasAnyFinalOrRetakeScore ? (currentTotal >= 5 && !failedFinal) : (bool?)null;
                         _finalResultRepository.Update(finalResult);
                     }
-                    else
+                    else if (hasAnyFinalOrRetakeScore)
                     {
                         var newFinalResult = new StudentFinalResult
                         {
                             UserId = studentId,
                             SemesterId = assessment.SemesterId,
-                            TotalScore = finalSubjectScore,
-                            IsPassed = finalSubjectScore >= 5 && !failedFinal
+                            TotalScore = totalScoreToSaveView,
+                            IsPassed = isPassedToSaveView
                         };
                         await _finalResultRepository.AddAsync(newFinalResult);
                     }
@@ -870,9 +1062,12 @@ public class AssessmentService : IAssessmentService
 
     public async Task<List<int>> GetUsersPassedFinalAsync(int groupId)
     {
+        var group = await _context.Groups.FindAsync(groupId);
+        if (group == null) return new List<int>();
+
         var passedUserIds = await _context.AssessmentScores
             .Include(s => s.Assessment)
-            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true)
+            .Where(s => s.Assessment.IsFinal == true && s.IsPassed == true && s.Assessment.SemesterId == group.SemesterId)
             .Join(_context.GroupMembers.Where(gm => gm.GroupId == groupId),
                   score => score.UserId,
                   member => member.UserId,

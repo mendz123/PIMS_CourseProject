@@ -89,6 +89,29 @@ public class AssessmentCriterionService : IAssessmentCriterionService
 
         await _criterionRepository.BulkCreateAsync(criteria);
 
+        // PROPAGATION: Apply same criteria to Retake if this is a Final assessment
+        if (assessment.IsFinal == true)
+        {
+            string retakeTitle = (assessment.Title ?? "") + " (Retake)";
+            var retakes = await _assessmentRepository.FindAsync(a => 
+                a.SemesterId == assessment.SemesterId && 
+                a.IsRetake == true && 
+                a.Title == retakeTitle);
+            
+            var retake = retakes.FirstOrDefault();
+            if (retake != null)
+            {
+                await _criterionRepository.DeleteByAssessmentIdAsync(retake.AssessmentId);
+                var retakeCriteria = dtos.Select(dto => new AssessmentCriterion
+                {
+                    AssessmentId = retake.AssessmentId,
+                    CriteriaName = dto.CriteriaName,
+                    Weight = dto.Weight
+                }).ToList();
+                await _criterionRepository.BulkCreateAsync(retakeCriteria);
+            }
+        }
+
         return criteria.Select(MapToDto).ToList();
     }
 
