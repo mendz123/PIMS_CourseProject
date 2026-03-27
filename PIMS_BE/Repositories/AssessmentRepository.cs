@@ -97,7 +97,7 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
         {
             return await _context.Assessments
                 .Include(a => a.Semester)
-                .Where(a => a.IsLocked != true && a.Semester.IsActive == true)
+                .Where(a => a.Semester.IsActive == true &&  !a.IsRetake && a.IsFinal != true  )
                 .ToListAsync();
         }
 
