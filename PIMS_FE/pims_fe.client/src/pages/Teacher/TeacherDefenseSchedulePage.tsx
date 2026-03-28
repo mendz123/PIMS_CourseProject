@@ -120,7 +120,7 @@ const TeacherDefenseSchedulePage: React.FC = () => {
       <main className="flex-1 overflow-y-auto bg-[#f6f6f8]">
         <TeacherHeader
           title="Defense Schedule"
-          subtitle="Your assigned defense sessions as a council member."
+          subtitle="Your assigned defense sessions in the current active semester."
         />
 
         <div className="p-8 max-w-[1200px] mx-auto space-y-6">

@@ -70,9 +70,11 @@ public class DefenseScheduleRepository
                 .ThenInclude(c => c.CouncilMembers)
             .Include(ds => ds.Group)
             .Include(ds => ds.Room)
-            .Where(ds => ds.Council.CouncilMembers.Any(m => m.UserId == userId))
-            .OrderByDescending(ds => ds.Council.Semester.IsActive == true)
-            .ThenByDescending(ds => ds.DefenseDate)
+            .Where(ds =>
+                ds.Council.CouncilMembers.Any(m => m.UserId == userId) &&
+                ds.Council.Semester != null &&
+                ds.Council.Semester.IsActive == true)
+            .OrderByDescending(ds => ds.DefenseDate)
             .ThenBy(ds => ds.StartTime)
             .ToListAsync();
 
