@@ -5,7 +5,7 @@ namespace PIMS_BE.Repositories;
 
 public interface ICouncilCriteriaGradeRepository : IGenericRepository<CouncilCriteriaGrade>
 {
-    Task<List<int>> GetTeachersWhoGradedAsync(int councilId, int groupId);
+    Task<List<int>> GetTeachersWhoGradedAsync(int councilId, int groupId, List<int>? criteriaIds = null);
     Task<List<CouncilCriteriaGrade>> GetGradesForGroupAsync(int councilId, int groupId);
     Task<CouncilCriteriaGrade?> GetGradeAsync(int councilId, int groupId, int userId, int teacherId, int criteriaId);
 }
@@ -14,10 +14,17 @@ public class CouncilCriteriaGradeRepository : GenericRepository<CouncilCriteriaG
 {
     public CouncilCriteriaGradeRepository(PimsDbContext context) : base(context) { }
 
-    public async Task<List<int>> GetTeachersWhoGradedAsync(int councilId, int groupId)
+    public async Task<List<int>> GetTeachersWhoGradedAsync(int councilId, int groupId, List<int>? criteriaIds = null)
     {
-        return await _context.CouncilCriteriaGrades
-            .Where(g => g.CouncilId == councilId && g.GroupId == groupId)
+        var query = _context.CouncilCriteriaGrades
+            .Where(g => g.CouncilId == councilId && g.GroupId == groupId);
+
+        if (criteriaIds != null && criteriaIds.Any())
+        {
+            query = query.Where(g => criteriaIds.Contains(g.CriteriaId));
+        }
+
+        return await query
             .Select(g => g.TeacherId)
             .Distinct()
             .ToListAsync();

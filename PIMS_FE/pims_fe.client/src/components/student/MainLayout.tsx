@@ -16,7 +16,7 @@ const MainLayout: React.FC = () => {
       case "/student/dashboard":
         return "Project Dashboard";
       case "/student/reports":
-        return "Nộp báo cáo tiến độ";
+            return "Publish progress reports.";
       case "/student/group":
         return "My Group";
       case "/student/notifications":

@@ -12,15 +12,16 @@ public class StudentAssessmentRawData
     public Project?         Project          { get; set; }
     public List<Assessment> Assessments      { get; set; } = new();
     public List<AssessmentScore> Scores      { get; set; } = new();
-    public DefenseSchedule? DefenseSchedule  { get; set; }
+    public List<DefenseSchedule> DefenseSchedules { get; set; } = new();
     public List<ProjectSubmission> Submissions { get; set; } = new();
+    public StudentFinalResult? FinalResult   { get; set; }
 }
 
 public interface IAssessmentRepository : IGenericRepository<Assessment>
 {
-    Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId);
+    Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId, bool includeRetake = false);
     Task<Assessment?> GetAssessmentWithCriteriaAsync(int assessmentId);
-    Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId);
+    Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId, bool includeRetake = false);
     Task<bool> HasScoresAsync(int assessmentId);
     Task<bool> HasSubmissionsAsync(int assessmentId);
     Task<decimal> GetTotalWeightBySemesterAsync(int semesterId, int? excludeAssessmentId = null);
@@ -37,11 +38,11 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     {
     }
 
-    public async Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId)
+    public async Task<List<Assessment>> GetAssessmentsBySemesterAsync(int semesterId, bool includeRetake = false)
     {
         return await _context.Assessments
             .Include(a => a.CreatedByNavigation)
-            .Where(a => a.SemesterId == semesterId)
+            .Where(a => a.SemesterId == semesterId && (includeRetake || !a.IsRetake))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync();
     }
@@ -56,14 +57,14 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
     }
 
-    public async Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId)
+    public async Task<List<Assessment>> GetAssessmentsWithCriteriaAsync(int semesterId, bool includeRetake = false)
     {
         return await _context.Assessments
             .Include(a => a.AssessmentCriteria)
             .Include(a => a.CreatedByNavigation)
             .Include(a => a.ProjectSubmissions)
             .Include(a => a.AssessmentScores)
-            .Where(a => a.SemesterId == semesterId)
+            .Where(a => a.SemesterId == semesterId && (includeRetake || !a.IsRetake))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync();
     }
@@ -83,7 +84,7 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
     public async Task<decimal> GetTotalWeightBySemesterAsync(int semesterId, int? excludeAssessmentId = null)
     {
         var query = _context.Assessments
-            .Where(a => a.SemesterId == semesterId);
+            .Where(a => a.SemesterId == semesterId && !a.IsRetake);
 
         if (excludeAssessmentId.HasValue)
         {
@@ -96,7 +97,7 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
         {
             return await _context.Assessments
                 .Include(a => a.Semester)
-                .Where(a => a.IsLocked != true && a.Semester.IsActive == true)
+                .Where(a => a.Semester.IsActive == true &&  !a.IsRetake && a.IsFinal != true  )
                 .ToListAsync();
         }
 
@@ -139,15 +140,18 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             .Where(s => s.UserId == userId && assessmentIds.Contains(s.AssessmentId))
             .ToListAsync();
 
-        // 4. Lấy lịch bảo vệ (defense schedule) của nhóm nếu có final assessment
+        // 4. Lấy tất cả lịch bảo vệ của nhóm (gồm cả lần đầu + retake nếu có)
         var hasFinal = assessments.Any(a => a.IsFinal == true);
-        DefenseSchedule? defenseSchedule = null;
+        var defenseSchedules = new List<DefenseSchedule>();
         if (hasFinal)
         {
-            defenseSchedule = await _context.DefenseSchedules
+            defenseSchedules = await _context.DefenseSchedules
                 .Include(ds => ds.Room)
                 .Where(ds => ds.GroupId == group.GroupId)
-                .FirstOrDefaultAsync();
+                .OrderBy(ds => ds.DefenseDate)
+                .ThenBy(ds => ds.StartTime)
+                .ThenBy(ds => ds.ScheduleId)
+                .ToListAsync();
         }
 
         // 5. Lấy teacher comment từ ProjectSubmissions của nhóm
@@ -157,6 +161,10 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
                       && ps.TeacherComment != null)
             .ToListAsync();
 
+        // 6. Lấy FinalResult của sinh viên
+        var finalResult = await _context.StudentFinalResults
+            .FirstOrDefaultAsync(fr => fr.UserId == userId && fr.SemesterId == semester.SemesterId);
+
         return new StudentAssessmentRawData
         {
             Group           = group,
@@ -164,8 +172,9 @@ public class AssessmentRepository : GenericRepository<Assessment>, IAssessmentRe
             Project         = project,
             Assessments     = assessments,
             Scores          = scores,
-            DefenseSchedule = defenseSchedule,
-            Submissions     = submissions
+            DefenseSchedules = defenseSchedules,
+            Submissions     = submissions,
+            FinalResult     = finalResult
         };
     }
     }

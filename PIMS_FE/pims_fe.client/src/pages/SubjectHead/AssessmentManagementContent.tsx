@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import api from "../../services/api";
 import {
   assessmentService,
@@ -30,8 +31,6 @@ const AssessmentManagementContent: React.FC = () => {
     null,
   );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
 
   // Modal states
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
@@ -124,20 +123,19 @@ const AssessmentManagementContent: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to load semesters:", err);
-      setError("Failed to load semesters");
+      toast.error("Failed to load semesters");
     }
   };
 
   const loadAssessments = async () => {
     if (selectedSemesterId === null) return;
     setLoading(true);
-    setError("");
     try {
       const response =
         await assessmentService.getAssessmentsWithCriteria(selectedSemesterId);
       setAssessments(response.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load assessments");
+      toast.error(err.response?.data?.message || "Failed to load assessments");
     } finally {
       setLoading(false);
     }
@@ -155,6 +153,7 @@ const AssessmentManagementContent: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Failed to load templates:", err);
+      toast.error("Failed to load templates");
     } finally {
       setTemplatesLoading(false);
     }
@@ -168,17 +167,18 @@ const AssessmentManagementContent: React.FC = () => {
       variant: "danger",
       onConfirm: async () => {
         setTemplatesLoading(true);
-        setError("");
         try {
           const response = await api.delete(
             `/api/ProjectTemplate/${templateId}`,
           );
           if (response.data.success) {
-            setSuccess("Template deleted successfully");
+            toast.success("Template deleted successfully");
             loadTemplates();
           }
         } catch (err: any) {
-          setError(err.response?.data?.message || "Failed to delete template");
+          toast.error(
+            err.response?.data?.message || "Failed to delete template",
+          );
         } finally {
           setTemplatesLoading(false);
         }
@@ -193,13 +193,12 @@ const AssessmentManagementContent: React.FC = () => {
       0,
     );
     if (Math.abs(totalWeight - 100) > 0.01) {
-      setError(
+      toast.error(
         `Total weight must be exactly 100%. Currently: ${totalWeight.toFixed(2)}%`,
       );
       return;
     }
     setLoading(true);
-    setError("");
     try {
       await assessmentService.batchCreateAssessments({
         semesterId: selectedSemesterId!,
@@ -212,12 +211,14 @@ const AssessmentManagementContent: React.FC = () => {
           description: f.description || undefined,
         })),
       });
-      setSuccess("Assessments created successfully");
+      toast.success("Assessments created successfully");
       setShowAssessmentModal(false);
       setBatchForms([emptyBatchItem()]);
       loadAssessments();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create assessments");
+      toast.error(
+        err.response?.data?.message || "Failed to create assessments",
+      );
     } finally {
       setLoading(false);
     }
@@ -229,13 +230,12 @@ const AssessmentManagementContent: React.FC = () => {
       .filter((item) => !item.isDeleted)
       .reduce((sum, item) => sum + (item.weight || 0), 0);
     if (Math.abs(totalWeight - 100) > 0.01) {
-      setError(
+      toast.error(
         `Total weight must be exactly 100%. Currently: ${totalWeight.toFixed(2)}%`,
       );
       return;
     }
     setLoading(true);
-    setError("");
     try {
       const toDelete = batchEditForms.filter((f) => f.isDeleted && !f.isNew);
       await Promise.all(
@@ -270,11 +270,11 @@ const AssessmentManagementContent: React.FC = () => {
           }),
         ),
       );
-      setSuccess("Assessments saved successfully");
+      toast.success("Assessments saved successfully");
       setShowBatchEditModal(false);
       loadAssessments();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to save assessments");
+      toast.error(err.response?.data?.message || "Failed to save assessments");
     } finally {
       setLoading(false);
     }
@@ -289,19 +289,16 @@ const AssessmentManagementContent: React.FC = () => {
         variant: "warning",
         onConfirm: async () => {
           setLoading(true);
-          setError("");
-          setSuccess("");
           try {
             await assessmentService.unlockAssessment(assessment.assessmentId);
-            setSuccess(
+            toast.success(
               "Assessment unlocked. You can now edit criteria and weights.",
             );
             loadAssessments();
           } catch (err: any) {
-            setError(
+            toast.error(
               err.response?.data?.message || "Failed to unlock assessment",
             );
-            setTimeout(() => setError(""), 8000);
           } finally {
             setLoading(false);
           }
@@ -315,17 +312,16 @@ const AssessmentManagementContent: React.FC = () => {
         variant: "warning",
         onConfirm: async () => {
           setLoading(true);
-          setError("");
-          setSuccess("");
           try {
             await assessmentService.lockAssessment(assessment.assessmentId);
-            setSuccess("Assessment locked. No further modifications allowed.");
+            toast.success(
+              "Assessment locked. No further modifications allowed.",
+            );
             loadAssessments();
           } catch (err: any) {
-            setError(
+            toast.error(
               err.response?.data?.message || "Failed to lock assessment",
             );
-            setTimeout(() => setError(""), 8000);
           } finally {
             setLoading(false);
           }
@@ -338,8 +334,6 @@ const AssessmentManagementContent: React.FC = () => {
     e.preventDefault();
     if (!selectedAssessment) return;
     setLoading(true);
-    setError("");
-    setSuccess("");
     try {
       await criteriaService.createMultipleCriteria(
         selectedAssessment.assessmentId,
@@ -347,7 +341,7 @@ const AssessmentManagementContent: React.FC = () => {
           criteria: criteriaList,
         },
       );
-      setSuccess("Criteria saved successfully");
+      toast.success("Criteria saved successfully");
       setShowCriteriaModal(false);
       setCriteriaList([{ criteriaName: "", weight: 0 }]);
       loadAssessments();
@@ -357,7 +351,7 @@ const AssessmentManagementContent: React.FC = () => {
         err.response?.data?.errors?.[0] ||
         err.message ||
         "Failed to save criteria";
-      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -455,6 +449,19 @@ const AssessmentManagementContent: React.FC = () => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  const formatDateTime = (dateValue?: string) => {
+    if (!dateValue) return "Not set";
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return "Invalid date";
+    return parsed.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const getTotalWeight = () =>
     assessments.reduce((sum, a) => sum + a.weight, 0);
   const getCriteriaTotalWeight = () =>
@@ -477,18 +484,6 @@ const AssessmentManagementContent: React.FC = () => {
   return (
     <>
       <div className="flex flex-col gap-8">
-        {/* Alerts */}
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-            {success}
-          </div>
-        )}
-
         {/* Actions Bar */}
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div className="flex items-center justify-between">
@@ -738,44 +733,44 @@ const AssessmentManagementContent: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Dates & Description */}
-                {(assessment.startDate ||
-                  assessment.deadline ||
-                  assessment.description) && (
-                  <div className="mb-4 space-y-2 px-0">
-                    {(assessment.startDate || assessment.deadline) && (
-                      <div className="flex flex-wrap gap-4 text-sm text-[#616f89]">
-                        {assessment.startDate && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              calendar_today
-                            </span>
-                            Start:{" "}
-                            {new Date(assessment.startDate).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
-                        {assessment.deadline && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-base">
-                              event
-                            </span>
-                            Deadline:{" "}
-                            {new Date(assessment.deadline).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        )}
+                {/* Assessment Info */}
+                <div className="mb-4 rounded-lg border border-[#e9edf5] bg-[#f8faff] p-3 space-y-2">
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        calendar_today
+                      </span>
+                      <div>
+                        <p className="font-medium text-[#111318]">Start date</p>
+                        <p>{formatDateTime(assessment.startDate)}</p>
                       </div>
-                    )}
-                    {assessment.description && (
-                      <p className="text-sm text-[#616f89] italic line-clamp-2">
-                        {assessment.description}
-                      </p>
-                    )}
+                    </div>
+
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        event
+                      </span>
+                      <div>
+                        <p className="font-medium text-[#111318]">Deadline</p>
+                        <p>{formatDateTime(assessment.deadline)}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 text-[#616f89]">
+                      <span className="material-symbols-outlined text-base mt-0.5">
+                        description
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#111318]">
+                          Description
+                        </p>
+                        <p className="italic break-words line-clamp-2">
+                          {assessment.description?.trim() || "Not set"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
 
                 {/* Criteria Section */}
                 <div className="border-t pt-4 mb-4">
@@ -1427,12 +1422,11 @@ const AssessmentManagementContent: React.FC = () => {
                           .pop()
                           ?.toLowerCase();
                         if (!["zip", "rar", "7z"].includes(extension || "")) {
-                          setError(
+                          toast.error(
                             "Vui lòng chỉ tải lên các loại file nén (.zip, .rar, .7z)",
                           );
                           return;
                         }
-                        setError("");
                         setTemplateForm({ ...templateForm, file });
                       }
                     }}
@@ -1492,7 +1486,7 @@ const AssessmentManagementContent: React.FC = () => {
                     .pop()
                     ?.toLowerCase();
                   if (!["zip", "rar", "7z"].includes(fileExtension || "")) {
-                    setError(
+                    toast.error(
                       "Chỉ chấp nhận các định dạng file nén: .zip, .rar, .7z",
                     );
                     return;
@@ -1511,13 +1505,13 @@ const AssessmentManagementContent: React.FC = () => {
                       },
                     );
                     if (response.data.success) {
-                      setSuccess("Tải lên tài liệu mẫu thành công!");
+                      toast.success("Tải lên tài liệu mẫu thành công!");
                       setShowUploadModal(false);
                       setTemplateForm({ title: "", file: null });
                       loadTemplates();
                     }
                   } catch (err: any) {
-                    setError(
+                    toast.error(
                       err.response?.data?.message || "Lỗi khi tải lên tài liệu",
                     );
                   } finally {
