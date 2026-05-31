@@ -25,7 +25,7 @@ services:
         - VITE_GOOGLE_CLIENT_ID=532793804448-4qspbrsidfmqbtr23h6godjdp2nk8qmv.apps.googleusercontent.com
     container_name: pims_frontend
     ports:
-      - "3000:80"                       # Mở cổng 3000 của máy chủ đó khách (Khớp với Cloudflare hiện tại)
+      - "3002:80"                       # Mở cổng 3002 của máy chủ đón khách (tránh xung đột với goexe-frontend)
     depends_on:
       - backend
     restart: always
