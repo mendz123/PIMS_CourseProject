@@ -1,0 +1,16 @@
+.git
+.github
+.vs
+**/.vs
+**/node_modules
+**/bin
+**/obj
+**/publish
+**/dist
+**/logs
+PIMS_Project.sql
+Schema.sql
+migration.sql
+*.user
+*.suo
+*.sln

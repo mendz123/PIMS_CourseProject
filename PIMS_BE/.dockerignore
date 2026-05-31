@@ -1,0 +1,10 @@
+bin
+obj
+publish
+logs
+.vs
+.git
+.gitignore
+appsettings.Development.json
+*.db
+*.local
